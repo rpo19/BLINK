@@ -7,6 +7,8 @@
 import argparse
 import json
 import sys
+sys.path.append("..")
+sys.path.append(".")
 
 from tqdm import tqdm
 import logging
@@ -245,6 +247,10 @@ def _run_biencoder(biencoder, dataloader, candidate_encoding, top_k=100, indexer
             if indexer is not None:
                 context_encoding = biencoder.encode_context(context_input).numpy()
                 context_encoding = np.ascontiguousarray(context_encoding)
+                print("----- Context encoding -----")
+                print(type(context_encoding))
+                print(context_encoding)
+                print("-"*30)
                 scores, indicies = indexer.search_knn(context_encoding, top_k)
             else:
                 scores = biencoder.score_candidate(
@@ -437,7 +443,7 @@ def run(
 
             # print biencoder prediction
             idx = 0
-            for entity_list, sample in zip(nns, samples):
+            for entity_list, sample, _score in zip(nns, samples, scores):
                 e_id = entity_list[0]
                 e_title = id2title[e_id]
                 e_text = id2text[e_id]
@@ -445,6 +451,8 @@ def run(
                 _print_colorful_prediction(
                     idx, sample, e_id, e_title, e_text, e_url, args.show_url
                 )
+                print("bi_Score:", _score[0])
+                print("all scores:", _score[1:])
                 idx += 1
             print()
 
@@ -526,7 +534,7 @@ def run(
 
             # print crossencoder prediction
             idx = 0
-            for entity_list, index_list, sample in zip(nns, index_array, samples):
+            for entity_list, index_list, sample, _scores in zip(nns, index_array, samples, unsorted_scores):
                 e_id = entity_list[index_list[-1]]
                 e_title = id2title[e_id]
                 e_text = id2text[e_id]
@@ -534,6 +542,8 @@ def run(
                 _print_colorful_prediction(
                     idx, sample, e_id, e_title, e_text, e_url, args.show_url
                 )
+                print("cross_score:", _scores[index_list[-1]])
+                print("all scores:", _scores)
                 idx += 1
             print()
         else:
