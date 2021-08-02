@@ -1,0 +1,76 @@
+    1  conda create -n blink37 -y python=3.7 && conda activate blink37
+    2  cd /app
+    3  df -h .
+    4  apt update && apt install gcc
+    5  ls
+    6  cd BLINK/
+    7  l
+    8  ls
+    9  pip install -r requirements.txt
+   10  lx
+   11  ls
+   12  chmod +x download_blink_models.sh 
+   13  ./download_blink_models.sh 
+   14  rm models/biencoder_wiki_large.bin 
+   15  ls
+   16  cd app/
+   17  l
+   18  ls
+   19  cd BLINK/
+   20  ls
+   21  ./download_
+   22  ./download_blink_models.sh 
+   23  du models/ -h
+   24  ls
+   25  cd models/
+   26  ls
+   27  ls
+   28  ls
+   29  cd ..
+   30  ls
+   31  cd models/
+   32  wget http://dl.fbaipublicfiles.com/BLINK//faiss_flat_index.pkl
+   33  df -h .
+   34  cd ..
+   35  python blink/main_dense.py --faiss_index flat --index_path models/faiss_flat_index.pkl
+   36  python
+   37  conda activate blink37
+   38  python blink/main_dense.py --faiss_index flat --index_path models/faiss_flat_index.pkl
+   39  ls
+   40  ls blink/
+   41  python
+   42  ls
+   43  ls blink
+   44  ls blink | grep setup
+   45  pip install .
+   46  pip install -e git+git@github.com:facebookresearch/BLINK#egg=BLINK
+   47  pip install  git+git@github.com:facebookresearch/BLINK#egg=BLINK
+   48  pip install  "git+git@github.com:facebookresearch/BLINK#egg=BLINK"
+   49  ls
+   50  cat setup.py 
+   51  python blink/main_dense.py --faiss_index flat --index_path models/faiss_flat_index.pkl
+   52  vi
+   53  python blink/main_dense.py --faiss_index flat --index_path models/faiss_flat_index.pkl
+   54  cat blink/main_dense.py 
+   55  head blink/main_dense.py 
+   56  python blink/main_dense.py --faiss_index flat --index_path models/faiss_flat_index.pkl
+   57  python blink/main_dense.py --faiss_index flat --index_path models/faiss_flat_index.pkl
+   58  ls models/
+   59  du -hs models/
+   60  python blink/main_dense.py --faiss_index flat --index_path models/faiss_flat_index.pkl
+   61  python blink/main_dense.py --faiss_index flat --index_path models/faiss_flat_index.pkl -i
+   62  pip freeze | grep gensim
+   63  pip install gensim==3.8.3
+   64  python blink/main_dense.py --faiss_index flat --index_path models/faiss_flat_index.pkl -i
+   65  ls
+   66  conda ls
+   67  conda list
+   68  conda activate blink37
+   69  ls
+   70  python -V
+   71  python blink/main_dense.py --faiss_index flat --index_path models/faiss_flat_index.pkl -i
+   72  history
+   73  ls
+   74  cd /app
+   75  ls
+   76  history > history.txt
