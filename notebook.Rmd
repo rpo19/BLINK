@@ -254,21 +254,26 @@ def _process_biencoder_dataloader(samples, tokenizer, biencoder_params):
     return dataloader
 
 
-def _run_biencoder(biencoder, dataloader, candidate_encoding, top_k=100, indexer=None):
+def _run_biencoder(biencoder, dataloader, candidate_encoding, top_k=100, indexer=None, save_encodings=False):
     biencoder.model.eval()
     labels = []
     nns = []
     all_scores = []
+    encodings = []
     for batch in tqdm(dataloader):
         context_input, _, label_ids = batch
         with torch.no_grad():
             if indexer is not None:
                 context_encoding = biencoder.encode_context(context_input).numpy()
                 context_encoding = np.ascontiguousarray(context_encoding)
-                print("----- Context encoding -----")
-                print(type(context_encoding))
-                print(context_encoding)
-                print("-"*30)
+                if save_encodings:
+                    print("----- Context encoding -----")
+                    #print(type(context_encoding))
+                    #print(context_encoding)
+                    print(type(label_ids))
+                    print(label_ids)
+                    encodings.extend([e.tolist() for e in context_encoding])
+                    print("-"*30)
                 scores, indicies = indexer.search_knn(context_encoding, top_k)
             else:
                 scores = biencoder.score_candidate(
@@ -281,7 +286,7 @@ def _run_biencoder(biencoder, dataloader, candidate_encoding, top_k=100, indexer
         labels.extend(label_ids.data.numpy())
         nns.extend(indicies)
         all_scores.extend(scores)
-    return labels, nns, all_scores
+    return labels, nns, all_scores, encodings
 
 
 def _process_crossencoder_dataloader(context_input, label_input, crossencoder_params):
@@ -453,9 +458,17 @@ def run(
         if logger:
             logger.info("run biencoder")
         top_k = args.top_k
-        labels, nns, scores = _run_biencoder(
-            biencoder, dataloader, candidate_encoding, top_k, faiss_indexer
+        labels, nns, scores, encodings = _run_biencoder(
+            biencoder, dataloader, candidate_encoding, top_k, faiss_indexer, bool(args.save_encodings)
         )
+        
+        if args.save_encodings:
+            with open(args.save_encodings, 'w') as fd:
+                global g_encodings
+                g_encodings = encodings
+                for line in encodings:
+                    json.dump(line, fd)
+                    fd.write('\n')
 
         if args.interactive:
 
@@ -638,10 +651,55 @@ logger = utils.get_logger(None)
 ```
 
 ```{python}
+# test file
+args = Dict()
+
+args.interactive = False
+args.top_k = 10
+args.biencoder_config = "models/biencoder_wiki_large.json"
+args.biencoder_model = "models/biencoder_wiki_large.bin"
+args.crossencoder_config = "models/crossencoder_wiki_large.json"
+args.crossencoder_model = "models/crossencoder_wiki_large.bin"
+args.entity_catalogue = "models/entity.jsonl"
+args.entity_encoding = "models/all_entities_large.t7"
+args.faiss_index = "hnsw"
+args.index_path = "models/faiss_hnsw_index.pkl"
+
+args.test_mentions = "data/test10.jsonl"
+
+logger = utils.get_logger(None)
+```
+
+```{python}
+# get encodings (starting from jsonl file)
+args = Dict()
+
+args.interactive = False
+args.top_k = 10
+args.biencoder_config = "models/biencoder_wiki_large.json"
+args.biencoder_model = "models/biencoder_wiki_large.bin"
+args.crossencoder_config = "models/crossencoder_wiki_large.json"
+args.crossencoder_model = "models/crossencoder_wiki_large.bin"
+args.entity_catalogue = "models/entity.jsonl"
+args.entity_encoding = "models/all_entities_large.t7"
+args.faiss_index = "hnsw"
+args.index_path = "models/faiss_hnsw_index.pkl"
+
+args.test_mentions = "data/test10.jsonl"
+
+args.save_encodings = "data/test10_encodings.jsonl"
+
+logger = utils.get_logger(None)
+```
+
+```{python}
+# do not rerun
+# takes time and memory
 models = load_models(args, logger)
 print("Models load complete.")
 ```
 
 ```{python}
+# remember to define run function above
 run(args, logger, *models)
 ```
