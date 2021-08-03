@@ -431,7 +431,7 @@ def run(
             logger.info("run biencoder")
         top_k = args.top_k
         labels, nns, scores, encodings = _run_biencoder(
-            biencoder, dataloader, candidate_encoding, top_k, faiss_indexer, bool(args.save_encodings)
+            biencoder, dataloader, candidate_encoding, top_k, faiss_indexer, bool(args.save_encodings) if hasattr(args, 'save_encodings') else False
         )
 
         if args.save_encodings:
