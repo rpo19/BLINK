@@ -442,6 +442,15 @@ def run(
                     json.dump(line, fd)
                     fd.write('\n')
 
+        if args.save_scores_bi:
+            scores_bi = {
+                "labels": [l.tolist() for l in labels],
+                "scores": [l.tolist() for l in scores],
+                "nns": [l.tolist() for l in nns]
+            }
+            with open(args.save_scores_bi, 'w') as fd:
+                json.dump(scores_bi, fd)
+
         if args.interactive:
 
             print("\nfast (biencoder) predictions:")
@@ -532,6 +541,16 @@ def run(
             logger,
             context_len=biencoder_params["max_context_length"],
         )
+
+        if args.save_scores_cross:
+            scores_cross = {
+                "labels": [l.tolist() for l in labels],
+                "unsorted_scores": [l.tolist() for l in unsorted_scores],
+                "index_array": index_array.tolist(),
+                "nns": [l.tolist() for l in nns]
+            }
+            with open(args.save_scores_cross, 'w') as fd:
+                json.dump(scores_cross, fd)
 
         if args.interactive:
 
