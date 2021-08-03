@@ -434,7 +434,7 @@ def run(
             biencoder, dataloader, candidate_encoding, top_k, faiss_indexer, bool(args.save_encodings) if hasattr(args, 'save_encodings') else False
         )
 
-        if args.save_encodings:
+        if hasattr(args, 'save_encodings') and args.save_encodings:
             with open(args.save_encodings, 'w') as fd:
                 global g_encodings
                 g_encodings = encodings
