@@ -236,21 +236,20 @@ def _process_biencoder_dataloader(samples, tokenizer, biencoder_params):
     return dataloader
 
 
-def _run_biencoder(biencoder, dataloader, candidate_encoding, top_k=100, indexer=None):
+def _run_biencoder(biencoder, dataloader, candidate_encoding, top_k=100, indexer=None, save_encodings=False):
     biencoder.model.eval()
     labels = []
     nns = []
     all_scores = []
+    encodings = []
     for batch in tqdm(dataloader):
         context_input, _, label_ids = batch
         with torch.no_grad():
             if indexer is not None:
                 context_encoding = biencoder.encode_context(context_input).numpy()
                 context_encoding = np.ascontiguousarray(context_encoding)
-                print("----- Context encoding -----")
-                print(type(context_encoding))
-                print(context_encoding)
-                print("-"*30)
+                if save_encodings:
+                    encodings.extend([e.tolist() for e in context_encoding])
                 scores, indicies = indexer.search_knn(context_encoding, top_k)
             else:
                 scores = biencoder.score_candidate(
@@ -263,7 +262,7 @@ def _run_biencoder(biencoder, dataloader, candidate_encoding, top_k=100, indexer
         labels.extend(label_ids.data.numpy())
         nns.extend(indicies)
         all_scores.extend(scores)
-    return labels, nns, all_scores
+    return labels, nns, all_scores, encodings
 
 
 def _process_crossencoder_dataloader(context_input, label_input, crossencoder_params):
@@ -324,9 +323,9 @@ def load_models(args, logger=None):
         wikipedia_id2local_id,
         faiss_indexer,
     ) = _load_candidates(
-        args.entity_catalogue, 
-        args.entity_encoding, 
-        faiss_index=getattr(args, 'faiss_index', None), 
+        args.entity_catalogue,
+        args.entity_encoding,
+        faiss_index=getattr(args, 'faiss_index', None),
         index_path=getattr(args, 'index_path' , None),
         logger=logger,
     )
@@ -431,9 +430,17 @@ def run(
         if logger:
             logger.info("run biencoder")
         top_k = args.top_k
-        labels, nns, scores = _run_biencoder(
-            biencoder, dataloader, candidate_encoding, top_k, faiss_indexer
+        labels, nns, scores, encodings = _run_biencoder(
+            biencoder, dataloader, candidate_encoding, top_k, faiss_indexer, bool(args.save_encodings)
         )
+
+        if args.save_encodings:
+            with open(args.save_encodings, 'w') as fd:
+                global g_encodings
+                g_encodings = encodings
+                for line in encodings:
+                    json.dump(line, fd)
+                    fd.write('\n')
 
         if args.interactive:
 
