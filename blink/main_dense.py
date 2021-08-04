@@ -417,6 +417,7 @@ def run(
             args.interactive
             or samples[0]["label"] == "unknown"
             or samples[0]["label_id"] < 0
+            or (hasattr(args, 'keep_all') and args.keep_all)
         )
 
         # prepare the data for biencoder
