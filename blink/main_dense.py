@@ -543,6 +543,11 @@ def run(
         )
 
         if args.save_scores_cross:
+            print('----- Score cross length -----')
+            print('labels', len(labels))
+            print('unsorted_scores', len(unsorted_scores))
+            print('index_array', len(index_array))
+            print('nns', len(nns))
             scores_cross = {
                 "labels": [l.tolist() for l in labels],
                 "unsorted_scores": [l.tolist() for l in unsorted_scores],
