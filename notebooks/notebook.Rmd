@@ -19,9 +19,12 @@ jupyter:
 # This source code is licensed under the license found in the
 # LICENSE file in the root directory of this source tree.
 #
+
 import argparse
 import json
 import sys
+
+sys.path.append('..')
 
 from tqdm import tqdm
 import logging
@@ -439,6 +442,7 @@ def run(
             args.interactive
             or samples[0]["label"] == "unknown"
             or samples[0]["label_id"] < 0
+            or (hasattr(args, 'keep_all') and args.keep_all)
         )
 
         # prepare the data for biencoder
@@ -453,17 +457,17 @@ def run(
             logger.info("run biencoder")
         top_k = args.top_k
         labels, nns, scores, encodings = _run_biencoder(
-            biencoder, dataloader, candidate_encoding, top_k, faiss_indexer, bool(args.save_encodings)
+            biencoder, dataloader, candidate_encoding, top_k, faiss_indexer, bool(args.save_encodings) if hasattr(args, 'save_encodings') else False
         )
 
-        if args.save_encodings:
+        if hasattr(args, 'save_encodings') and args.save_encodings:
             with open(args.save_encodings, 'w') as fd:
                 global g_encodings
                 g_encodings = encodings
                 for line in encodings:
                     json.dump(line, fd)
                     fd.write('\n')
-                    
+
         if args.save_scores_bi:
             scores_bi = {
                 "labels": [l.tolist() for l in labels],
@@ -563,8 +567,13 @@ def run(
             logger,
             context_len=biencoder_params["max_context_length"],
         )
-        
+
         if args.save_scores_cross:
+            print('----- Score cross length -----')
+            print('labels', len(labels))
+            print('unsorted_scores', len(unsorted_scores))
+            print('index_array', len(index_array))
+            print('nns', len(nns))
             scores_cross = {
                 "labels": [l.tolist() for l in labels],
                 "unsorted_scores": [l.tolist() for l in unsorted_scores],
@@ -642,7 +651,6 @@ def run(
                 predictions,
                 scores,
             )
-
 ```
 
 ```{python}
@@ -651,14 +659,14 @@ args = Dict()
 
 args.interactive = True
 args.top_k = 10
-args.biencoder_config = "models/biencoder_wiki_large.json"
-args.biencoder_model = "models/biencoder_wiki_large.bin"
-args.crossencoder_config = "models/crossencoder_wiki_large.json"
-args.crossencoder_model = "models/crossencoder_wiki_large.bin"
-args.entity_catalogue = "models/entity.jsonl"
-args.entity_encoding = "models/all_entities_large.t7"
+args.biencoder_config = "../models/biencoder_wiki_large.json"
+args.biencoder_model = "../models/biencoder_wiki_large.bin"
+args.crossencoder_config = "../models/crossencoder_wiki_large.json"
+args.crossencoder_model = "../models/crossencoder_wiki_large.bin"
+args.entity_catalogue = "../models/entity.jsonl"
+args.entity_encoding = "../models/all_entities_large.t7"
 args.faiss_index = "hnsw"
-args.index_path = "models/faiss_hnsw_index.pkl"
+args.index_path = "../models/faiss_hnsw_index.pkl"
 
 args.save_scores_bi = True
 args.save_scores_cross = True
@@ -672,19 +680,21 @@ args = Dict()
 
 args.interactive = False
 args.top_k = 10
-args.biencoder_config = "models/biencoder_wiki_large.json"
-args.biencoder_model = "models/biencoder_wiki_large.bin"
-args.crossencoder_config = "models/crossencoder_wiki_large.json"
-args.crossencoder_model = "models/crossencoder_wiki_large.bin"
-args.entity_catalogue = "models/entity.jsonl"
-args.entity_encoding = "models/all_entities_large.t7"
+args.biencoder_config = "../models/biencoder_wiki_large.json"
+args.biencoder_model = "../models/biencoder_wiki_large.bin"
+args.crossencoder_config = "../models/crossencoder_wiki_large.json"
+args.crossencoder_model = "../models/crossencoder_wiki_large.bin"
+args.entity_catalogue = "../models/entity.jsonl"
+args.entity_encoding = "../models/all_entities_large.t7"
 args.faiss_index = "hnsw"
-args.index_path = "models/faiss_hnsw_index.pkl"
+args.index_path = "../models/faiss_hnsw_index.pkl"
 
-args.test_mentions = "data/test10.jsonl"
+args.test_mentions = "../data/BLINK_benchmark/ace2004_questions.jsonl"
 
-args.save_scores_bi = "output/scores_bi.json"
-args.save_scores_cross = "output/scores_cross.json"
+args.save_scores_bi = "../output/scores_bi.json"
+args.save_scores_cross = "../output/scores_cross.json"
+
+args.keep_all = True
 
 logger = utils.get_logger(None)
 ```
@@ -695,18 +705,18 @@ args = Dict()
 
 args.interactive = False
 args.top_k = 10
-args.biencoder_config = "models/biencoder_wiki_large.json"
-args.biencoder_model = "models/biencoder_wiki_large.bin"
-args.crossencoder_config = "models/crossencoder_wiki_large.json"
-args.crossencoder_model = "models/crossencoder_wiki_large.bin"
-args.entity_catalogue = "models/entity.jsonl"
-args.entity_encoding = "models/all_entities_large.t7"
+args.biencoder_config = "../models/biencoder_wiki_large.json"
+args.biencoder_model = "../models/biencoder_wiki_large.bin"
+args.crossencoder_config = "../models/crossencoder_wiki_large.json"
+args.crossencoder_model = "../models/crossencoder_wiki_large.bin"
+args.entity_catalogue = "../models/entity.jsonl"
+args.entity_encoding = "../models/all_entities_large.t7"
 args.faiss_index = "hnsw"
-args.index_path = "models/faiss_hnsw_index.pkl"
+args.index_path = "../models/faiss_hnsw_index.pkl"
 
-args.test_mentions = "data/test10.jsonl"
+args.test_mentions = "../data/test10.jsonl"
 
-args.save_encodings = "data/test10_encodings.jsonl"
+args.save_encodings = "../data/test10_encodings.jsonl"
 
 logger = utils.get_logger(None)
 ```
