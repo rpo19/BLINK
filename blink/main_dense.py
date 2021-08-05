@@ -450,7 +450,7 @@ def run(
                     json.dump(current, fd)
                     fd.write('\n')
 
-        if args.save_scores_bi:
+        if hasattr(args, 'save_scores_bi') and args.save_scores_bi:
             scores_bi = {
                 "labels": [l.tolist() for l in labels],
                 "scores": [l.tolist() for l in scores],
@@ -550,7 +550,7 @@ def run(
             context_len=biencoder_params["max_context_length"],
         )
 
-        if args.save_scores_cross:
+        if hasattr(args, 'save_scores_cross') and args.save_scores_cross:
             print('----- Score cross length -----')
             print('labels', len(labels))
             print('unsorted_scores', len(unsorted_scores))
