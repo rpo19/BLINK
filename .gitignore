@@ -18,6 +18,7 @@ models
 # output data
 output
 */output/*
+output*
 
 ### JupyterNotebooks ###
 # gitignore template for Jupyter Notebooks
