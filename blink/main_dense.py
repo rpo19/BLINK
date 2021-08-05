@@ -437,10 +437,12 @@ def run(
 
         if hasattr(args, 'save_encodings') and args.save_encodings:
             with open(args.save_encodings, 'w') as fd:
-                global g_encodings
-                g_encodings = encodings
-                for line in encodings:
-                    json.dump(line, fd)
+                for _enc, _lab in zip(encodings, labels):
+                    current = {
+                        "encoding": _enc,
+                        "label": _lab
+                    }
+                    json.dump(current, fd)
                     fd.write('\n')
 
         if args.save_scores_bi:
