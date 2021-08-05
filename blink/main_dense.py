@@ -358,6 +358,7 @@ def run(
     wikipedia_id2local_id,
     faiss_indexer=None,
     test_data=None,
+    local_id2wikipedia_id=None
 ):
 
     if not test_data and not args.test_mentions and not args.interactive:
@@ -438,9 +439,13 @@ def run(
         if hasattr(args, 'save_encodings') and args.save_encodings:
             with open(args.save_encodings, 'w') as fd:
                 for _enc, _lab in zip(encodings, labels):
+                    assert len(_lab) == 1
+                    _lab = int(_lab[0])
                     current = {
                         "encoding": _enc,
-                        "label": _lab
+                        "label": _lab,
+                        "wikipedia_id": 0 if local_id2wikipedia_id is None else local_id2wikipedia_id[_lab],
+                        "title": id2title[_lab]
                     }
                     json.dump(current, fd)
                     fd.write('\n')
@@ -734,4 +739,13 @@ if __name__ == "__main__":
     logger = utils.get_logger(args.output_path)
 
     models = load_models(args, logger)
-    run(args, logger, *models)
+
+    local_id2wikipedia_id = None
+
+    wikipedia_id2local_id = models[8]
+    if hasattr(args, 'save_encodings') and args.save_encodings:
+        local_id2wikipedia_id = {}
+        for k,v in wikipedia_id2local_id.items():
+            local_id2wikipedia_id[v] = k
+
+    run(args, logger, *models, local_id2wikipedia_id=local_id2wikipedia_id)
