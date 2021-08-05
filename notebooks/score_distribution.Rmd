@@ -20,15 +20,7 @@ from glob import glob
 ```
 
 ```{python}
-# !ls ..
-```
-
-```{python}
 output_path = os.path.join('..', 'output')
-```
-
-```{python}
-os.path.join(output_path, '*.jsonl')
 ```
 
 ```{python}
@@ -45,6 +37,9 @@ cross_scores
 bi_df = pd.DataFrame()
 for score_file in bi_scores:
     bi_df = pd.concat([bi_df, pd.read_json(score_file)])
+    
+assert (bi_df['labels'].apply(lambda x: len(x)) != 1).sum() == 0
+bi_df['labels'] = bi_df['labels'].apply(lambda x: x[0])
 bi_df
 ```
 
@@ -52,5 +47,8 @@ bi_df
 cross_df = pd.DataFrame()
 for score_file in cross_scores:
     cross_df = pd.concat([cross_df, pd.read_json(score_file)])
+    
+assert (cross_df['labels'].apply(lambda x: len(x)) != 1).sum() == 0
+cross_df['labels'] = cross_df['labels'].apply(lambda x: x[0])
 cross_df
 ```
