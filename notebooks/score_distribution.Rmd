@@ -49,51 +49,8 @@ bi_df
 ```
 
 ```{python}
-for score_file in bi_scores:
-    print(score_file)
-    with open(score_file, 'r') as fd:
-        js = json.load(fd)
-    break
-len(js['labels'])
-```
-
-```{python}
-
-```
-
-```{python}
-with open('../output/clueweb_questions_scores_cross.jsonl', 'r') as fd:
-    js = json.load(fd)
-```
-
-```{python}
-js.keys()
-```
-
-```{python}
-len(js['nns'])
-```
-
-```{python}
-len(js['unsorted_scores'][1])
-```
-
-```{python}
-pd.read_json('../output/clueweb_questions_scores_cross.jsonl')
-```
-
-```{python}
 cross_df = pd.DataFrame()
 for score_file in cross_scores:
-    print(score_file)
-    #cross_df = pd.concat([cross_df, pd.read_json(score_file)])
-    with open(score_file, 'r') as fd:
-        js = json.load(fd)
-    for key in js.keys():
-        print(key, len(js[key]))
-#cross_df
-```
-
-```{python}
-# !cat '../output/ace2004_questions_scores_bi.jsonl'
+    cross_df = pd.concat([cross_df, pd.read_json(score_file)])
+cross_df
 ```
