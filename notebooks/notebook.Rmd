@@ -721,9 +721,10 @@ args.entity_encoding = "../models/all_entities_large.t7"
 args.faiss_index = "hnsw"
 args.index_path = "../models/faiss_hnsw_index.pkl"
 
-args.test_mentions = "../data/test10.jsonl"
+#args.test_mentions = "../data/test10.jsonl"
+args.test_mentions = "../data/BLINK_benchmark/AIDA-YAGO2_train.jsonl"
 
-args.save_encodings = "../output/encodings/test10_encodings.jsonl"
+args.save_encodings = "../output/encodings/AIDA-YAGO2_train_encodings.jsonl"
 
 logger = utils.get_logger(None)
 ```
