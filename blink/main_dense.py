@@ -734,6 +734,10 @@ if __name__ == "__main__":
         "--index_path", type=str, default=None, help="path to load indexer",
     )
 
+    parser.add_argument(
+        '--save_encodings', type=str, default=None, help="File where to save encodings",
+    )
+
     args = parser.parse_args()
 
     logger = utils.get_logger(args.output_path)
