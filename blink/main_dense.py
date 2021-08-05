@@ -172,7 +172,7 @@ def __map_test_entities(test_entities_path, title2id, logger):
     return kb2id
 
 
-def __load_test(test_filename, kb2id, wikipedia_id2local_id, logger):
+def __load_test(test_filename, kb2id, wikipedia_id2local_id, logger, consider_all=False):
     test_samples = []
     with open(test_filename, "r") as fin:
         lines = fin.readlines()
@@ -185,7 +185,7 @@ def __load_test(test_filename, kb2id, wikipedia_id2local_id, logger):
                 if record["label"] in kb2id:
                     record["label_id"] = kb2id[record["label"]]
                 else:
-                    if hasattr(args, 'consider_all')  and args.consider_all:
+                    if consider_all:
                         # NIL
                         record["label_id"] = -1
                     else:
@@ -198,13 +198,13 @@ def __load_test(test_filename, kb2id, wikipedia_id2local_id, logger):
                     if key in wikipedia_id2local_id:
                         record["label_id"] = wikipedia_id2local_id[key]
                     else:
-                        if hasattr(args, 'consider_all')  and args.consider_all:
+                        if consider_all:
                             # NIL
                             record["label_id"] = -1
                         else:
                             continue
                 except:
-                    if hasattr(args, 'consider_all')  and args.consider_all:
+                    if consider_all:
                         # NIL
                         record["label_id"] = -1
                     else:
@@ -222,12 +222,12 @@ def __load_test(test_filename, kb2id, wikipedia_id2local_id, logger):
 
 
 def _get_test_samples(
-    test_filename, test_entities_path, title2id, wikipedia_id2local_id, logger
+    test_filename, test_entities_path, title2id, wikipedia_id2local_id, logger, consider_all=False
 ):
     kb2id = None
     if test_entities_path:
         kb2id = __map_test_entities(test_entities_path, title2id, logger)
-    test_samples = __load_test(test_filename, kb2id, wikipedia_id2local_id, logger)
+    test_samples = __load_test(test_filename, kb2id, wikipedia_id2local_id, logger, consider_all=consider_all)
     return test_samples
 
 
@@ -421,6 +421,7 @@ def run(
                     title2id,
                     wikipedia_id2local_id,
                     logger,
+                    consider_all= True if hasattr(args, 'consider_all') and args.consider_all else False
                 )
 
             stopping_condition = True
