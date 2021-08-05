@@ -185,7 +185,11 @@ def __load_test(test_filename, kb2id, wikipedia_id2local_id, logger):
                 if record["label"] in kb2id:
                     record["label_id"] = kb2id[record["label"]]
                 else:
-                    continue
+                    if hasattr(args, 'consider_all')  and args.consider_all:
+                        # NIL
+                        record["label_id"] = -1
+                    else:
+                        continue
 
             # check that each entity id (label_id) is in the entity collection
             elif wikipedia_id2local_id and len(wikipedia_id2local_id) > 0:
@@ -194,9 +198,17 @@ def __load_test(test_filename, kb2id, wikipedia_id2local_id, logger):
                     if key in wikipedia_id2local_id:
                         record["label_id"] = wikipedia_id2local_id[key]
                     else:
-                        continue
+                        if hasattr(args, 'consider_all')  and args.consider_all:
+                            # NIL
+                            record["label_id"] = -1
+                        else:
+                            continue
                 except:
-                    continue
+                    if hasattr(args, 'consider_all')  and args.consider_all:
+                        # NIL
+                        record["label_id"] = -1
+                    else:
+                        continue
 
             # LOWERCASE EVERYTHING !
             record["context_left"] = record["context_left"].lower()
@@ -412,6 +424,17 @@ def run(
                 )
 
             stopping_condition = True
+
+        if len(samples) == 0:
+            return (
+                -1,
+                -1,
+                -1,
+                -1,
+                len(samples),
+                [],
+                [],
+            )
 
         # don't look at labels
         keep_all = (

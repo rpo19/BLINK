@@ -81,6 +81,7 @@ for dataset in DATASETS:
             os.path.splitext(os.path.basename(dataset["filename"]))[0])
         )
     PARAMETERS["keep_all"] = True
+    PARAMETERS["consider_all"] = True
 
     args = argparse.Namespace(**PARAMETERS)
     (
