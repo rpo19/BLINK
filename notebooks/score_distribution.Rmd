@@ -17,6 +17,7 @@ import pandas as pd
 import json
 import os
 from glob import glob
+import statistics
 ```
 
 ```{python}
@@ -44,6 +45,34 @@ bi_df
 ```
 
 ```{python}
+def _bi_get_stats(x):
+    assert len(x.scores) == len(x.nns)
+    uncorrect = x.scores.copy()
+    if x.labels in x.nns:
+        # found correct entity
+        i_correct = x.nns.index(x.labels)
+        correct = x.scores[i_correct]
+        del uncorrect[i_correct]
+    else:
+        # not found correct entity
+        correct = None
+    _stats = {
+        "correct": correct,
+        "max": max(uncorrect),
+        "min": min(uncorrect),
+        "mean": statistics.mean(uncorrect),
+        "median": statistics.median(uncorrect),
+        "stdev": statistics.stdev(uncorrect),
+    }
+    return _stats
+```
+
+```{python}
+bi_stats = bi_df.apply(_bi_get_stats, axis=1, result_type='expand')
+bi_stats.head()
+```
+
+```{python}
 cross_df = pd.DataFrame()
 for score_file in cross_scores:
     cross_df = pd.concat([cross_df, pd.read_json(score_file)])
@@ -51,4 +80,36 @@ for score_file in cross_scores:
 assert (cross_df['labels'].apply(lambda x: len(x)) != 1).sum() == 0
 cross_df['labels'] = cross_df['labels'].apply(lambda x: x[0])
 cross_df
+```
+
+```{python}
+x = cross_df.iloc[0]
+```
+
+```{python}
+def _cross_get_stats(x):
+    assert len(x.unsorted_scores) == len(x.nns)
+    uncorrect = x.unsorted_scores.copy()
+    if x.labels in x.nns:
+        # found correct entity
+        i_correct = x.nns.index(x.labels)
+        correct = x.unsorted_scores[i_correct]
+        del uncorrect[i_correct]
+    else:
+        # not found correct entity
+        correct = None
+    _stats = {
+        "correct": correct,
+        "max": max(uncorrect),
+        "min": min(uncorrect),
+        "mean": statistics.mean(uncorrect),
+        "median": statistics.median(uncorrect),
+        "stdev": statistics.stdev(uncorrect),
+    }
+    return _stats
+```
+
+```{python}
+cross_stats = cross_df.apply(_cross_get_stats, axis=1, result_type='expand')
+cross_stats.head()
 ```
