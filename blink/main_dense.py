@@ -762,6 +762,14 @@ if __name__ == "__main__":
         '--save_encodings', type=str, default=None, help="File where to save encodings",
     )
 
+    parser.add_argument(
+        '--keep_all', dest="keep_all", action="store_true", help="Keep all even if correct entity is not in the top k",
+    )
+
+    parser.add_argument(
+        '--consider_all', dest="consider_all", action="store_true", help="Consider all even if target entity is not in the entity collection",
+    )
+
     args = parser.parse_args()
 
     logger = utils.get_logger(args.output_path)
