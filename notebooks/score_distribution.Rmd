@@ -18,10 +18,15 @@ import json
 import os
 from glob import glob
 import statistics
+from matplotlib import pyplot
 ```
 
 ```{python}
-output_path = os.path.join('..', 'output')
+# !ls -ld ../output* 
+```
+
+```{python}
+output_path = os.path.join('..', 'output_20200805')
 ```
 
 ```{python}
@@ -73,6 +78,28 @@ bi_stats.head()
 ```
 
 ```{python}
+(bi_stats['max'] - bi_stats['min']).plot(kind='density')
+```
+
+```{python}
+bi_stats['stdev'].plot(kind='density')
+```
+
+```{python}
+bi_stats['stdev'].describe()
+```
+
+```{python}
+# correct is not na
+bi_stats[bi_stats['correct'].notna()][['correct', 'max', 'mean', 'median', 'min']].plot(kind='density')
+```
+
+```{python}
+# correct not found
+bi_stats[bi_stats['correct'].isna()][['max', 'mean', 'median', 'min']].plot(kind='density')
+```
+
+```{python}
 cross_df = pd.DataFrame()
 for score_file in cross_scores:
     cross_df = pd.concat([cross_df, pd.read_json(score_file)])
@@ -113,3 +140,221 @@ def _cross_get_stats(x):
 cross_stats = cross_df.apply(_cross_get_stats, axis=1, result_type='expand')
 cross_stats.head()
 ```
+
+```{python}
+# only the mentions we found the correct entity
+# sort and remove na
+cross_stats_s = cross_stats[cross_stats['correct'].notna()].sort_values('correct')
+# plot
+pyplot.scatter(x=range(cross_stats_s.shape[0]), y=cross_stats_s['correct'], s=0.01, c='blue')
+pyplot.scatter(x=range(cross_stats_s.shape[0]), y=cross_stats_s['max'], s=0.01, c='green')
+pyplot.scatter(x=range(cross_stats_s.shape[0]), y=cross_stats_s['mean'], s=0.01, c='orange')
+#pyplot.scatter(x=range(cross_stats_s.shape[0]), y=cross_stats_s['median'], s=0.01, c='red')
+pyplot.legend(
+    labels = ['correct', 'max', 'mean'],
+    labelcolor = ['blue', 'green', 'orange']
+) 
+```
+
+```{python}
+# only the mentions we found the correct entity # unsorted
+# sort and remove na
+cross_stats_u = cross_stats[cross_stats['correct'].notna()]
+# plot
+pyplot.scatter(x=range(cross_stats_u.shape[0]), y=cross_stats_u['correct'], s=0.01, c='blue')
+pyplot.scatter(x=range(cross_stats_u.shape[0]), y=cross_stats_u['max'], s=0.01, c='red')
+pyplot.scatter(x=range(cross_stats_u.shape[0]), y=cross_stats_u['mean'], s=0.01, c='yellow')
+#pyplot.scatter(x=range(cross_stats_u.shape[0]), y=cross_stats_u['median'], s=0.01, c='orange')
+pyplot.legend(
+    labels = ['correct', 'max', 'mean'],
+    labelcolor = ['blue', 'red', 'yellow']
+) 
+```
+
+The first mentions on the left (they are sorted basing on correct score) could be misclassified as NIL by a threshold based classifier.
+
+```{python}
+# the mentions we didn't find the correct entity
+# sort and remove na
+cross_stats_na = cross_stats[cross_stats['correct'].isna()]
+# plot
+#pyplot.scatter(x=range(cross_stats_s_na.shape[0]), y=cross_stats_na['correct'], s=1, c='blue')
+pyplot.scatter(x=range(cross_stats_na.shape[0]), y=cross_stats_na['max'], s=1, c='green')
+pyplot.scatter(x=range(cross_stats_na.shape[0]), y=cross_stats_na['mean'], s=1, c='orange')
+pyplot.scatter(x=range(cross_stats_na.shape[0]), y=cross_stats_na['median'], s=1, c='red')
+pyplot.scatter(x=range(cross_stats_na.shape[0]), y=cross_stats_na['min'], s=1, c='blue')
+pyplot.legend(
+    labels = ['max', 'mean', 'median', 'min'],
+    labelcolor = ['green', 'orange', 'red', 'blue']
+)
+```
+
+Average score of uncorrect entities is around -10
+
+```{python}
+# correct found
+cross_stats[cross_stats['correct'].notna()][['correct', 'max', 'mean', 'median']].plot(kind='density')
+```
+
+```{python}
+# correct not found
+cross_stats[cross_stats['correct'].isna()][['max', 'mean', 'median']].plot(kind='density')
+```
+
+```{python}
+cross_stats['stdev'].describe()
+```
+
+```{python}
+(cross_stats['max'] - cross_stats['min']).plot(kind='density')
+```
+
+```{python}
+cross_stats['min'].describe()
+```
+
+# NIL
+
+```{python}
+output_path_nil = os.path.join('..', 'output_only_NIL_20200806')
+```
+
+```{python}
+bi_scores_nil = glob(os.path.join(output_path_nil, '*_bi.jsonl'))
+bi_scores_nil
+```
+
+```{python}
+cross_scores_nil = glob(os.path.join(output_path_nil, '*_cross.jsonl'))
+cross_scores_nil
+```
+
+```{python}
+bi_df_nil = pd.DataFrame()
+for score_file in bi_scores_nil:
+    bi_df_nil = pd.concat([bi_df_nil, pd.read_json(score_file)])
+    
+assert (bi_df_nil['labels'].apply(lambda x: len(x)) != 1).sum() == 0
+bi_df_nil['labels'] = bi_df_nil['labels'].apply(lambda x: x[0])
+bi_df_nil
+```
+
+```{python}
+def _bi_get_stats(x):
+    assert len(x.scores) == len(x.nns)
+    uncorrect = x.scores.copy()
+    if x.labels in x.nns:
+        # found correct entity
+        i_correct = x.nns.index(x.labels)
+        correct = x.scores[i_correct]
+        del uncorrect[i_correct]
+    else:
+        # not found correct entity
+        correct = None
+    _stats = {
+        "correct": correct,
+        "max": max(uncorrect),
+        "min": min(uncorrect),
+        "mean": statistics.mean(uncorrect),
+        "median": statistics.median(uncorrect),
+        "stdev": statistics.stdev(uncorrect),
+    }
+    return _stats
+```
+
+```{python}
+bi_stats_nil = bi_df_nil.apply(_bi_get_stats, axis=1, result_type='expand')
+bi_stats_nil.head()
+```
+
+```{python}
+(bi_stats_nil['max'] - bi_stats_nil['min']).plot(kind='density')
+```
+
+```{python}
+bi_stats_nil['stdev'].plot(kind='density')
+```
+
+```{python}
+bi_stats_nil['stdev'].describe()
+```
+
+```{python}
+assert bi_stats_nil['correct'].notna().sum() == 0
+```
+
+```{python}
+# correct not found # all of NIL
+bi_stats_nil[['max', 'mean', 'median', 'min']].plot(kind='density')
+```
+
+```{python}
+cross_df_nil = pd.DataFrame()
+for score_file in cross_scores:
+    cross_df_nil = pd.concat([cross_df_nil, pd.read_json(score_file)])
+    
+assert (cross_df_nil['labels'].apply(lambda x: len(x)) != 1).sum() == 0
+cross_df_nil['labels'] = cross_df_nil['labels'].apply(lambda x: x[0])
+cross_df_nil
+```
+
+```{python}
+def _cross_get_stats(x):
+    assert len(x.unsorted_scores) == len(x.nns)
+    uncorrect = x.unsorted_scores.copy()
+    if x.labels in x.nns:
+        # found correct entity
+        i_correct = x.nns.index(x.labels)
+        correct = x.unsorted_scores[i_correct]
+        del uncorrect[i_correct]
+    else:
+        # not found correct entity
+        correct = None
+    _stats = {
+        "correct": correct,
+        "max": max(uncorrect),
+        "min": min(uncorrect),
+        "mean": statistics.mean(uncorrect),
+        "median": statistics.median(uncorrect),
+        "stdev": statistics.stdev(uncorrect),
+    }
+    return _stats
+```
+
+```{python}
+cross_stats_nil = cross_df_nil.apply(_cross_get_stats, axis=1, result_type='expand')
+cross_stats_nil.head()
+```
+
+```{python}
+# the mentions we didn't find the correct entity # all
+# plot
+pyplot.scatter(x=range(cross_stats_nil.shape[0]), y=cross_stats_nil['max'], s=0.1, c='green')
+pyplot.scatter(x=range(cross_stats_nil.shape[0]), y=cross_stats_nil['mean'], s=0.1, c='orange')
+pyplot.scatter(x=range(cross_stats_nil.shape[0]), y=cross_stats_nil['median'], s=0.1, c='red')
+pyplot.scatter(x=range(cross_stats_nil.shape[0]), y=cross_stats_nil['min'], s=0.1, c='blue')
+pyplot.legend(
+    labels = ['max', 'mean', 'median', 'min'],
+    labelcolor = ['green', 'orange', 'red', 'blue']
+)
+```
+
+```{python}
+# correct not found # all nil
+cross_stats_nil[['max', 'mean', 'median']].plot(kind='density')
+```
+
+```{python}
+cross_stats_nil['stdev'].describe()
+```
+
+```{python}
+(cross_stats_nil['max'] - cross_stats_nil['min']).plot(kind='density')
+```
+
+```{python}
+cross_stats_nil['min'].describe()
+```
+
+# TODO
+try to fix a threshold for the NIL classification to maximize performance
