@@ -468,8 +468,8 @@ def run(
                     current = {
                         "encoding": _enc,
                         "label": _lab,
-                        "wikipedia_id": 0 if local_id2wikipedia_id is None else local_id2wikipedia_id[_lab],
-                        "title": id2title[_lab]
+                        "wikipedia_id": 0 if local_id2wikipedia_id is None or _lab not in local_id2wikipedia_id else local_id2wikipedia_id[_lab],
+                        "title": id2title[_lab] if _lab in id2title else "**NOTFOUND**"
                     }
                     json.dump(current, fd)
                     fd.write('\n')
