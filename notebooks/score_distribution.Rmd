@@ -19,6 +19,7 @@ import os
 from glob import glob
 import statistics
 from matplotlib import pyplot
+from math import isnan
 ```
 
 ```{python}
@@ -290,7 +291,7 @@ bi_stats_nil[['max', 'mean', 'median', 'min']].plot(kind='density')
 
 ```{python}
 cross_df_nil = pd.DataFrame()
-for score_file in cross_scores:
+for score_file in cross_scores_nil:
     cross_df_nil = pd.concat([cross_df_nil, pd.read_json(score_file)])
     
 assert (cross_df_nil['labels'].apply(lambda x: len(x)) != 1).sum() == 0
@@ -356,5 +357,125 @@ cross_stats_nil['stdev'].describe()
 cross_stats_nil['min'].describe()
 ```
 
+```{python}
+cross_stats_nil['max'].describe()
+```
+
+```{python}
+cross_stats_nil['max'].plot(kind='density')
+```
+
+```{python}
+cross_stats['correct'].plot(kind='density')
+```
+
+threshold should accept most cross_stats['correct'] and reject most cross_stats_nil['max']
+
+```{python}
+# create dataset
+
+
+```
+
+```{python}
+cross_df
+```
+
+```{python}
+positives = cross_stats.apply(lambda x: x['correct'] if not isnan(x['correct']) and x['correct'] > x['max'] else None, axis=1).dropna()
+```
+
+```{python}
+negatives2 = cross_stats.apply(lambda x: x['max'] if isnan(x['correct']) else None, axis=1).dropna()
+```
+
+```{python}
+negatives = cross_stats_nil['max']
+```
+
+```{python}
+th_df = pd.DataFrame({"x": positives, "y": [1] * len(positives)})
+```
+
+```{python}
+th_df = pd.concat([th_df, pd.DataFrame({"x": negatives, "y": [0] * len(negatives)})])
+th_df = pd.concat([th_df, pd.DataFrame({"x": negatives2, "y": [0] * len(negatives2)})])
+```
+
+```{python}
+th_df['y'].value_counts()
+```
+
+```{python}
+th_df[th_df['y'] == 1]['x'].plot(kind='density')
+```
+
+```{python}
+th_df[th_df['y'] == 0]['x'].plot(kind='density')
+```
+
+```{python}
+from sklearn.linear_model import LinearRegression
+import numpy as np
+```
+
+```{python}
+reg = LinearRegression().fit(th_df['x'].array.reshape(-1, 1), th_df['y'])
+```
+
+```{python}
+reg.score(th_df['x'].array.reshape(-1, 1), th_df['y'])
+```
+
+```{python}
+reg.predict([[-15]])
+```
+
+```{python}
+reg.coef_
+```
+
+```{python}
+th_df['y_pred_lr'] = list(map(lambda x: 1 if x >= 0.5 else 0, reg.predict(th_df['x'].array.reshape(-1, 1))))
+```
+
+```{python}
+print('Accuracy:', (th_df['y'] == th_df['y_pred_lr']).sum() / th_df.shape[0])
+```
+
+```{python}
+print('Recall:', th_df.query('y==1 and y_pred_lr ==1').count()[0] / th_df.query('y==1').shape[0])
+```
+
+```{python}
+print('Precision:', th_df.query('y==1 and y_pred_lr ==1').count()[0] / th_df.query('y_pred_lr==1').shape[0])
+```
+
+```{python}
+print('FPR:', th_df.query('y==0 and y_pred_lr ==1').count()[0] / th_df.query('y_pred_lr==1').shape[0])
+```
+
+```{python}
+print('F Precision:', th_df.query('y==0 and y_pred_lr ==0').count()[0] / th_df.query('y_pred_lr==0').shape[0])
+```
+
+```{python}
+print('F Recall:', th_df.query('y==0 and y_pred_lr ==0').count()[0] / th_df.query('y==0').shape[0])
+```
+
+```{python}
+print('FNR:', th_df.query('y==1 and y_pred_lr ==0').count()[0] / th_df.query('y_pred_lr==0').shape[0])
+```
+
+```{python}
+print('FN:', th_df.query('y==1 and y_pred_lr ==0').count()[0] / th_df.query('y==1').shape[0])
+```
+
+several mentions are classified as not-NIL even if they should be NIL
+
+
 # TODO
-try to fix a threshold for the NIL classification to maximize performance
+- [partial] try to fix a threshold for the NIL classification to maximize performance
+- [partial] LinearRegression as baseline
+- how to evaluate various methods/metrics
+- consider all the top_k results instead of only the top_1
