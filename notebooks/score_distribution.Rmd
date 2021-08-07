@@ -546,4 +546,7 @@ NPV is low (we have FN)
 - [ok] LinearRegression as baseline + LinearRegression trained on augmented/balanced dataset
 - [ok for now] how to evaluate various methods/metrics
 - [ok] think about class imbalance
-- consider all the top_k results instead of only the top_1
+- [!!] divide in train,(validation,)test
+- consider all the top_k results instead of only the top_1 (reason on how to do this, specially with data augmentation)
+- test other machine learning techniques (e.g. SVM)
+- prepare dataset with cross-encoder last layer feature vectors instead (or in addition) to scores
