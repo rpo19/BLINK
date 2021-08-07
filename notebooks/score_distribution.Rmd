@@ -439,43 +439,111 @@ reg.coef_
 th_df['y_pred_lr'] = list(map(lambda x: 1 if x >= 0.5 else 0, reg.predict(th_df['x'].array.reshape(-1, 1))))
 ```
 
+Evaluation (true is not-NIL)
+
 ```{python}
-print('Accuracy:', (th_df['y'] == th_df['y_pred_lr']).sum() / th_df.shape[0])
+def _eval(df, y_pred, y='y', title=None):
+    ACC = (df['y'] == df[y_pred]).sum() / df.shape[0]
+    TPR = df.query(f'y==1 and {y_pred} ==1').count()[0] / df.query('y==1').shape[0]
+    TNR = df.query(f'y==0 and {y_pred} ==0').count()[0] / df.query(f'y==0').shape[0]
+    FNR = 1 - TPR
+    PPV = df.query(f'y==1 and {y_pred} ==1').count()[0] / df.query(f'{y_pred}==1').shape[0]
+    NPV = df.query(f'y==0 and {y_pred} ==0').count()[0] / df.query(f'{y_pred}==0').shape[0]
+    FPR = 1 - TNR
+    FDR = 1 - PPV
+    FOR = 1 - NPV
+    F1 = 2*(PPV*TPR)/(PPV+TPR)
+    return pd.DataFrame({
+        "ACC": [ACC],
+        "TPR": [TPR],
+        "TNR": [TNR],
+        "FNR": [FNR],
+        "PPV": [PPV],
+        "NPV": [NPV],
+        "FPR": [FPR],
+        "FDR": [FDR],
+        "FOR": [FOR],
+        "F1": [F1],        
+    }, index = [y_pred if title is None else title])
 ```
 
 ```{python}
-print('Recall:', th_df.query('y==1 and y_pred_lr ==1').count()[0] / th_df.query('y==1').shape[0])
+eval_df = _eval(th_df, 'y_pred_lr')
+eval_df
+```
+
+several mentions are classified as not-NIL even if they should be NIL;
+- low TNR
+- high FPR
+- high FOR
+
+think about class imbalance
+
+
+### Class imbalance
+we have few NILs and a lot more correct examples.
+
+but for each correct example we have the best but wrong entities;
+we can create as many NIL example as we need.
+
+For NIL example I mean a pair mention-entity which is not correct
+and therefore should be classified as NIL or not-correct.
+
+```{python}
+n_augment = (lambda x: abs(x[0]-x[1]))(th_df['y'].value_counts())
+n_augment
 ```
 
 ```{python}
-print('Precision:', th_df.query('y==1 and y_pred_lr ==1').count()[0] / th_df.query('y_pred_lr==1').shape[0])
+# take n_augment random samples from positives
+from sklearn.utils.random import sample_without_replacement
 ```
 
 ```{python}
-print('FPR:', th_df.query('y==0 and y_pred_lr ==1').count()[0] / th_df.query('y_pred_lr==1').shape[0])
+_pos_to_sample = cross_stats.apply(lambda x: x if not isnan(x['correct']) and x['correct'] > x['max'] else None, axis=1).dropna()
 ```
 
 ```{python}
-print('F Precision:', th_df.query('y==0 and y_pred_lr ==0').count()[0] / th_df.query('y_pred_lr==0').shape[0])
+_sample = _pos_to_sample.iloc[sample_without_replacement(_pos_to_sample.shape[0], n_augment)]
+_sample.head()
 ```
 
 ```{python}
-print('F Recall:', th_df.query('y==0 and y_pred_lr ==0').count()[0] / th_df.query('y==0').shape[0])
+negatives_a = _sample['max']
 ```
 
 ```{python}
-print('FNR:', th_df.query('y==1 and y_pred_lr ==0').count()[0] / th_df.query('y_pred_lr==0').shape[0])
+th_df_a = pd.concat([th_df, pd.DataFrame({"x": negatives_a, "y": [0] * len(negatives_a)})])
+th_df_a
 ```
 
 ```{python}
-print('FN:', th_df.query('y==1 and y_pred_lr ==0').count()[0] / th_df.query('y==1').shape[0])
+th_df_a['y'].value_counts()
 ```
 
-several mentions are classified as not-NIL even if they should be NIL
+```{python}
+reg_a = LinearRegression().fit(th_df_a['x'].array.reshape(-1, 1), th_df_a['y'])
+```
+
+```{python}
+th_df['y_pred_lr_a'] = list(map(lambda x: 1 if x >= 0.5 else 0, reg_a.predict(th_df['x'].array.reshape(-1, 1))))
+```
+
+```{python}
+eval_df = pd.concat([eval_df, _eval(th_df, 'y_pred_lr_a')])
+eval_df
+```
+
+### evaluation metrics
+specially TPR TNR PPV NPV
+
+with balanced class TNR reached 0.68
+NPV is low (we have FN)
 
 
 # TODO
-- [partial] try to fix a threshold for the NIL classification to maximize performance
-- [partial] LinearRegression as baseline
-- how to evaluate various methods/metrics
+- [ok but with LinearRegression] try to fix a threshold for the NIL classification to maximize performance
+- [ok] LinearRegression as baseline + LinearRegression trained on augmented/balanced dataset
+- [ok for now] how to evaluate various methods/metrics
+- [ok] think about class imbalance
 - consider all the top_k results instead of only the top_1
