@@ -20,6 +20,9 @@ from glob import glob
 import statistics
 from matplotlib import pyplot
 from math import isnan
+from sklearn.utils.random import sample_without_replacement
+from sklearn.linear_model import LinearRegression
+import numpy as np
 ```
 
 ```{python}
@@ -31,12 +34,12 @@ output_path = os.path.join('..', 'output_20200805')
 ```
 
 ```{python}
-bi_scores = glob(os.path.join(output_path, '*_bi.jsonl'))
+bi_scores = sorted(glob(os.path.join(output_path, '*_bi.jsonl')))
 bi_scores
 ```
 
 ```{python}
-cross_scores = glob(os.path.join(output_path, '*_cross.jsonl'))
+cross_scores = sorted(glob(os.path.join(output_path, '*_cross.jsonl')))
 cross_scores
 ```
 
@@ -108,10 +111,6 @@ for score_file in cross_scores:
 assert (cross_df['labels'].apply(lambda x: len(x)) != 1).sum() == 0
 cross_df['labels'] = cross_df['labels'].apply(lambda x: x[0])
 cross_df
-```
-
-```{python}
-x = cross_df.iloc[0]
 ```
 
 ```{python}
@@ -214,6 +213,33 @@ cross_stats['stdev'].describe()
 cross_stats['min'].describe()
 ```
 
+## Merge bi and cross
+
+```{python}
+print(bi_stats.shape)
+print(cross_stats.shape)
+```
+
+```{python}
+# bi and cross same labels
+assert all(bi_df['labels'] == cross_df['labels'])
+```
+
+```{python}
+combined_stats = bi_stats.copy()
+combined_stats.columns = [c+'_bi' for c in combined_stats.columns]
+combined_stats.head()
+```
+
+```{python}
+combined_stats[[c+'_cross' for c in cross_stats.columns]] = cross_stats
+combined_stats.head()
+```
+
+```{python}
+combined_stats.shape
+```
+
 # NIL
 
 ```{python}
@@ -221,12 +247,12 @@ output_path_nil = os.path.join('..', 'output_only_NIL_20200806')
 ```
 
 ```{python}
-bi_scores_nil = glob(os.path.join(output_path_nil, '*_bi.jsonl'))
+bi_scores_nil = sorted(glob(os.path.join(output_path_nil, '*_bi.jsonl')))
 bi_scores_nil
 ```
 
 ```{python}
-cross_scores_nil = glob(os.path.join(output_path_nil, '*_cross.jsonl'))
+cross_scores_nil = sorted(glob(os.path.join(output_path_nil, '*_cross.jsonl')))
 cross_scores_nil
 ```
 
@@ -372,14 +398,26 @@ cross_stats['correct'].plot(kind='density')
 threshold should accept most cross_stats['correct'] and reject most cross_stats_nil['max']
 
 ```{python}
-# create dataset
-
-
+print(bi_stats_nil.shape)
+print(cross_stats_nil.shape)
 ```
 
 ```{python}
-cross_df
+combined_stats_nil = bi_stats_nil.copy()
+combined_stats_nil.columns = [c+'_bi' for c in combined_stats_nil.columns]
+combined_stats_nil.head()
 ```
+
+```{python}
+combined_stats_nil[[c+'_cross' for c in cross_stats_nil.columns]] = cross_stats_nil
+combined_stats_nil.head()
+```
+
+```{python}
+combined_stats_nil.shape
+```
+
+## create dataset
 
 ```{python}
 positives = cross_stats.apply(lambda x: x['correct'] if not isnan(x['correct']) and x['correct'] > x['max'] else None, axis=1).dropna()
@@ -415,11 +453,6 @@ th_df[th_df['y'] == 0]['x'].plot(kind='density')
 ```
 
 ```{python}
-from sklearn.linear_model import LinearRegression
-import numpy as np
-```
-
-```{python}
 reg = LinearRegression().fit(th_df['x'].array.reshape(-1, 1), th_df['y'])
 ```
 
@@ -442,13 +475,13 @@ th_df['y_pred_lr'] = list(map(lambda x: 1 if x >= 0.5 else 0, reg.predict(th_df[
 Evaluation (true is not-NIL)
 
 ```{python}
-def _eval(df, y_pred, y='y', title=None):
-    ACC = (df['y'] == df[y_pred]).sum() / df.shape[0]
-    TPR = df.query(f'y==1 and {y_pred} ==1').count()[0] / df.query('y==1').shape[0]
-    TNR = df.query(f'y==0 and {y_pred} ==0').count()[0] / df.query(f'y==0').shape[0]
+def _eval(df, y_pred, y='y', title=None, threshold=0.5):
+    ACC = df.query(f'(y==1 and {y_pred}>={threshold}) or (y==0 and {y_pred}<{threshold})').count()[0]/df.shape[0]
+    TPR = df.query(f'y==1 and {y_pred} >= {threshold}').count()[0] / df.query(f'y>={threshold}').shape[0]
+    TNR = df.query(f'y==0 and {y_pred} < {threshold}').count()[0] / df.query(f'y<{threshold}').shape[0]
     FNR = 1 - TPR
-    PPV = df.query(f'y==1 and {y_pred} ==1').count()[0] / df.query(f'{y_pred}==1').shape[0]
-    NPV = df.query(f'y==0 and {y_pred} ==0').count()[0] / df.query(f'{y_pred}==0').shape[0]
+    PPV = df.query(f'y==1 and {y_pred} >= {threshold}').count()[0] / df.query(f'{y_pred}>={threshold}').shape[0]
+    NPV = df.query(f'y==0 and {y_pred} < {threshold}').count()[0] / df.query(f'{y_pred}<{threshold}').shape[0]
     FPR = 1 - TNR
     FDR = 1 - PPV
     FOR = 1 - NPV
@@ -465,6 +498,22 @@ def _eval(df, y_pred, y='y', title=None):
         "FOR": [FOR],
         "F1": [F1],        
     }, index = [y_pred if title is None else title])
+def _cm(df, y_pred, y='y', threshold=0.5):
+    TP = df.query(f'y==1 and {y_pred} >= {threshold}').count()[0]
+    FP = df.query(f'y==0 and {y_pred} >= {threshold}').count()[0]
+    TN = df.query(f'y==0 and {y_pred} < {threshold}').count()[0]
+    FN = df.query(f'y==1 and {y_pred} < {threshold}').count()[0]
+    cmdf = pd.DataFrame([
+        {"T": TP, "F": FP},
+        {"T": FN, "F": TN}
+    ], index=['T', 'F'])
+    cmdf.index.name = 'pred\gold'
+    return cmdf
+def _cmn(df, y_pred, y='y'):
+    cmdf = _cm(df, y_pred, y)
+    cmdf['T'] = cmdf['T']/((df['y'] == 1).sum())
+    cmdf['F'] = cmdf['F']/((df['y'] == 0).sum())
+    return cmdf
 ```
 
 ```{python}
@@ -492,11 +541,6 @@ and therefore should be classified as NIL or not-correct.
 ```{python}
 n_augment = (lambda x: abs(x[0]-x[1]))(th_df['y'].value_counts())
 n_augment
-```
-
-```{python}
-# take n_augment random samples from positives
-from sklearn.utils.random import sample_without_replacement
 ```
 
 ```{python}
@@ -534,6 +578,75 @@ eval_df = pd.concat([eval_df, _eval(th_df, 'y_pred_lr_a')])
 eval_df
 ```
 
+```{python}
+_cm(th_df, 'y_pred_lr_a')
+```
+
+```{python}
+_cmn(th_df, 'y_pred_lr_a')
+```
+
+```{python}
+# TP min
+th_df.query('y==1 and y_pred_lr_a==1').min()
+```
+
+```{python}
+# FN
+th_df.query('y==1 and y_pred_lr_a==0').reset_index()['x'].plot(kind='density')
+th_df.query('y==1 and y_pred_lr_a==0').max()
+```
+
+```{python}
+# FP
+th_df.query('y==0 and y_pred_lr_a==1').reset_index()['x'].plot(kind='density')
+print(th_df.query('y==0 and y_pred_lr_a==1').min())
+print(th_df.query('y==0 and y_pred_lr_a==1').max())
+```
+
+```{python}
+# TN
+th_df.query('y==0 and y_pred_lr_a==0').reset_index()['x'].plot(kind='density')
+print(th_df.query('y==0 and y_pred_lr_a==0').min())
+print(th_df.query('y==0 and y_pred_lr_a==0').max())
+```
+
+```{python}
+# threshold is at 2.61 with augmentation, -3.4 without (bias over not-NIL)
+```
+
+|             |      ACC |      TPR |      TNR |       FNR |      PPV |      NPV |      FPR |       FDR |      FOR |       F1 |
+|:------------|---------:|---------:|---------:|----------:|---------:|---------:|---------:|----------:|---------:|---------:|
+| y_pred_lr   | 0.894625 | 0.982931 | 0.389785 | 0.0170687 | 0.902045 | 0.799779 | 0.610215 | 0.0979546 | 0.200221 | 0.940753 |
+| y_pred_lr_a | 0.843118 | 0.871162 | 0.682796 | 0.128838  | 0.940123 | 0.481061 | 0.317204 | 0.0598772 | 0.518939 | 0.90433  |
+
+
+### Augmented classes
+| pred\\gold   |     T |    F |
+|:------------|------:|-----:|
+| T           | 18527 | 1180 |
+| F           |  2740 | 2540 |
+
+
+| pred\\gold   |        T |        F |
+|:------------|---------:|---------:|
+| T           | 0.871162 | 0.317204 |
+| F           | 0.128838 | 0.682796 |
+
+
+### Original classes
+| pred\\gold   |     T |    F |
+|:------------|------:|-----:|
+| T           | 20904 | 2270 |
+| F           |   363 | 1450 |
+
+
+| pred\\gold   |         T |        F |
+|:------------|----------:|---------:|
+| T           | 0.982931  | 0.610215 |
+| F           | 0.0170687 | 0.389785 |
+
+
 ### evaluation metrics
 specially TPR TNR PPV NPV
 
@@ -541,12 +654,280 @@ with balanced class TNR reached 0.68
 NPV is low (we have FN)
 
 
+# Combined
+
+```{python}
+combined_stats.head()
+```
+
+```{python}
+# bi errors
+combined_stats.query('correct_bi < max_bi').count()[0]
+```
+
+```{python}
+# cross errors
+combined_stats.query('correct_cross < max_cross').count()[0]
+```
+
+```{python}
+# when cross is better than bi
+combined_stats.query('correct_bi < max_bi and correct_cross > max_cross').count()[0]
+```
+
+```{python}
+# when bi is better than cross
+combined_stats.query('correct_cross < max_cross and correct_bi > max_bi').count()[0]
+```
+
+```{python}
+assert all(combined_stats['correct_bi'].isna() == combined_stats['correct_cross'].isna())
+```
+
+## Create combined dataset
+
+```{python}
+# both bi and cross correct
+print(combined_stats[combined_stats['correct_bi'].notna()].shape)
+combined_positives = combined_stats[combined_stats['correct_bi'].notna()].query('correct_bi > max_bi and correct_cross > max_cross')
+print(combined_positives.shape)
+combined_positives = combined_positives[['correct_bi', 'correct_cross']]
+combined_positives.columns = ['x_bi', 'x_cross']
+combined_positives['y'] = [1] * combined_positives.shape[0]
+combined_positives.head()
+```
+
+```{python}
+# one case in which correct == max. TODO understand if it is an error
+combined_stats[combined_stats['correct_bi'].notna()].query('correct_bi == max_bi')
+```
+
+```{python}
+# the ones failed
+combined_hard_positives = combined_stats[combined_stats['correct_bi'].notna()].query('correct_bi < max_bi and correct_cross < max_cross')
+print(combined_hard_positives.shape)
+combined_hard_positives = combined_hard_positives[['correct_bi', 'correct_cross']]
+combined_hard_positives.columns = ['x_bi', 'x_cross']
+combined_hard_positives['y'] = [1] * combined_hard_positives.shape[0]
+combined_hard_positives.head()
+```
+
+```{python}
+# the ones failed but negatives
+combined_hard_negatives = combined_stats[combined_stats['correct_bi'].notna()].query('correct_bi < max_bi and correct_cross < max_cross')
+print(combined_hard_negatives.shape)
+combined_hard_negatives = combined_hard_negatives[['max_bi', 'max_cross']]
+combined_hard_negatives.columns = ['x_bi', 'x_cross']
+combined_hard_negatives['y'] = [0] * combined_hard_negatives.shape[0]
+combined_hard_negatives.head()
+```
+
+```{python}
+# neg not found by models
+combined_nf_negatives = combined_stats[combined_stats['correct_bi'].isna()]
+print(combined_nf_negatives.shape)
+combined_nf_negatives = combined_nf_negatives[['max_bi', 'max_cross']]
+combined_nf_negatives.columns = ['x_bi', 'x_cross']
+combined_nf_negatives['y'] = [0] * combined_nf_negatives.shape[0]
+combined_nf_negatives.head()
+```
+
+```{python}
+# nil negatives
+combined_nil_negatives = combined_stats_nil[['max_bi', 'max_cross']].copy()
+combined_nil_negatives.columns = ['x_bi', 'x_cross']
+combined_nil_negatives['y'] = [0] * combined_nil_negatives.shape[0]
+print(combined_nil_negatives.shape)
+combined_nil_negatives.head()
+```
+
+```{python}
+combined_dataset = pd.concat([combined_positives, combined_nf_negatives, combined_nil_negatives])
+print(combined_dataset.shape)
+print(combined_dataset['y'].value_counts())
+combined_dataset.head()
+```
+
+```{python}
+hard = True
+if hard:
+    combined_dataset = pd.concat([combined_dataset, combined_hard_positives, combined_hard_negatives])
+    print(combined_dataset.shape)
+    print(combined_dataset['y'].value_counts())
+    combined_dataset.head()
+```
+
+## "Augmentation"
+
+```{python}
+comb_n_augment = (lambda x: abs(x[0]-x[1]))(combined_dataset['y'].value_counts())
+comb_n_augment
+```
+
+```{python}
+comb_pos_to_sample = combined_stats[combined_stats['correct_bi'].notna()].query('correct_bi > max_bi and correct_cross > max_cross')
+```
+
+```{python}
+combined_aug_negatives = comb_pos_to_sample.iloc[sample_without_replacement(comb_pos_to_sample.shape[0], comb_n_augment)]
+combined_aug_negatives = combined_aug_negatives[['max_bi', 'max_cross']]
+combined_aug_negatives.columns = ['x_bi', 'x_cross']
+combined_aug_negatives['y'] = [0] * combined_aug_negatives.shape[0]
+print(combined_aug_negatives.shape)
+combined_aug_negatives.head()
+```
+
+```{python}
+combined_dataset_aug = pd.concat([combined_dataset, combined_aug_negatives])
+print(combined_dataset_aug.shape)
+print(combined_dataset_aug['y'].value_counts())
+combined_dataset_aug.head()
+```
+
+### LR models
+
+```{python}
+comb_reg_aug_bi = LinearRegression().fit(combined_dataset_aug['x_bi'].array.reshape(-1, 1), combined_dataset_aug['y'])
+```
+
+```{python}
+comb_reg_aug_cross = LinearRegression().fit(combined_dataset_aug['x_cross'].array.reshape(-1, 1), combined_dataset_aug['y'])
+```
+
+```{python}
+combined_dataset['y_pred_lra_bi'] = comb_reg_aug_bi.predict(combined_dataset['x_bi'].array.reshape(-1, 1))
+combined_dataset['y_pred_lra_cross'] = comb_reg_aug_cross.predict(combined_dataset['x_cross'].array.reshape(-1, 1))
+combined_dataset.head()
+```
+
+#### not-Augmented
+
+```{python}
+comb_reg_bi = LinearRegression().fit(combined_dataset['x_bi'].array.reshape(-1, 1), combined_dataset['y'])
+```
+
+```{python}
+comb_reg_cross = LinearRegression().fit(combined_dataset['x_cross'].array.reshape(-1, 1), combined_dataset['y'])
+```
+
+```{python}
+combined_dataset['y_pred_lr_bi'] = comb_reg_bi.predict(combined_dataset['x_bi'].array.reshape(-1, 1))
+combined_dataset['y_pred_lr_cross'] = comb_reg_cross.predict(combined_dataset['x_cross'].array.reshape(-1, 1))
+combined_dataset.head()
+```
+
+## bi+cross
+
+```{python}
+comb_reg_aug_bi_cross = LinearRegression().fit(combined_dataset_aug[['x_bi', 'x_cross']].values.reshape(-1, 2), combined_dataset_aug['y'])
+```
+
+```{python}
+combined_dataset['y_pred_lra_bi_cross'] = comb_reg_aug_bi_cross.predict(combined_dataset[['x_bi', 'x_cross']].values.reshape(-1, 2))
+combined_dataset.head()
+```
+
+```{python}
+combined_dataset.query('y == 1')[['y_pred_lra_bi', 'y_pred_lra_cross', 'y_pred_lra_bi_cross']].plot(kind='density')
+```
+
+```{python}
+combined_dataset.query('y == 0')[['y_pred_lra_bi', 'y_pred_lra_cross', 'y_pred_lra_bi_cross']].plot(kind='density')
+```
+
+```{python}
+_eval(combined_dataset, 'y_pred_lra_bi_cross')
+```
+
+```{python}
+_eval(combined_dataset, 'y_pred_lra_cross')
+```
+
+```{python}
+_eval(combined_dataset, 'y_pred_lra_bi_cross')
+```
+
+```{python}
+_cmn(combined_dataset, 'y_pred_lra_bi')
+```
+
+```{python}
+_cmn(combined_dataset, 'y_pred_lra_cross')
+```
+
+```{python}
+_cmn(combined_dataset, 'y_pred_lra_bi_cross')
+```
+
+hard positives and negatives decrease significantly the classifier's performances
+
+good results obtained using hards in training
+
+```{python}
+#results_ = pd.DataFrame()
+```
+
+```{python}
+results_ = pd.concat([results_, _eval(combined_dataset, 'y_pred_lra_bi_cross', title='bi_cross_hard_aug')])
+```
+
+```{python}
+results_ = pd.concat([results_, _eval(combined_dataset, 'y_pred_lr_cross', title='cross_hard')])
+```
+
+```{python}
+_eval(combined_dataset, 'y_pred_lr_bi', title='bi_hard').iloc[0]
+```
+
+```{python}
+results_.loc['bi_hard'] = _eval(combined_dataset, 'y_pred_lr_bi', title='bi_hard').iloc[0]
+```
+
+```{python}
+results_.loc['cross_hard'] = _eval(combined_dataset, 'y_pred_lr_cross', title='cross_hard').iloc[0]
+```
+
+```{python}
+results_
+```
+
+```{python}
+print(results_.to_markdown())
+```
+
+|                     |      ACC |      TPR |      TNR |        FNR |      PPV |      NPV |      FPR |       FDR |      FOR |       F1 |
+|:--------------------|---------:|---------:|---------:|-----------:|---------:|---------:|---------:|----------:|---------:|---------:|
+| bi_aug_hardtrain    | 0.707511 | 0.731103 | 0.581989 | 0.268897   | 0.902964 | 0.289168 | 0.418011 | 0.0970359 | 0.710832 | 0.807996 |
+| cross_aug_hardtrain | 0.870534 | 0.907639 | 0.673118 | 0.0923605  | 0.936601 | 0.578024 | 0.326882 | 0.0633994 | 0.421976 | 0.921893 |
+| bi_aug              | 0.695432 | 0.711146 | 0.611828 | 0.288854   | 0.906953 | 0.284749 | 0.388172 | 0.0930472 | 0.715251 | 0.797202 |
+| cross_aug           | 0.8619   | 0.894654 | 0.687634 | 0.105346   | 0.938418 | 0.550937 | 0.312366 | 0.0615825 | 0.449063 | 0.916014 |
+| bi_aug_hard         | 0.630712 | 0.65442  | 0.553883 | 0.34558    | 0.8262   | 0.330918 | 0.446117 | 0.1738    | 0.669082 | 0.730345 |
+| cross_aug_hard      | 0.734072 | 0.785846 | 0.56629  | 0.214154   | 0.854477 | 0.449336 | 0.43371  | 0.145523  | 0.550664 | 0.818726 |
+| bi_aug_hardtest     | 0.622723 | 0.634717 | 0.583856 | 0.365283   | 0.831727 | 0.33031  | 0.416144 | 0.168273  | 0.66969  | 0.719988 |
+| cross_aug_hardtest  | 0.729239 | 0.772338 | 0.589572 | 0.227662   | 0.859119 | 0.444176 | 0.410428 | 0.140881  | 0.555824 | 0.81342  |
+| bi_hard             | 0.763923 | 0.999656 | 0        | 0.00034416 | 0.764124 | 0        | 1        | 0.235876  | 1        | 0.866163 |
+| cross_hard          | 0.760734 | 0.949451 | 0.149171 | 0.0505485  | 0.783374 | 0.476615 | 0.850829 | 0.216626  | 0.523385 | 0.858454 |
+| bi_cross_hard_aug   | 0.73085  | 0.779996 | 0.571588 | 0.220004   | 0.855075 | 0.444975 | 0.428412 | 0.144925  | 0.555025 | 0.815811 |
+
+
+```{python}
+## svm TODO
+from sklearn.pipeline import make_pipeline
+from sklearn.preprocessing import StandardScaler
+X = np.array([[-1, -1], [-2, -1], [1, 1], [2, 1]])
+y = np.array([1, 1, 2, 2])
+from sklearn.svm import SVC
+clf = make_pipeline(StandardScaler(), SVC(gamma='auto'))
+clf.fit(X, y)
+```
+
 # TODO
 - [ok but with LinearRegression] try to fix a threshold for the NIL classification to maximize performance
 - [ok] LinearRegression as baseline + LinearRegression trained on augmented/balanced dataset
 - [ok for now] how to evaluate various methods/metrics
 - [ok] think about class imbalance
-- [!!] divide in train,(validation,)test
+- [!!] divide in train,(validation,)test (think how with augmentation)
+- combine cross and bi to see if toghether performance are better
 - consider all the top_k results instead of only the top_1 (reason on how to do this, specially with data augmentation)
 - test other machine learning techniques (e.g. SVM)
 - prepare dataset with cross-encoder last layer feature vectors instead (or in addition) to scores
