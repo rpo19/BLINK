@@ -219,15 +219,23 @@ def main(score_path, nil_path, out_path):
     train_aug = _augment(train, combined_stats)
     train_hard_aug = _augment(train_hard, combined_stats)
 
+    # shuffle
+    train = train.sample(frac=1, random_state=42)
+    test = test.sample(frac=1, random_state=42)
+    train_hard = train_hard.sample(frac=1, random_state=42)
+    test_hard = test_hard.sample(frac=1, random_state=42)
+    train_aug = train_aug.sample(frac=1, random_state=42)
+    train_hard_aug = train_hard_aug.sample(frac=1, random_state=42)
+
     if not os.path.isdir(out_path):
         os.mkdir(out_path)
 
-    train.to_csv(os.path.join(out_path, 'train'))
-    test.to_csv(os.path.join(out_path, 'test'))
-    train_hard.to_csv(os.path.join(out_path, 'train_hard'))
-    test_hard.to_csv(os.path.join(out_path, 'test_hard'))
-    train_aug.to_csv(os.path.join(out_path, 'train_aug'))
-    train_hard_aug.to_csv(os.path.join(out_path, 'train_hard_aug'))
+    train.to_csv(os.path.join(out_path, 'train'), index = False)
+    test.to_csv(os.path.join(out_path, 'test'), index = False)
+    train_hard.to_csv(os.path.join(out_path, 'train_hard'), index = False)
+    test_hard.to_csv(os.path.join(out_path, 'test_hard'), index = False)
+    train_aug.to_csv(os.path.join(out_path, 'train_aug'), index = False)
+    train_hard_aug.to_csv(os.path.join(out_path, 'train_hard_aug'), index = False)
 
 if __name__ == '__main__':
     main()

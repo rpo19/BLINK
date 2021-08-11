@@ -921,6 +921,16 @@ clf = make_pipeline(StandardScaler(), SVC(gamma='auto'))
 clf.fit(X, y)
 ```
 
+```{python}
+os.listdir('dataset')
+```
+
+```{python}
+path = 'dataset'
+for d in ['train', 'test', 'train_hard', 'test_hard', 'train_hard_aug', 'train_']
+pd.read_csv('dataset/train')
+```
+
 # TODO
 - [ok but with LinearRegression] try to fix a threshold for the NIL classification to maximize performance
 - [ok] LinearRegression as baseline + LinearRegression trained on augmented/balanced dataset
