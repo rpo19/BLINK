@@ -927,8 +927,30 @@ os.listdir('dataset')
 
 ```{python}
 path = 'dataset'
-for d in ['train', 'test', 'train_hard', 'test_hard', 'train_hard_aug', 'train_']
-pd.read_csv('dataset/train')
+datasets = {}
+for d in ['train', 'test', 'train_hard', 'test_hard', 'train_aug', 'train_hard_aug']:
+    datasets[d] = pd.read_csv('dataset/train')
+```
+
+```{python}
+datasets
+```
+
+```{python}
+import pandas as pd
+import os
+```
+
+```{python}
+os.listdir()
+```
+
+```{python}
+res = pd.read_csv('res.csv', index_col=0)
+```
+
+```{python}
+res.sort_values('FNR', ascending=True)
 ```
 
 # TODO
