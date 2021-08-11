@@ -201,6 +201,12 @@ def _augment(dataset, combined_stats):
 
     return dataset_aug
 
+def _load_datasets(path):
+    datasets = {}
+    for d in ['train', 'test', 'train_hard', 'test_hard', 'train_aug', 'train_hard_aug']:
+        datasets[d] = pd.read_csv(os.path.join(path, d))
+    return datasets
+
 
 @click.command()
 @click.option('--score-path', required=True, type=str, help='path in which to find score files')
