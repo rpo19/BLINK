@@ -10,43 +10,41 @@ import click
 
 def _bi_get_stats(x):
     assert len(x.scores) == len(x.nns)
-    uncorrect = x.scores.copy()
     if x.labels in x.nns:
         # found correct entity
         i_correct = x.nns.index(x.labels)
         correct = x.scores[i_correct]
-        del uncorrect[i_correct]
     else:
         # not found correct entity
         correct = None
     _stats = {
         "correct": correct,
-        "max": max(uncorrect),
-        "min": min(uncorrect),
-        "mean": statistics.mean(uncorrect),
-        "median": statistics.median(uncorrect),
-        "stdev": statistics.stdev(uncorrect),
+        "max": max(x.scores),
+        "second": sorted(x.scores, reverse=True)[1],
+        "min": min(x.scores),
+        "mean": statistics.mean(x.scores),
+        "median": statistics.median(x.scores),
+        "stdev": statistics.stdev(x.scores),
     }
     return _stats
 
 def _cross_get_stats(x):
     assert len(x.unsorted_scores) == len(x.nns)
-    uncorrect = x.unsorted_scores.copy()
     if x.labels in x.nns:
         # found correct entity
         i_correct = x.nns.index(x.labels)
         correct = x.unsorted_scores[i_correct]
-        del uncorrect[i_correct]
     else:
         # not found correct entity
         correct = None
     _stats = {
         "correct": correct,
-        "max": max(uncorrect),
-        "min": min(uncorrect),
-        "mean": statistics.mean(uncorrect),
-        "median": statistics.median(uncorrect),
-        "stdev": statistics.stdev(uncorrect),
+        "max": max(x.unsorted_scores),
+        "second": sorted(x.unsorted_scores, reverse=True)[1],
+        "min": min(x.unsorted_scores),
+        "mean": statistics.mean(x.unsorted_scores),
+        "median": statistics.median(x.unsorted_scores),
+        "stdev": statistics.stdev(x.unsorted_scores),
     }
     return _stats
 
@@ -94,7 +92,7 @@ def _load_nil(nil_path):
     bi_df_nil['labels'] = bi_df_nil['labels'].apply(lambda x: x[0])
 
     bi_stats_nil = bi_df_nil.apply(_bi_get_stats, axis=1, result_type='expand')
-
+    
     assert bi_stats_nil['correct'].notna().sum() == 0
 
     cross_df_nil = pd.DataFrame()
@@ -117,45 +115,28 @@ def _load_nil(nil_path):
 def _bi_cross_errors(combined_stats):
     print('bi errors', combined_stats.query('correct_bi < max_bi').count()[0])
     print('cross errors', combined_stats.query('correct_cross < max_cross').count()[0])
-    print('cross >> bi', combined_stats.query('correct_bi < max_bi and correct_cross > max_cross').count()[0])
-    print('bi >> cross', combined_stats.query('correct_cross < max_cross and correct_bi > max_bi').count()[0])
+    print('cross >> bi', combined_stats.query('correct_bi < max_bi and correct_cross >= max_cross').count()[0])
+    print('bi >> cross', combined_stats.query('correct_cross < max_cross and correct_bi >= max_bi').count()[0])
     assert all(combined_stats['correct_bi'].isna() == combined_stats['correct_cross'].isna())
 
 def _create_dataset(combined_stats, combined_stats_nil):
-    combined_positives = combined_stats[combined_stats['correct_bi'].notna()].query('correct_bi > max_bi and correct_cross > max_cross')
-    combined_positives = combined_positives[['correct_bi', 'correct_cross', 'idx']]
-    combined_positives.columns = ['x_bi', 'x_cross', 'idx']
+    combined_positives = combined_stats[combined_stats['correct_bi'].notna()].query('correct_bi >= max_bi and correct_cross >= max_cross')
     combined_positives['y'] = [1] * combined_positives.shape[0]
-
-    _correct_eq_max = combined_stats[combined_stats['correct_bi'].notna()].query('correct_bi == max_bi').count()[0]
-    if _correct_eq_max > 0:
-        print('bi: correct == max. why?', _correct_eq_max)
-
-    _correct_eq_max = combined_stats[combined_stats['correct_cross'].notna()].query('correct_cross == max_cross').count()[0]
-    if _correct_eq_max > 0:
-        print('cross: correct == max. why?', _correct_eq_max)
 
     # the ones failed or "hard positives"
     combined_hard_positives = combined_stats[combined_stats['correct_bi'].notna()].query('correct_bi < max_bi and correct_cross < max_cross')
-    combined_hard_positives = combined_hard_positives[['correct_bi', 'correct_cross', 'idx']]
-    combined_hard_positives.columns = ['x_bi', 'x_cross', 'idx']
     combined_hard_positives['y'] = [1] * combined_hard_positives.shape[0]
 
     # the ones failed but negatives
     combined_hard_negatives = combined_stats[combined_stats['correct_bi'].notna()].query('correct_bi < max_bi and correct_cross < max_cross')
-    combined_hard_negatives = combined_hard_negatives[['max_bi', 'max_cross', 'idx']]
-    combined_hard_negatives.columns = ['x_bi', 'x_cross', 'idx']
     combined_hard_negatives['y'] = [0] * combined_hard_negatives.shape[0]
 
     # neg not found by models
-    combined_nf_negatives = combined_stats[combined_stats['correct_bi'].isna()]
-    combined_nf_negatives = combined_nf_negatives[['max_bi', 'max_cross', 'idx']]
-    combined_nf_negatives.columns = ['x_bi', 'x_cross', 'idx']
+    combined_nf_negatives = combined_stats[combined_stats['correct_bi'].isna()].copy()
     combined_nf_negatives['y'] = [0] * combined_nf_negatives.shape[0]
 
     # nil negatives
-    combined_nil_negatives = combined_stats_nil[['max_bi', 'max_cross', 'idx']].copy()
-    combined_nil_negatives.columns = ['x_bi', 'x_cross', 'idx']
+    combined_nil_negatives = combined_stats_nil.copy()
     combined_nil_negatives['y'] = [0] * combined_nil_negatives.shape[0]
 
     combined_dataset = pd.concat([combined_positives, combined_nf_negatives, combined_nil_negatives])
@@ -187,11 +168,9 @@ def _augment(dataset, combined_stats):
     n_augment = (lambda x: abs(x[0]-x[1]))(dataset['y'].value_counts())
 
     _temp_stats = combined_stats.iloc[dataset['idx']]
-    pos_to_sample = _temp_stats[_temp_stats['correct_bi'].notna()].query('correct_bi > max_bi and correct_cross > max_cross')
+    pos_to_sample = _temp_stats[_temp_stats['correct_bi'].notna()].query('correct_bi >= max_bi and correct_cross >= max_cross')
 
-    aug_negatives = pos_to_sample.iloc[sample_without_replacement(pos_to_sample.shape[0], n_augment, random_state=42)]
-    aug_negatives = aug_negatives[['max_bi', 'max_cross', 'idx']]
-    aug_negatives.columns = ['x_bi', 'x_cross', 'idx']
+    aug_negatives = pos_to_sample.iloc[sample_without_replacement(pos_to_sample.shape[0], n_augment, random_state=42)].copy()
     aug_negatives['y'] = [0] * aug_negatives.shape[0]
     print('augment shape', aug_negatives.shape)
 
@@ -224,6 +203,23 @@ def main(score_path, nil_path, out_path):
 
     train_aug = _augment(train, combined_stats)
     train_hard_aug = _augment(train_hard, combined_stats)
+
+    assert train['max_bi'].isna().sum() == 0
+    assert train['max_cross'].isna().sum() == 0
+    assert train_hard['max_bi'].isna().sum() == 0
+    assert train_hard['max_cross'].isna().sum() == 0
+    assert test['max_bi'].isna().sum() == 0
+    assert test['max_cross'].isna().sum() == 0
+    assert test_hard['max_bi'].isna().sum() == 0
+    assert test_hard['max_cross'].isna().sum() == 0
+    assert train['y'].isna().sum() == 0
+    assert train_hard['y'].isna().sum() == 0
+    assert test['y'].isna().sum() == 0
+    assert test_hard['y'].isna().sum() == 0
+    assert train_aug['max_bi'].isna().sum() == 0
+    assert train_aug['max_cross'].isna().sum() == 0
+    assert train_hard_aug['max_bi'].isna().sum() == 0
+    assert train_hard_aug['max_cross'].isna().sum() == 0
 
     # shuffle
     train = train.sample(frac=1, random_state=42)

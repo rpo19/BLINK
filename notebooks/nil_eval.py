@@ -51,8 +51,8 @@ def _cmn(df, y_pred, y='y'):
 def _lr_single(datasets, x):
     for k in ['train', 'train_hard', 'train_aug', 'train_hard_aug']:
         d = datasets[k]
+        assert d[x].isna().sum() == 0
         mdl = LinearRegression().fit(d[x].values.reshape(-1, 1), d['y'])
-
         for tk in ['test', 'test_hard']:
             t = datasets[tk]
             _temp = pd.DataFrame()
@@ -86,9 +86,9 @@ def main(data_path, save_results):
 
     results = pd.DataFrame()
     for _df in itertools.chain(
-        _lr_single(datasets, 'x_bi'),
-        _lr_single(datasets, 'x_cross'),
-        _lr_double(datasets, 'x_bi', 'x_cross'),
+        _lr_single(datasets, 'max_bi'),
+        _lr_single(datasets, 'max_cross'),
+        _lr_double(datasets, 'max_bi', 'max_cross'),
         ):
         results = pd.concat([results, _df])
 
