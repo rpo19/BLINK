@@ -283,6 +283,9 @@ def _run_biencoder(biencoder, dataloader, candidate_encoding, top_k=100, indexer
                 context_encoding = np.ascontiguousarray(context_encoding)
                 if save_encodings:
                     encodings.extend([e.tolist() for e in context_encoding])
+                print('encoding_shape', context_encoding.shape)
+                global my_enc
+                my_enc = context_encoding
                 scores, indicies = indexer.search_knn(context_encoding, top_k)
             else:
                 scores = biencoder.score_candidate(
@@ -698,9 +701,6 @@ args.entity_encoding = "../models/all_entities_large.t7"
 args.faiss_index = "hnsw"
 args.index_path = "../models/faiss_hnsw_index.pkl"
 
-args.save_scores_bi = True
-args.save_scores_cross = True
-
 logger = utils.get_logger(None)
 ```
 
@@ -766,6 +766,24 @@ local_id2wikipedia_id = None
 ```
 
 ```{python}
+candidate_encoding = models[4]
+type(candidate_encoding)
+```
+
+```{python}
+models[3]
+```
+
+```{python}
+len(models)
+```
+
+```{python}
+_index = models[9]
+type(models[9])
+```
+
+```{python}
 title2id = models[5]
 id2title = models[6]
 id2text = models[7]
@@ -774,6 +792,95 @@ if hasattr(args, 'save_encodings') and args.save_encodings:
     local_id2wikipedia_id = {}
     for k,v in wikipedia_id2local_id.items():
         local_id2wikipedia_id[v] = k
+```
+
+```{python}
+id2title[1057265]
+```
+
+```{python}
+id2title[5223477]
+```
+
+```{python}
+type(_index.index)
+```
+
+```{python}
+faiss.swigfaiss
+```
+
+```{python}
+np.array([1]).ndim
+```
+
+```{python}
+vchri = _index.index.reconstruct(1057656)
+print(vchri)
+vchri.shape
+```
+
+```{python}
+vchri[:1024].reshape((-1, 1024))
+```
+
+```{python}
+len(list(vchri))
+```
+
+```{python}
+import time
+
+start_time = time.monotonic()
+
+#_index.index.add(vchri[:1024].reshape((-1, 1024)))
+_index.index.add(vchri.reshape((-1, 1025)))
+
+print('seconds: ', time.monotonic() - start_time)
+```
+
+```{python}
+_index.index.add(vchri[:1024].reshape((-1, 1024))
+```
+
+```{python}
+_index.index.remove_ids(np.array([1057265]))
+```
+
+```{python}
+type(_index)
+```
+
+```{python}
+my_enc
+```
+
+```{python}
+def search_knn(self, query_vectors, top_k):
+    aux_dim = np.zeros(len(query_vectors), dtype="float32")
+    print('aux_dim', aux_dim, aux_dim.shape)
+    query_nhsw_vectors = np.hstack((query_vectors, aux_dim.reshape(-1, 1)))
+    logger.info("query_hnsw_vectors %s", query_nhsw_vectors.shape)
+    scores, indexes = self.index.search(query_nhsw_vectors, top_k)
+    return scores, indexes
+```
+
+```{python}
+aux_dim = np.zeros(len(my_enc), dtype="float32")
+aux_dim
+```
+
+```{python}
+query_nhsw_vectors = np.hstack((my_enc, aux_dim.reshape(-1, 1)))
+query_nhsw_vectors
+```
+
+```{python}
+len(query_nhsw_vectors)
+```
+
+```{python}
+_index.search_knn(my_enc, 2)
 ```
 
 ```{python}
