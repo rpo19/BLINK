@@ -48,6 +48,11 @@ from blink.indexer.faiss_indexer import DenseFlatIndexer, DenseHNSWFlatIndexer
 ```
 
 ```{python}
+import statistics
+import pickle
+```
+
+```{python}
 from addict import Dict
 ```
 
@@ -365,6 +370,9 @@ def load_models(args, logger=None):
         index_path=getattr(args, 'index_path' , None),
         logger=logger,
     )
+    
+    if hasattr(args, 'nil_prediction') and args.nil_prediction and hasattr(args, 'nil_prediction_model'):
+        nil_prediction_model = _load_lr_model(args.nil_prediction_model)
 
     return (
         biencoder,
@@ -377,6 +385,7 @@ def load_models(args, logger=None):
         id2text,
         wikipedia_id2local_id,
         faiss_indexer,
+        nil_prediction_model
     )
 
 
@@ -397,6 +406,7 @@ def run(
     id2text,
     wikipedia_id2local_id,
     faiss_indexer=None,
+    nil_prediction_model = None,
     test_data=None,
     local_id2wikipedia_id=None
 ):
@@ -600,6 +610,18 @@ def run(
             logger,
             context_len=biencoder_params["max_context_length"],
         )
+        if hasattr(args, 'nil_prediction') and args.nil_prediction and nil_prediction_model:
+            global nil_features
+            nil_features = np.array(list(
+                map(
+                    lambda x: list(x[0].values()) + list(x[1].values()),
+                    list(
+                        zip(
+                            list(map(_scores_get_stats, scores)), # bi scores
+                            list(map(_scores_get_stats, unsorted_scores)) # cross scores
+                        )))))
+            global nil_preds
+            nil_preds = nil_prediction_model.predict(nil_features)
 
         if args.save_scores_cross:
             print('----- Score cross length -----')
@@ -624,7 +646,7 @@ def run(
 
             # print crossencoder prediction
             idx = 0
-            for entity_list, index_list, sample, _scores in zip(nns, index_array, samples, unsorted_scores):
+            for entity_list, index_list, sample, _scores, _nil in zip(nns, index_array, samples, unsorted_scores, nil_preds):
                 e_id = entity_list[index_list[-1]]
                 e_title = id2title[e_id]
                 e_text = id2text[e_id]
@@ -634,6 +656,7 @@ def run(
                 )
                 print("cross_score:", _scores[index_list[-1]])
                 print("all scores:", _scores)
+                print("NIL score:", _nil)
                 idx += 1
             print()
         else:
@@ -687,9 +710,34 @@ def run(
 ```
 
 ```{python}
+def _scores_get_stats(scores):
+    scores = scores.tolist()
+    _stats = {
+        "max": max(scores),
+        "second": sorted(scores, reverse=True)[1],
+        "min": min(scores),
+        "mean": statistics.mean(scores),
+        "median": statistics.median(scores),
+        "stdev": statistics.stdev(scores),
+    }
+    return _stats
+
+def _load_lr_model(path):
+    with open(path, 'rb') as fd:
+        mdl = pickle.load(fd)
+    return mdl
+```
+
+```{python}
+# ls ../models
+```
+
+```{python}
 # interactive
 args = Dict()
 
+args.nil_prediction = True
+args.nil_prediction_model = "../models/lr_all+train_hard_aug.pkl"
 args.interactive = True
 args.top_k = 10
 args.biencoder_config = "../models/biencoder_wiki_large.json"
@@ -784,14 +832,22 @@ type(models[9])
 ```
 
 ```{python}
+_get_local_id = True
+```
+
+```{python}
 title2id = models[5]
 id2title = models[6]
 id2text = models[7]
 wikipedia_id2local_id = models[8]
-if hasattr(args, 'save_encodings') and args.save_encodings:
+if (hasattr(args, 'save_encodings') and args.save_encodings) or _get_local_id:
     local_id2wikipedia_id = {}
     for k,v in wikipedia_id2local_id.items():
         local_id2wikipedia_id[v] = k
+```
+
+```{python}
+local_id2wikipedia_id[0]
 ```
 
 ```{python}
@@ -886,4 +942,80 @@ _index.search_knn(my_enc, 2)
 ```{python}
 # remember to define run function above
 run(args, logger, *models, local_id2wikipedia_id=local_id2wikipedia_id)
+```
+
+```{python}
+nil_preds
+```
+
+```{python}
+nil_scores
+```
+
+```{python}
+_bi_get_stats(nil_scores['bi'])
+```
+
+```{python}
+nil_scores['bi'][0]
+```
+
+```{python}
+list(nil_scores['bi'][0])
+```
+
+```{python}
+statistics.stdev(nil_scores['bi'][0].tolist())
+```
+
+```{python}
+statistics.stdev(list(nil_scores['bi'][0]))
+```
+
+```{python}
+list(map(_cross_get_stats, nil_scores['cross']))
+```
+
+```{python}
+args.nil_prediction_model
+```
+
+```{python}
+nil_p = _load_lr_model(args.nil_prediction_model)
+```
+
+```{python}
+type(models)
+```
+
+```{python}
+models = models + (nil_p,)
+```
+
+```{python}
+nil_scores['bi']
+```
+
+```{python}
+list(zip(nil_scores['bi'], nil_scores['cross']))
+```
+
+```{python}
+list(nil_scores['bi'][0].values()) + list(nil_scores['cross'][0].values())
+```
+
+```{python}
+list(zip(nil_scores['bi'], nil_scores['cross']))
+```
+
+```{python}
+np.array(list(map(lambda x: list(x[0].values()) + list(x[1].values()), list(zip(nil_scores['bi'], nil_scores['cross'])))))
+```
+
+```{python}
+nil_features
+```
+
+```{python}
+nil_p.predict(nil_features)
 ```
