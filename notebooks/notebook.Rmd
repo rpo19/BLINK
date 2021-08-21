@@ -372,7 +372,7 @@ def load_models(args, logger=None):
     )
     
     if hasattr(args, 'nil_prediction') and args.nil_prediction and hasattr(args, 'nil_prediction_model'):
-        nil_prediction_model = _load_lr_model(args.nil_prediction_model)
+        nil_prediction_model = _load_pickle_model(args.nil_prediction_model)
 
     return (
         biencoder,
@@ -614,12 +614,14 @@ def run(
             global nil_features
             nil_features = np.array(list(
                 map(
-                    lambda x: list(x[0].values()) + list(x[1].values()),
+                    #lambda x: list(x[0].values()) + list(x[1].values()),
+                    lambda x: list(x[0].values()),
                     list(
                         zip(
-                            list(map(_scores_get_stats, scores)), # bi scores
+                            #list(map(_scores_get_stats, scores)), # bi scores
                             list(map(_scores_get_stats, unsorted_scores)) # cross scores
                         )))))
+            #nil_features = list(map(lambda x: [max(x)], unsorted_scores))
             global nil_preds
             nil_preds = nil_prediction_model.predict(nil_features)
 
@@ -722,14 +724,10 @@ def _scores_get_stats(scores):
     }
     return _stats
 
-def _load_lr_model(path):
+def _load_pickle_model(path):
     with open(path, 'rb') as fd:
         mdl = pickle.load(fd)
     return mdl
-```
-
-```{python}
-# ls ../models
 ```
 
 ```{python}
@@ -737,7 +735,7 @@ def _load_lr_model(path):
 args = Dict()
 
 args.nil_prediction = True
-args.nil_prediction_model = "../models/lr_all+train_hard_aug.pkl"
+args.nil_prediction_model = "../models/nil_pred/svc_cross+train_hard_aug.pkl"
 args.interactive = True
 args.top_k = 10
 args.biencoder_config = "../models/biencoder_wiki_large.json"
@@ -750,10 +748,6 @@ args.faiss_index = "hnsw"
 args.index_path = "../models/faiss_hnsw_index.pkl"
 
 logger = utils.get_logger(None)
-```
-
-```{python}
-# !wc -l ../data/BLINK_benchmark/AIDA-YAGO2_testa.jsonl
 ```
 
 ```{python}
@@ -949,7 +943,11 @@ nil_preds
 ```
 
 ```{python}
-nil_scores
+nil_features.reshape(-1, 1)
+```
+
+```{python}
+nil_p.predict(nil_features)
 ```
 
 ```{python}
@@ -981,7 +979,7 @@ args.nil_prediction_model
 ```
 
 ```{python}
-nil_p = _load_lr_model(args.nil_prediction_model)
+nil_p = _load_pickle_model(args.nil_prediction_model)
 ```
 
 ```{python}
@@ -989,7 +987,15 @@ type(models)
 ```
 
 ```{python}
-models = models + (nil_p,)
+len(models)
+```
+
+```{python}
+len(models[0:10])
+```
+
+```{python}
+models = models[0:10] + (nil_p,)
 ```
 
 ```{python}
