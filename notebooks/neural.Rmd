@@ -27,6 +27,8 @@ from sklearn.preprocessing import StandardScaler
 from sklearn.metrics import confusion_matrix, classification_report
 
 import sklearn.metrics
+import os
+import matplotlib.pyplot as plt
 ```
 
 ```{python}
@@ -109,6 +111,7 @@ LEARNING_RATE = 0.0001
 
 ```{python}
 models = {}
+models_path = 'models'
 _save_models = True
 
 for k in ['train', 'train_hard', 'train_aug', 'train_hard_aug']:
@@ -156,6 +159,7 @@ for k in ['train', 'train_hard', 'train_aug', 'train_hard_aug']:
 
     if _save_models:
         models[k] = model
+        torch.save(model.state_dict(), os.path.join(models_path, 'nrl+{}+{}+{}.torch'.format('+'.join(features), k, tk)))
 
     for tk in ['test', 'test_hard']:
         print('test on', tk)
@@ -204,37 +208,83 @@ eval_df.head()
 ```
 
 ```{python}
-print(classification_report(y_test, torch.round(y_pred).detach().numpy().reshape(-1,).astype(int)))
+def eval_plot(df):
+    print(classification_report(df['y'], df['y_pred_rnd']))
+    print('y kde')
+    df[['y', 'y_pred']].plot(kind='kde')
+    # roc curve
+    fpr, tpr, thresholds = sklearn.metrics.roc_curve(df['y'], df['y_pred'])
+    pd.DataFrame({
+        'tpr': tpr,
+        'fpr': fpr,
+        'thresholds': thresholds
+    }).plot(x='fpr', y='tpr', title='roc curve')
+    plt.show()
+    print('--- correct ---')
+    # correct
+    correct = df.query('y == y_pred_rnd')['y_pred']
+    correct.plot(kind='density', title='correct kde')
+    plt.show()
+    correct.plot(kind='hist', title='correct hist')
+    plt.show()
+    print('correct description:')
+    print(correct.describe())
+    print('-- errors ---')
+    # errors
+    errors = df.query('y != y_pred_rnd')['y_pred']
+    errors.plot(kind='density', title='errors kde')
+    plt.show()
+    errors.plot(kind='hist', title='errors hist')
+    plt.show()
+    print('errors description:')
+    print(errors.describe())
 ```
 
 ```{python}
-# roc curve
-fpr, tpr, thresholds = sklearn.metrics.roc_curve(y_test, y_pred.detach().numpy().reshape(-1,))
-pd.DataFrame({
-    'tpr': tpr,
-    'fpr': fpr,
-    'thresholds': thresholds
-}).plot(x='fpr', y='tpr')
+eval_plot(eval_df)
 ```
 
 ```{python}
-# correct
-correct = eval_df.query('y == y_pred_rnd')['y_pred']
-correct.plot(kind='density')
-correct.describe()
+# count and filter uncertain results
 ```
 
 ```{python}
-correct.plot(kind='hist')
+th_high = 0.75
+th_low = 0.25
 ```
 
 ```{python}
-# errors
-errors = eval_df.query('y != y_pred_rnd')['y_pred']
-errors.plot(kind='density')
-errors.describe()
+certain = eval_df.query(f'y_pred <= {th_low} or y_pred >= {th_high}')
+print(certain.count()[0] / eval_df.shape[0])
 ```
 
 ```{python}
-errors.plot(kind='hist')
+eval_plot(certain)
+```
+
+```{python}
+uncertain = eval_df.query(f'y_pred > {th_low} and y_pred < {th_high}')
+print(uncertain.count()[0] / eval_df.shape[0])
+```
+
+```{python}
+eval_plot(uncertain)
+```
+
+```{python}
+for h in range(0,10,1):
+    th_high = h/10
+    for l in range(0,h,1):
+        print('-'*10)
+        th_low = l/10
+        print(th_low, th_high)
+        certain = eval_df.query(f'y_pred <= {th_low} or y_pred >= {th_high}')
+        uncertain = eval_df.query(f'y_pred > {th_low} and y_pred < {th_high}')
+        print('certain', 'uncertain')
+        print(certain.count()[0] / eval_df.shape[0], uncertain.count()[0] / eval_df.shape[0])
+        print(classification_report(certain['y'], certain['y_pred_rnd']))
+```
+
+```{python}
+# 0.4-0.6 seems a good choice
 ```
