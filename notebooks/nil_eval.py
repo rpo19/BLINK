@@ -5,6 +5,15 @@ import sys
 import itertools
 import re
 import math
+import os
+
+from sklearn.svm import LinearSVC
+from sklearn.pipeline import make_pipeline
+from sklearn.preprocessing import StandardScaler
+
+import pickle
+_save_models = False
+_save_models_path = None
 
 import click
 
@@ -78,6 +87,11 @@ def _lr_single(datasets, x):
         d = datasets[k]
         assert d[x].isna().sum() == 0
         mdl = LinearRegression().fit(d[x].values.reshape(-1, 1), d['y'])
+
+        if _save_models:
+            with open(os.path.join(_save_models_path, f'lr_{x}+{k}.pkl'), 'wb') as fd:
+                pickle.dump(mdl, fd)
+
         for tk in ['test', 'test_hard']:
             t = datasets[tk]
             _temp = pd.DataFrame()
@@ -90,6 +104,10 @@ def _lr_double(datasets, x1, x2):
     for k in ['train', 'train_hard', 'train_aug', 'train_hard_aug']:
         d = datasets[k]
         mdl = LinearRegression().fit(d[[x1, x2]].values.reshape(-1, 2), d['y'])
+
+        if _save_models:
+            with open(os.path.join(_save_models_path, f'lr_{x1}+{x2}+{k}.pkl'), 'wb') as fd:
+                pickle.dump(mdl, fd)
 
         for tk in ['test', 'test_hard']:
             t = datasets[tk]
@@ -109,6 +127,10 @@ def _lr_all(datasets, _filter=None, title='all'):
         #print('_lr_all selected columns:', cols)
         mdl = LinearRegression().fit(d[cols].values.reshape(-1, len(cols)), d['y'])
 
+        if _save_models:
+            with open(os.path.join(_save_models_path, f'lr_{title}+{k}.pkl'), 'wb') as fd:
+                pickle.dump(mdl, fd)
+
         for tk in ['test', 'test_hard', 'test_aug', 'test_hard_aug']:
             t = datasets[tk]
             _temp = pd.DataFrame()
@@ -116,6 +138,139 @@ def _lr_all(datasets, _filter=None, title='all'):
             _temp['y_pred'] = mdl.predict(t[cols].values.reshape(-1, len(cols)))
 
             yield _eval(_temp, 'y_pred', title=f'lr_{title}+{k}+{tk}')
+
+def _svc_cross_max(datasets, title='svc_cross_max'):
+    print(title)
+    for k in ['train', 'train_hard', 'train_aug', 'train_hard_aug']:
+        print('training on...', k)
+        d = datasets[k]
+        clf = make_pipeline(StandardScaler(),
+                    LinearSVC(random_state=42, tol=1e-5, max_iter=100000))
+        X = d[['max_cross']].values
+        y = d['y'].values
+        clf.fit(X, y)
+
+        if _save_models:
+            with open(os.path.join(_save_models_path, f'{title}+{k}.pkl'), 'wb') as fd:
+                pickle.dump(clf, fd)
+
+        for tk in ['test', 'test_hard', 'test_aug', 'test_hard_aug']:
+            print('testing on...', tk)
+            t = datasets[tk]
+            _temp = pd.DataFrame()
+            _temp['y'] = t['y']
+            tX = t[['max_cross']].values
+            _temp['y_pred'] = clf.predict(tX)
+
+            yield _eval(_temp, 'y_pred', title=f'{title}+{k}+{tk}')
+
+def _svc_max(datasets, title='svc_max'):
+    print(title)
+    for k in ['train', 'train_hard', 'train_aug', 'train_hard_aug']:
+        print('training on...', k)
+        d = datasets[k]
+        clf = make_pipeline(StandardScaler(),
+                    LinearSVC(random_state=42, tol=1e-5, max_iter=100000))
+        X = d[['max_bi', 'max_cross']].values
+        y = d['y'].values
+        clf.fit(X, y)
+
+        if _save_models:
+            with open(os.path.join(_save_models_path, f'{title}+{k}.pkl'), 'wb') as fd:
+                pickle.dump(clf, fd)
+
+        for tk in ['test', 'test_hard', 'test_aug', 'test_hard_aug']:
+            print('testing on...', tk)
+            t = datasets[tk]
+            _temp = pd.DataFrame()
+            _temp['y'] = t['y']
+            tX = t[['max_bi', 'max_cross']].values
+            _temp['y_pred'] = clf.predict(tX)
+
+            yield _eval(_temp, 'y_pred', title=f'{title}+{k}+{tk}')
+
+def _svc_cross(datasets, title='svc_cross'):
+    print(title)
+    for k in ['train', 'train_hard', 'train_aug', 'train_hard_aug']:
+        print('training on...', k)
+        d = datasets[k]
+        clf = make_pipeline(StandardScaler(),
+                    LinearSVC(random_state=42, tol=1e-5, max_iter=100000))
+        X = d[['max_cross', 'second_cross', 'min_cross',
+            'mean_cross', 'median_cross', 'stdev_cross']].values
+        y = d['y'].values
+        clf.fit(X, y)
+
+        if _save_models:
+            with open(os.path.join(_save_models_path, f'{title}+{k}.pkl'), 'wb') as fd:
+                pickle.dump(clf, fd)
+
+        for tk in ['test', 'test_hard', 'test_aug', 'test_hard_aug']:
+            print('testing on...', tk)
+            t = datasets[tk]
+            _temp = pd.DataFrame()
+            _temp['y'] = t['y']
+            tX = t[['max_cross', 'second_cross', 'min_cross',
+            'mean_cross', 'median_cross', 'stdev_cross']].values
+            _temp['y_pred'] = clf.predict(tX)
+
+            yield _eval(_temp, 'y_pred', title=f'{title}+{k}+{tk}')
+
+def _svc_bi(datasets, title='svc_bi'):
+    print(title)
+    for k in ['train', 'train_hard', 'train_aug', 'train_hard_aug']:
+        print('training on...', k)
+        d = datasets[k]
+        clf = make_pipeline(StandardScaler(),
+                    LinearSVC(random_state=42, tol=1e-5, max_iter=100000))
+        X = d[['max_bi', 'second_bi', 'min_bi', 'mean_bi', 'median_bi',
+            'stdev_bi']].values
+        y = d['y'].values
+        clf.fit(X, y)
+
+        if _save_models:
+            with open(os.path.join(_save_models_path, f'{title}+{k}.pkl'), 'wb') as fd:
+                pickle.dump(clf, fd)
+
+        for tk in ['test', 'test_hard', 'test_aug', 'test_hard_aug']:
+            print('testing on...', tk)
+            t = datasets[tk]
+            _temp = pd.DataFrame()
+            _temp['y'] = t['y']
+            tX = t[['max_bi', 'second_bi', 'min_bi', 'mean_bi', 'median_bi',
+            'stdev_bi']].values
+            _temp['y_pred'] = clf.predict(tX)
+
+            yield _eval(_temp, 'y_pred', title=f'{title}+{k}+{tk}')
+
+def _svc_all(datasets, title='svc_all'):
+    print(title)
+    for k in ['train', 'train_hard', 'train_aug', 'train_hard_aug']:
+        print('training on...', k)
+        d = datasets[k]
+        clf = make_pipeline(StandardScaler(),
+                    LinearSVC(random_state=42, tol=1e-5, max_iter=100000))
+        X = d[['max_bi', 'second_bi', 'min_bi', 'mean_bi', 'median_bi',
+            'stdev_bi', 'max_cross', 'second_cross', 'min_cross',
+            'mean_cross', 'median_cross', 'stdev_cross']].values
+        y = d['y'].values
+        clf.fit(X, y)
+
+        if _save_models:
+            with open(os.path.join(_save_models_path, f'{title}+{k}.pkl'), 'wb') as fd:
+                pickle.dump(clf, fd)
+
+        for tk in ['test', 'test_hard', 'test_aug', 'test_hard_aug']:
+            print('testing on...', tk)
+            t = datasets[tk]
+            _temp = pd.DataFrame()
+            _temp['y'] = t['y']
+            tX = t[['max_bi', 'second_bi', 'min_bi', 'mean_bi', 'median_bi',
+            'stdev_bi', 'max_cross', 'second_cross', 'min_cross',
+            'mean_cross', 'median_cross', 'stdev_cross']].values
+            _temp['y_pred'] = clf.predict(tX)
+
+            yield _eval(_temp, 'y_pred', title=f'{title}+{k}+{tk}')
 
 def _print_results(results_df, sort=None, grep=None, reverse=False):
     to_print = results_df.copy()
@@ -133,7 +288,8 @@ def _print_results(results_df, sort=None, grep=None, reverse=False):
 @click.option('--reverse', required=False, default=False, is_flag=True, help='reverse sort order')
 @click.option('-f', '--fast', required=False, default=False, is_flag=True, help='do not calculate but load from --results and show')
 @click.option('-g', '--grep', required=False, default=None, type=str, help='regex to filter index')
-def main(data_path, results, sort, fast, grep, reverse):
+@click.option('--save', required=False, default=None, type=str, help='save models into this folder')
+def main(data_path, results, sort, fast, grep, reverse, save):
 
     if fast and results is None:
         raise Exception('--fast requires --results to load dataset')
@@ -142,6 +298,16 @@ def main(data_path, results, sort, fast, grep, reverse):
         results_df = pd.read_csv(results, index_col=0)
         _print_results(results_df, sort, grep, reverse)
         sys.exit(0)
+
+    if save is not None:
+        global _save_models
+        _save_models = True
+
+        global _save_models_path
+        _save_models_path = save
+
+        if not os.path.isdir(_save_models_path):
+            os.mkdir(_save_models_path)
 
     if not data_path:
         raise Exception('--data-path not set!')
@@ -160,6 +326,11 @@ def main(data_path, results, sort, fast, grep, reverse):
         _lr_all(datasets, '.*_bi', 'all_bi'),
         _lr_all(datasets, '.*_cross', 'all_cross'),
         _lr_all(datasets),
+        _svc_all(datasets),
+        _svc_bi(datasets),
+        _svc_cross(datasets),
+        _svc_max(datasets),
+        _svc_cross_max(datasets),
         ):
         results_df = pd.concat([results_df, _df])
 
