@@ -25,6 +25,8 @@ from torch.utils.data import Dataset, DataLoader
 
 from sklearn.preprocessing import StandardScaler
 from sklearn.metrics import confusion_matrix, classification_report
+
+import sklearn.metrics
 ```
 
 ```{python}
@@ -182,7 +184,7 @@ for k in ['train', 'train_hard', 'train_aug', 'train_hard_aug']:
 ```
 
 ```{python}
-t = datasets['test_hard_aug']
+t = datasets['test']
         
 X_test = t[features].values
 X_test = scaler.transform(X_test)
@@ -199,6 +201,20 @@ eval_df = pd.DataFrame({
     'y_pred_rnd': torch.round(y_pred).detach().numpy().reshape(-1,).astype(int)
 })
 eval_df.head()
+```
+
+```{python}
+print(classification_report(y_test, torch.round(y_pred).detach().numpy().reshape(-1,).astype(int)))
+```
+
+```{python}
+# roc curve
+fpr, tpr, thresholds = sklearn.metrics.roc_curve(y_test, y_pred.detach().numpy().reshape(-1,))
+pd.DataFrame({
+    'tpr': tpr,
+    'fpr': fpr,
+    'thresholds': thresholds
+}).plot(x='fpr', y='tpr')
 ```
 
 ```{python}
