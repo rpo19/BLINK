@@ -57,6 +57,43 @@ from addict import Dict
 ```
 
 ```{python}
+import torch
+import torch.nn as nn
+import torch.nn.functional as F
+from torch.utils.data import Dataset, DataLoader
+
+from sklearn.preprocessing import StandardScaler
+
+class testData(Dataset):
+    
+    def __init__(self, X_data):
+        self.X_data = X_data
+        
+    def __getitem__(self, index):
+        return self.X_data[index]
+        
+    def __len__ (self):
+        return len(self.X_data)
+
+class binaryClassification(nn.Module):
+    def __init__(self, n):
+        super(binaryClassification, self).__init__()
+        self.fc1 = nn.Linear(n, 2)
+        self.fc2 = nn.Linear(2, 1)
+        self.relu = nn.ReLU()
+        self.dropout = nn.Dropout(p=0.1)
+        
+    def forward(self, inputs):
+        x = self.fc1(inputs)
+        x = self.relu(x)
+        x = self.dropout(x)
+        x = self.fc2(x)
+        #x = nn.Sigmoid(x)
+        
+        return x
+```
+
+```{python}
 HIGHLIGHTS = [
     "on_red",
     "on_green",
@@ -371,8 +408,12 @@ def load_models(args, logger=None):
         logger=logger,
     )
     
-    if hasattr(args, 'nil_prediction') and args.nil_prediction and hasattr(args, 'nil_prediction_model'):
-        nil_prediction_model = _load_pickle_model(args.nil_prediction_model)
+    if (hasattr(args, 'nil_prediction')
+            and args.nil_prediction
+            and hasattr(args, 'nil_prediction_scaler')
+            and hasattr(args, 'nil_prediction_model')):
+        nil_prediction_scaler = _load_pickle_model(args.nil_prediction_scaler)
+        nil_prediction_model = _load_torch_model(args.nil_prediction_model, 1)
 
     return (
         biencoder,
@@ -385,6 +426,7 @@ def load_models(args, logger=None):
         id2text,
         wikipedia_id2local_id,
         faiss_indexer,
+        nil_prediction_scaler,
         nil_prediction_model
     )
 
@@ -406,6 +448,7 @@ def run(
     id2text,
     wikipedia_id2local_id,
     faiss_indexer=None,
+    nil_prediction_scaler = None,
     nil_prediction_model = None,
     test_data=None,
     local_id2wikipedia_id=None
@@ -610,8 +653,10 @@ def run(
             logger,
             context_len=biencoder_params["max_context_length"],
         )
-        if hasattr(args, 'nil_prediction') and args.nil_prediction and nil_prediction_model:
+        if hasattr(args, 'nil_prediction') and args.nil_prediction and nil_prediction_scaler and nil_prediction_model:
             global nil_features
+            global nil_preds
+
             nil_features = np.array(list(
                 map(
                     #lambda x: list(x[0].values()) + list(x[1].values()),
@@ -621,9 +666,14 @@ def run(
                             #list(map(_scores_get_stats, scores)), # bi scores
                             list(map(_scores_get_stats, unsorted_scores)) # cross scores
                         )))))
-            #nil_features = list(map(lambda x: [max(x)], unsorted_scores))
-            global nil_preds
-            nil_preds = nil_prediction_model.predict(nil_features)
+            nil_features = list(map(lambda x: [max(x)], unsorted_scores))
+
+            nil_features = nil_prediction_scaler.transform(nil_features)
+            #nil_preds = nil_prediction_model.predict(nil_features)
+            nil_features = torch.FloatTensor(nil_features)
+            nil_preds = nil_prediction_model(nil_features)
+            nil_preds = torch.sigmoid(nil_preds)
+            nil_preds = nil_preds.cpu().detach().numpy().reshape(-1,).tolist()
 
         if args.save_scores_cross:
             print('----- Score cross length -----')
@@ -728,6 +778,12 @@ def _load_pickle_model(path):
     with open(path, 'rb') as fd:
         mdl = pickle.load(fd)
     return mdl
+
+def _load_torch_model(path, n):
+    model = binaryClassification(n)
+    model.load_state_dict(torch.load(path))
+    model.eval()
+    return model
 ```
 
 ```{python}
@@ -735,7 +791,8 @@ def _load_pickle_model(path):
 args = Dict()
 
 args.nil_prediction = True
-args.nil_prediction_model = "../models/nil_pred/svc_cross+train_hard_aug.pkl"
+args.nil_prediction_scaler = "../models/nil_pred/stdscaler+max_cross+train_hard_aug.pkl"
+args.nil_prediction_model = "../models/nil_pred/nrl+max_cross+train_hard_aug.torch"
 args.interactive = True
 args.top_k = 10
 args.biencoder_config = "../models/biencoder_wiki_large.json"
@@ -808,24 +865,6 @@ local_id2wikipedia_id = None
 ```
 
 ```{python}
-candidate_encoding = models[4]
-type(candidate_encoding)
-```
-
-```{python}
-models[3]
-```
-
-```{python}
-len(models)
-```
-
-```{python}
-_index = models[9]
-type(models[9])
-```
-
-```{python}
 _get_local_id = True
 ```
 
@@ -841,187 +880,6 @@ if (hasattr(args, 'save_encodings') and args.save_encodings) or _get_local_id:
 ```
 
 ```{python}
-local_id2wikipedia_id[0]
-```
-
-```{python}
-id2title[1057265]
-```
-
-```{python}
-id2title[5223477]
-```
-
-```{python}
-type(_index.index)
-```
-
-```{python}
-faiss.swigfaiss
-```
-
-```{python}
-np.array([1]).ndim
-```
-
-```{python}
-vchri = _index.index.reconstruct(1057656)
-print(vchri)
-vchri.shape
-```
-
-```{python}
-vchri[:1024].reshape((-1, 1024))
-```
-
-```{python}
-len(list(vchri))
-```
-
-```{python}
-import time
-
-start_time = time.monotonic()
-
-#_index.index.add(vchri[:1024].reshape((-1, 1024)))
-_index.index.add(vchri.reshape((-1, 1025)))
-
-print('seconds: ', time.monotonic() - start_time)
-```
-
-```{python}
-_index.index.add(vchri[:1024].reshape((-1, 1024))
-```
-
-```{python}
-_index.index.remove_ids(np.array([1057265]))
-```
-
-```{python}
-type(_index)
-```
-
-```{python}
-my_enc
-```
-
-```{python}
-def search_knn(self, query_vectors, top_k):
-    aux_dim = np.zeros(len(query_vectors), dtype="float32")
-    print('aux_dim', aux_dim, aux_dim.shape)
-    query_nhsw_vectors = np.hstack((query_vectors, aux_dim.reshape(-1, 1)))
-    logger.info("query_hnsw_vectors %s", query_nhsw_vectors.shape)
-    scores, indexes = self.index.search(query_nhsw_vectors, top_k)
-    return scores, indexes
-```
-
-```{python}
-aux_dim = np.zeros(len(my_enc), dtype="float32")
-aux_dim
-```
-
-```{python}
-query_nhsw_vectors = np.hstack((my_enc, aux_dim.reshape(-1, 1)))
-query_nhsw_vectors
-```
-
-```{python}
-len(query_nhsw_vectors)
-```
-
-```{python}
-_index.search_knn(my_enc, 2)
-```
-
-```{python}
 # remember to define run function above
 run(args, logger, *models, local_id2wikipedia_id=local_id2wikipedia_id)
-```
-
-```{python}
-nil_preds
-```
-
-```{python}
-nil_features.reshape(-1, 1)
-```
-
-```{python}
-nil_p.predict(nil_features)
-```
-
-```{python}
-_bi_get_stats(nil_scores['bi'])
-```
-
-```{python}
-nil_scores['bi'][0]
-```
-
-```{python}
-list(nil_scores['bi'][0])
-```
-
-```{python}
-statistics.stdev(nil_scores['bi'][0].tolist())
-```
-
-```{python}
-statistics.stdev(list(nil_scores['bi'][0]))
-```
-
-```{python}
-list(map(_cross_get_stats, nil_scores['cross']))
-```
-
-```{python}
-args.nil_prediction_model
-```
-
-```{python}
-nil_p = _load_pickle_model(args.nil_prediction_model)
-```
-
-```{python}
-type(models)
-```
-
-```{python}
-len(models)
-```
-
-```{python}
-len(models[0:10])
-```
-
-```{python}
-models = models[0:10] + (nil_p,)
-```
-
-```{python}
-nil_scores['bi']
-```
-
-```{python}
-list(zip(nil_scores['bi'], nil_scores['cross']))
-```
-
-```{python}
-list(nil_scores['bi'][0].values()) + list(nil_scores['cross'][0].values())
-```
-
-```{python}
-list(zip(nil_scores['bi'], nil_scores['cross']))
-```
-
-```{python}
-np.array(list(map(lambda x: list(x[0].values()) + list(x[1].values()), list(zip(nil_scores['bi'], nil_scores['cross'])))))
-```
-
-```{python}
-nil_features
-```
-
-```{python}
-nil_p.predict(nil_features)
 ```
