@@ -206,11 +206,7 @@ for k in ['train', 'train_hard', 'train_aug', 'train_hard_aug']:
 ```
 
 ```{python}
-X_validation.cpu().detach().numpy().reshape(-1,).tolist()
-```
-
-```{python}
-t = datasets['test']
+t = datasets['test_hard']
         
 X_test = t[features].values
 X_test = scaler.transform(X_test)
@@ -271,8 +267,8 @@ eval_plot(eval_df)
 ```
 
 ```{python}
-th_high = 0.75
-th_low = 0.25
+th_high = 0.6
+th_low = 0.35
 ```
 
 ```{python}
@@ -294,19 +290,61 @@ eval_plot(uncertain)
 ```
 
 ```{python}
-for h in range(0,10,1):
-    th_high = h/10
-    for l in range(0,h,1):
+reports = []
+for h in range(0,100,5):
+    th_high = h/100
+    for l in range(0,h,5):
         print('-'*10)
-        th_low = l/10
+        th_low = l/100
         print(th_low, th_high)
         certain = eval_df.query(f'y_pred <= {th_low} or y_pred >= {th_high}')
         uncertain = eval_df.query(f'y_pred > {th_low} and y_pred < {th_high}')
         print('certain', 'uncertain')
         print(certain.count()[0] / eval_df.shape[0], uncertain.count()[0] / eval_df.shape[0])
+        if certain.count()[0] == 0:
+            continue
         print(classification_report(certain['y'], certain['y_pred_rnd']))
+        reports.append({
+            'th_high': th_high,
+            'th_low': th_low,
+            'report': classification_report(certain['y'], certain['y_pred_rnd'], output_dict=True)
+        })
 ```
 
 ```{python}
-# 0.4-0.6 seems a good choice
+def _report_to_pandas(report):
+    new_d = {}
+    new_d['th_high'] = report['th_high']
+    new_d['th_low'] = report['th_low']
+    for k in report['report'].keys():
+        if k in ['0', '1', 'macro avg', 'weighted avg']:
+            for kk in report['report'][k].keys():
+                new_d['{}-{}'.format(k.replace(' ', '-'), kk)] = report['report'][k][kk]
+        else:
+            new_d[k] = report['report'][k]
+    return new_d
 ```
+
+```{python}
+reports_df = pd.DataFrame(list(map(_report_to_pandas, reports)))
+reports_df.head()
+```
+
+```{python}
+reports_df.sort_values(by='macro-avg-f1-score', ascending=False).head(10)
+```
+
+# top 10 by macro-avg-f1-score
+|     |   th_high |   th_low |   0-precision |   0-recall |   0-f1-score |   0-support |   1-precision |   1-recall |   1-f1-score |   1-support |   accuracy |   macro-avg-precision |   macro-avg-recall |   macro-avg-f1-score |   macro-avg-support |   weighted-avg-precision |   weighted-avg-recall |   weighted-avg-f1-score |   weighted-avg-support |
+|----:|----------:|---------:|--------------:|-----------:|-------------:|------------:|--------------:|-----------:|-------------:|------------:|-----------:|----------------------:|-------------------:|---------------------:|--------------------:|-------------------------:|----------------------:|------------------------:|-----------------------:|
+| 109 |      0.75 |     0.2  |      0.685202 |   0.583206 |     0.630103 |        1310 |      0.900583 |   0.933736 |     0.91686  |        5297 |   0.864235 |              0.792892 |           0.758471 |             0.773481 |                6607 |                 0.857878 |              0.864235 |                0.860003 |                   6607 |
+| 108 |      0.75 |     0.15 |      0.728423 |   0.536896 |     0.618164 |        1179 |      0.900583 |   0.954458 |     0.926738 |        5182 |   0.877063 |              0.814503 |           0.745677 |             0.772451 |                6361 |                 0.868673 |              0.877063 |                0.869544 |                   6361 |
+| 110 |      0.75 |     0.25 |      0.643796 |   0.617647 |     0.63045  |        1428 |      0.900583 |   0.910195 |     0.905363 |        5434 |   0.849315 |              0.772189 |           0.763921 |             0.767907 |                6862 |                 0.847145 |              0.849315 |                0.848153 |                   6862 |
+| 111 |      0.75 |     0.3  |      0.613608 |   0.642904 |     0.627914 |        1529 |      0.900583 |   0.888769 |     0.894637 |        5565 |   0.835777 |              0.757095 |           0.765836 |             0.761276 |                7094 |                 0.83873  |              0.835777 |                0.837149 |                   7094 |
+|  95 |      0.7  |     0.2  |      0.685202 |   0.542999 |     0.605868 |        1407 |      0.893313 |   0.938797 |     0.915491 |        5735 |   0.860823 |              0.789258 |           0.740898 |             0.760679 |                7142 |                 0.852315 |              0.860823 |                0.854494 |                   7142 |
+|  94 |      0.7  |     0.15 |      0.728423 |   0.496082 |     0.59021  |        1276 |      0.893313 |   0.958007 |     0.92453  |        5620 |   0.872535 |              0.810868 |           0.727044 |             0.75737  |                6896 |                 0.862803 |              0.872535 |                0.862669 |                   6896 |
+|  96 |      0.7  |     0.25 |      0.643796 |   0.578361 |     0.609326 |        1525 |      0.893313 |   0.916894 |     0.90495  |        5872 |   0.8471   |              0.768555 |           0.747627 |             0.757138 |                7397 |                 0.841872 |              0.8471   |                0.844003 |                   7397 |
+| 112 |      0.75 |     0.35 |      0.594108 |   0.666055 |     0.628028 |        1635 |      0.900583 |   0.869244 |     0.884636 |        5690 |   0.823891 |              0.747345 |           0.76765  |             0.756332 |                7325 |                 0.832175 |              0.823891 |                0.827359 |                   7325 |
+| 107 |      0.75 |     0.1  |      0.782383 |   0.453453 |     0.574144 |         999 |      0.900583 |   0.975158 |     0.936388 |        5072 |   0.88931  |              0.841483 |           0.714306 |             0.755266 |                6071 |                 0.881133 |              0.88931  |                0.87678  |                   6071 |
+|  97 |      0.7  |     0.3  |      0.613608 |   0.604551 |     0.609046 |        1626 |      0.893313 |   0.896885 |     0.895096 |        6003 |   0.834579 |              0.753461 |           0.750718 |             0.752071 |                7629 |                 0.833699 |              0.834579 |                0.834129 |                   7629 |
+
