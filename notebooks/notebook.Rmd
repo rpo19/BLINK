@@ -57,6 +57,10 @@ from addict import Dict
 ```
 
 ```{python}
+import pandas as pd
+```
+
+```{python}
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
@@ -408,6 +412,9 @@ def load_models(args, logger=None):
         logger=logger,
     )
     
+    nil_prediction_scaler = None
+    nil_prediction_model = None
+    
     if (hasattr(args, 'nil_prediction')
             and args.nil_prediction
             and hasattr(args, 'nil_prediction_scaler')
@@ -450,6 +457,7 @@ def run(
     faiss_indexer=None,
     nil_prediction_scaler = None,
     nil_prediction_model = None,
+    nil_prediction_features = ['max_cross'],
     test_data=None,
     local_id2wikipedia_id=None
 ):
@@ -659,14 +667,26 @@ def run(
 
             nil_features = np.array(list(
                 map(
-                    #lambda x: list(x[0].values()) + list(x[1].values()),
-                    lambda x: list(x[0].values()),
+                    lambda x: list(x[0].values()) + list(x[1].values()),
+                    #lambda x: list(x[0].values()),
                     list(
                         zip(
-                            #list(map(_scores_get_stats, scores)), # bi scores
+                            list(map(_scores_get_stats, scores)), # bi scores
                             list(map(_scores_get_stats, unsorted_scores)) # cross scores
                         )))))
-            nil_features = list(map(lambda x: [max(x)], unsorted_scores))
+            nil_features = pd.DataFrame(data=nil_features, columns=['max_bi',
+                       'second_bi',
+                       'min_bi',
+                       'mean_bi',
+                       'median_bi',
+                       'stdev_bi',
+                       'max_cross',
+                       'second_cross',
+                       'min_cross',
+                       'mean_cross',
+                       'median_cross',
+                       'stdev_cross'])
+            nil_features = nil_features[nil_prediction_features]
 
             nil_features = nil_prediction_scaler.transform(nil_features)
             #nil_preds = nil_prediction_model.predict(nil_features)
@@ -793,6 +813,7 @@ args = Dict()
 args.nil_prediction = True
 args.nil_prediction_scaler = "../models/nil_pred/stdscaler+max_cross+train_hard_aug.pkl"
 args.nil_prediction_model = "../models/nil_pred/nrl+max_cross+train_hard_aug.torch"
+args.nil_prediction_features = ['max_cross']
 args.interactive = True
 args.top_k = 10
 args.biencoder_config = "../models/biencoder_wiki_large.json"
@@ -811,6 +832,8 @@ logger = utils.get_logger(None)
 # test file
 args = Dict()
 
+args.nil_prediction = False
+
 args.interactive = False
 args.top_k = 10
 args.biencoder_config = "../models/biencoder_wiki_large.json"
@@ -819,8 +842,10 @@ args.crossencoder_config = "../models/crossencoder_wiki_large.json"
 args.crossencoder_model = "../models/crossencoder_wiki_large.bin"
 args.entity_catalogue = "../models/entity.jsonl"
 args.entity_encoding = "../models/all_entities_large.t7"
-args.faiss_index = "hnsw"
-args.index_path = "../models/faiss_hnsw_index.pkl"
+#args.faiss_index = "hnsw"
+#args.index_path = "../models/faiss_hnsw_index.pkl"
+args.faiss_index = None
+args.index_path = None
 
 args.test_mentions = "../data/BLINK_benchmark/ace2004_questions.jsonl"
 
@@ -882,4 +907,8 @@ if (hasattr(args, 'save_encodings') and args.save_encodings) or _get_local_id:
 ```{python}
 # remember to define run function above
 run(args, logger, *models, local_id2wikipedia_id=local_id2wikipedia_id)
+```
+
+```{python}
+nil_features
 ```
