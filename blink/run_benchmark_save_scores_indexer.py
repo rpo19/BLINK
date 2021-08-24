@@ -14,6 +14,10 @@ import os
 
 DATASETS = [
     {
+        "name": "AIDA-YAGO2_train",
+        "filename": "data/BLINK_benchmark/AIDA-YAGO2_train.jsonl",
+    },
+    {
         "name": "AIDA-YAGO2 testa",
         "filename": "data/BLINK_benchmark/AIDA-YAGO2_testa.jsonl",
     },
@@ -49,7 +53,7 @@ PARAMETERS = {
     "crossencoder_model": "models/crossencoder_wiki_large.bin",
     "crossencoder_config": "models/crossencoder_wiki_large.json",
     "output_path": "output",
-    "fast": True,
+    "fast": False,
     "top_k": 100
 }
 args = argparse.Namespace(**PARAMETERS)
