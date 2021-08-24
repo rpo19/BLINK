@@ -45,7 +45,7 @@ PARAMETERS = {
     "biencoder_model": "models/biencoder_wiki_large.bin",
     "biencoder_config": "models/biencoder_wiki_large.json",
     "entity_catalogue": "models/entity.jsonl",
-    # "entity_encoding": "models/all_entities_large.t7",
+    "entity_encoding": "models/all_entities_large.t7",
     "crossencoder_model": "models/crossencoder_wiki_large.bin",
     "crossencoder_config": "models/crossencoder_wiki_large.json",
     "output_path": "output",
