@@ -347,37 +347,38 @@ def binary_acc(y_pred, y_test):
     correct_results_sum = (y_pred_tag == y_test).sum().float()
     acc = correct_results_sum/y_test.shape[0]
     acc = torch.round(acc * 100)
-    
+
     return acc
 
 def _nrl(datasets, title='nrl', features=['max_cross'], EPOCHS=100, BATCH_SIZE=64, LEARNING_RATE=0.0001):
+    print('nrl-{} ...'.format('+'.join(features)))
     for k in ['train', 'train_hard', 'train_aug', 'train_hard_aug']:
         print('train on', k)
         d = datasets[k]
         assert d[features].isna().sum().sum() == 0
         scaler = StandardScaler()
-        
+
         X_train = d[features].values
         y_train = d['y'].values
-        
+
         X_train, X_validation, y_train, y_validation = train_test_split(X_train, y_train, test_size=0.15, random_state=42)
-        
+
         X_train = scaler.fit_transform(X_train)
         X_validation = scaler.transform(X_validation)
-        
-        X_validation = torch.FloatTensor(X_validation)    
+
+        X_validation = torch.FloatTensor(X_validation)
         y_validation = torch.FloatTensor(y_validation.reshape(-1, 1))
-        
+
         model = binaryClassification(len(features))
         model.to(device)
-        
+
         criterion = nn.BCEWithLogitsLoss()
         optimizer = torch.optim.Adam(model.parameters(), lr=LEARNING_RATE)
-        
-        train_data = trainData(torch.FloatTensor(X_train), 
+
+        train_data = trainData(torch.FloatTensor(X_train),
                         torch.FloatTensor(y_train))
         train_loader = DataLoader(dataset=train_data, batch_size=BATCH_SIZE, shuffle=True)
-        
+
         model.train()
         for e in range(1, EPOCHS+1):
             epoch_loss = 0
@@ -389,11 +390,11 @@ def _nrl(datasets, title='nrl', features=['max_cross'], EPOCHS=100, BATCH_SIZE=6
                 y_pred = model(X_batch)
 
                 loss = criterion(y_pred, y_batch.unsqueeze(1))
-                
+
                 with torch.no_grad():
                     y_pred_validation = model(X_validation)
                     val_loss = float(F.binary_cross_entropy_with_logits(y_pred_validation, y_validation))
-                
+
                 acc = binary_acc(y_pred, y_batch.unsqueeze(1))
 
                 loss.backward()
@@ -413,15 +414,15 @@ def _nrl(datasets, title='nrl', features=['max_cross'], EPOCHS=100, BATCH_SIZE=6
         for tk in ['test', 'test_hard']:
             print('test on', tk)
             t = datasets[tk]
-            
+
             X_test = t[features].values
             X_test = scaler.transform(X_test)
-            
+
             y_test = t['y']
-            
+
             test_data = testData(torch.FloatTensor(X_test))
             test_loader = DataLoader(dataset=test_data, batch_size=1)
-            
+
             y_pred_list = []
             model.eval()
             with torch.no_grad():
@@ -499,9 +500,11 @@ def main(data_path, results, sort, fast, grep, reverse, save):
         _svc_bi(datasets),
         _svc_cross(datasets),
         _svc_max(datasets),
-        _svc_cross_max(datasets), 
+        _svc_cross_max(datasets),
         _nrl(datasets, features=['max_cross']),
         _nrl(datasets, features=['max_bi']),
+        _nrl(datasets, features=['min_bi']),
+        _nrl(datasets, features=['min_bi', 'max_cross']),
         _nrl(datasets, features=['max_bi',
                        'second_bi',
                        'min_bi',
