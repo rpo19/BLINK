@@ -418,9 +418,12 @@ def load_models(args, logger=None):
     if (hasattr(args, 'nil_prediction')
             and args.nil_prediction
             and hasattr(args, 'nil_prediction_scaler')
-            and hasattr(args, 'nil_prediction_model')):
+            and hasattr(args, 'nil_prediction_model')
+            and hasattr(args, 'nil_prediction_features')
+        ):
         nil_prediction_scaler = _load_pickle_model(args.nil_prediction_scaler)
-        nil_prediction_model = _load_torch_model(args.nil_prediction_model, 1)
+        nil_prediction_model = _load_torch_model(args.nil_prediction_model, len(args.nil_prediction_features))
+        nil_prediction_features = args.nil_prediction_features
 
     return (
         biencoder,
@@ -434,7 +437,8 @@ def load_models(args, logger=None):
         wikipedia_id2local_id,
         faiss_indexer,
         nil_prediction_scaler,
-        nil_prediction_model
+        nil_prediction_model,
+        nil_prediction_features
     )
 
 
@@ -783,10 +787,11 @@ def run(
 
 ```{python}
 def _scores_get_stats(scores):
+    global bi_higher_is_better
     scores = scores.tolist()
     _stats = {
         "max": max(scores),
-        "second": sorted(scores, reverse=True)[1],
+        "second": sorted(scores, reverse=bi_higher_is_better)[1],
         "min": min(scores),
         "mean": statistics.mean(scores),
         "median": statistics.median(scores),
@@ -807,13 +812,21 @@ def _load_torch_model(path, n):
 ```
 
 ```{python}
+bi_higher_is_better = False
+```
+
+```{python}
+# !ls ../models/nil_pred/indexer
+```
+
+```{python}
 # interactive
 args = Dict()
 
 args.nil_prediction = True
-args.nil_prediction_scaler = "../models/nil_pred/stdscaler+max_cross+train_hard_aug.pkl"
-args.nil_prediction_model = "../models/nil_pred/nrl+max_cross+train_hard_aug.torch"
-args.nil_prediction_features = ['max_cross']
+args.nil_prediction_scaler = "../models/nil_pred/indexer/stdscaler+max_bi+second_bi+min_bi+mean_bi+median_bi+stdev_bi+max_cross+second_cross+min_cross+mean_cross+median_cross+stdev_cross+train_hard_aug.pkl"
+args.nil_prediction_model = "../models/nil_pred/indexer/nrl+max_bi+second_bi+min_bi+mean_bi+median_bi+stdev_bi+max_cross+second_cross+min_cross+mean_cross+median_cross+stdev_cross+train_hard_aug.torch"
+args.nil_prediction_features = ['max_bi', 'second_bi', 'min_bi', 'mean_bi', 'median_bi' ,'stdev_bi', 'max_cross', 'second_cross', 'min_cross', 'mean_cross', 'median_cross', 'stdev_cross']
 args.interactive = True
 args.top_k = 10
 args.biencoder_config = "../models/biencoder_wiki_large.json"
