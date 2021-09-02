@@ -30,7 +30,7 @@ import numpy as np
 ```
 
 ```{python}
-output_path = os.path.join('..', 'output_20200805')
+output_path = os.path.join('..', 'output_scores_indexer+nil_20200826')
 ```
 
 ```{python}
@@ -137,8 +137,36 @@ def _cross_get_stats(x):
 ```
 
 ```{python}
-cross_stats = cross_df.apply(_cross_get_stats, axis=1, result_type='expand')
-cross_stats.head()
+_all = []
+for l in cross_df['unsorted_scores'].values:
+    _all.extend(l)
+```
+
+```{python}
+len(cross_df.iloc[0]['unsorted_scores'])
+```
+
+```{python}
+_sall = list(map(sigmoid, _all))
+```
+
+```{python}
+sdf = pd.DataFrame(_sall)
+```
+
+```{python}
+sdf.plot(kind='density')
+```
+
+```{python}
+import math
+
+def sigmoid(x):
+    return 1 / (1 + math.exp(-x))
+```
+
+```{python}
+cross_stats['correct'].dropna().apply(sigmoid).plot(kind='density')
 ```
 
 ```{python}

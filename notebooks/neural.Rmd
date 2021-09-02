@@ -214,6 +214,11 @@ scaler_p = 'modelsnrl_indexer/stdscaler+max_bi+second_bi+min_bi+mean_bi+median_b
 model_p = 'modelsnrl_indexer/nrl+max_bi+second_bi+min_bi+mean_bi+median_bi+stdev_bi+max_cross+second_cross+min_cross+mean_cross+median_cross+stdev_cross+train_hard_aug.torch'
 features = ['max_bi', 'second_bi', 'min_bi', 'mean_bi', 'median_bi', 'stdev_bi', 'max_cross', 'second_cross', 'min_cross', 'mean_cross', 'median_cross', 'stdev_cross']
 
+#scaler_p = 'modelsnrl_indexer/stdscaler+max_bi+second_bi+min_bi+mean_bi+median_bi+stdev_bi+train_hard_aug.pkl'
+#model_p = 'modelsnrl_indexer/nrl+max_bi+second_bi+min_bi+mean_bi+median_bi+stdev_bi+train_hard_aug.torch'
+#features = ['max_bi', 'second_bi', 'min_bi', 'mean_bi', 'median_bi', 'stdev_bi']
+
+
 with open(scaler_p, 'rb') as fd:
     scaler = pickle.load(fd)
     
@@ -363,10 +368,6 @@ reports_df.head()
 reports_df[reports_df['n_cert'] >= 0.69].sort_values(by='macro-avg-f1-score', ascending=False).head(10)
 ```
 
-```{python}
-print(reports_df[reports_df['n_cert'] >= 0.69].sort_values(by='macro-avg-f1-score', ascending=False).head(10).to_markdown())
-```
-
 # top 10 by macro-avg-f1-score
 ## at least 0.69 certain
 |     |   th_high |   th_low |   n_cert |   0-precision |   0-recall |   0-f1-score |   0-support |   1-precision |   1-recall |   1-f1-score |   1-support |   accuracy |   macro-avg-precision |   macro-avg-recall |   macro-avg-f1-score |   macro-avg-support |   weighted-avg-precision |   weighted-avg-recall |   weighted-avg-f1-score |   weighted-avg-support |
@@ -382,3 +383,49 @@ print(reports_df[reports_df['n_cert'] >= 0.69].sort_values(by='macro-avg-f1-scor
 |  72 |      0.6  |     0.3  | 0.765299 |      0.756847 |   0.63202  |     0.688824 |        3935 |      0.864292 |   0.920267 |     0.891402 |       10021 |   0.838994 |              0.81057  |           0.776144 |             0.790113 |               13956 |                 0.833997 |              0.838994 |                0.834284 |                  13956 |
 |  87 |      0.65 |     0.45 | 0.759213 |      0.691727 |   0.709154 |     0.700333 |        4009 |      0.880226 |   0.871187 |     0.875683 |        9836 |   0.824269 |              0.785977 |           0.790171 |             0.788008 |               13845 |                 0.825644 |              0.824269 |                0.824908 |                  13845 |
 
+
+```{python}
+print(reports_df[reports_df['n_cert'] >= 0.69].sort_values(by='macro-avg-f1-score', ascending=False).head(10).to_markdown())
+```
+
+```{python}
+list(enumerate(features))
+```
+
+```{python}
+import numpy as np
+
+y_pred_s = np.array(list(map(lambda x: sigmoid(x[6]), X_test)))
+```
+
+```{python}
+np.round(y_pred_s)
+```
+
+```{python}
+import math
+def sigmoid(x):
+    return 1 / (1 + math.exp(-x))
+```
+
+```{python}
+assert len(y_test) == len(y_pred_s)
+eval_df = pd.DataFrame({
+    'y':y_test,
+    'y_pred': y_pred_s.reshape(-1,),
+    'y_pred_rnd': np.round(y_pred_s).reshape(-1,).astype(int)
+})
+eval_df.head()
+```
+
+```{python}
+eval_plot(eval_df)
+```
+
+```{python}
+pd.DataFrame(list(map(sigmoid, range(-10, 10)))).plot()
+```
+
+```{python}
+
+```
