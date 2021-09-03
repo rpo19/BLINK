@@ -812,20 +812,14 @@ def _load_torch_model(path, n):
 ```
 
 ```{python}
-bi_higher_is_better = False
-```
-
-```{python}
-# !ls ../models/nil_pred/indexer
-```
-
-```{python}
 # interactive
 args = Dict()
 
 args.nil_prediction = True
-args.nil_prediction_scaler = "../models/nil_pred/indexer/stdscaler+max_bi+second_bi+min_bi+mean_bi+median_bi+stdev_bi+max_cross+second_cross+min_cross+mean_cross+median_cross+stdev_cross+train_hard_aug.pkl"
-args.nil_prediction_model = "../models/nil_pred/indexer/nrl+max_bi+second_bi+min_bi+mean_bi+median_bi+stdev_bi+max_cross+second_cross+min_cross+mean_cross+median_cross+stdev_cross+train_hard_aug.torch"
+#args.nil_prediction_scaler = "../models/nil_pred/indexer/stdscaler+max_bi+second_bi+min_bi+mean_bi+median_bi+stdev_bi+max_cross+second_cross+min_cross+mean_cross+median_cross+stdev_cross+train_hard_aug.pkl"
+#args.nil_prediction_model = "../models/nil_pred/indexer/nrl+max_bi+second_bi+min_bi+mean_bi+median_bi+stdev_bi+max_cross+second_cross+min_cross+mean_cross+median_cross+stdev_cross+train_hard_aug.torch"
+args.nil_prediction_scaler = "../models/nil_pred/stdscaler+max_bi+second_bi+min_bi+mean_bi+median_bi+stdev_bi+max_cross+second_cross+min_cross+mean_cross+median_cross+stdev_cross+train_hard_aug.pkl"
+args.nil_prediction_model = "../models/nil_pred/nrl+max_bi+second_bi+min_bi+mean_bi+median_bi+stdev_bi+max_cross+second_cross+min_cross+mean_cross+median_cross+stdev_cross+train_hard_aug.torch"
 args.nil_prediction_features = ['max_bi', 'second_bi', 'min_bi', 'mean_bi', 'median_bi' ,'stdev_bi', 'max_cross', 'second_cross', 'min_cross', 'mean_cross', 'median_cross', 'stdev_cross']
 args.interactive = True
 args.top_k = 10
@@ -835,8 +829,12 @@ args.crossencoder_config = "../models/crossencoder_wiki_large.json"
 args.crossencoder_model = "../models/crossencoder_wiki_large.bin"
 args.entity_catalogue = "../models/entity.jsonl"
 args.entity_encoding = "../models/all_entities_large.t7"
-args.faiss_index = "hnsw"
-args.index_path = "../models/faiss_hnsw_index.pkl"
+#bi_higher_is_better = False
+#args.faiss_index = "hnsw"
+#args.index_path = "../models/faiss_hnsw_index.pkl"
+bi_higher_is_better = True
+args.faiss_index = "flat"
+args.index_path = "../models/faiss_flat_index.pkl"
 
 logger = utils.get_logger(None)
 ```
@@ -907,10 +905,16 @@ _get_local_id = True
 ```
 
 ```{python}
+biencoder = models[0]
+biencoder_params = models[1]
+crossencoder = models[2]
+crossencoder_params = models[3]
+candidate_encoding = models[4]
 title2id = models[5]
 id2title = models[6]
 id2text = models[7]
 wikipedia_id2local_id = models[8]
+faiss_indexer = models[9]
 if (hasattr(args, 'save_encodings') and args.save_encodings) or _get_local_id:
     local_id2wikipedia_id = {}
     for k,v in wikipedia_id2local_id.items():
@@ -922,6 +926,255 @@ if (hasattr(args, 'save_encodings') and args.save_encodings) or _get_local_id:
 run(args, logger, *models, local_id2wikipedia_id=local_id2wikipedia_id)
 ```
 
+# bi context encoding tests
+
 ```{python}
-nil_features
+ner_model = NER.get_model()
+```
+
+```{python}
+text = """Riccardo Pozzi is studying computer science at Milano Bicocca."""
+```
+
+```{python}
+samples = _annotate(ner_model, [text])
+```
+
+```{python}
+samples
+```
+
+```{python}
+bi_dataloader = _process_biencoder_dataloader(
+            samples, biencoder.tokenizer, biencoder_params
+        )
+```
+
+```{python}
+_context_encoding = None
+biencoder.model.eval()
+for batch in bi_dataloader:
+    context_input, _, label_ids = batch
+    with torch.no_grad():
+        context_encoding = biencoder.encode_context(context_input).numpy()
+        context_encoding = np.ascontiguousarray(context_encoding)
+        _context_encoding = context_encoding if _context_encoding is None else np.concatenate([_context_encoding, context_encoding])
+```
+
+```{python}
+_context_encoding.shape
+```
+
+```{python}
+import time
+
+start_time = time.monotonic()
+
+retrieved = faiss_indexer.search_knn(_context_encoding, 10)
+
+print('seconds: ', time.monotonic() - start_time)
+retrieved
+```
+
+```{python}
+id2title[4679300]
+```
+
+```{python}
+id2text[4679300]
+```
+
+```{python}
+reco = faiss_indexer.index.reconstruct(4679300)
+reco.shape
+```
+
+```{python}
+_context_encoding[0].shape
+```
+
+```{python}
+(_context_encoding[0] ** 2).sum()
+```
+
+```{python}
+(np.array([1,2,3])**2).sum()
+```
+
+```{python}
+np.dot(reco[:1024], _context_encoding[0])
+```
+
+```{python}
+a = reco[:1024]
+b = _context_encoding[0]
+```
+
+```{python}
+np.linalg.norm(a-b)
+```
+
+```{python}
+np.sqrt(((a-b)**2).sum())
+```
+
+```{python}
+np.dot(reco, reco)
+```
+
+```{python}
+#original = b
+original.shape
+```
+
+```{python}
+np.dot(b, original)
+```
+
+```{python}
+np.dot(b, a)
+```
+
+# cross
+
+```{python}
+from blink.crossencoder.data_process import prepare_crossencoder_mentions
+```
+
+```{python}
+context_input_list = prepare_crossencoder_mentions(crossencoder.tokenizer, samples)
+```
+
+```{python}
+context_input = torch.LongTensor(context_input_list)
+context_input
+```
+
+```{python}
+candidate_input = torch.reshape(context_input, (context_input.shape[0], 1, -1))
+context_input = modify(
+    context_input, candidate_input, crossencoder_params["max_seq_length"]
+)
+```
+
+```{python}
+context_input.shape
+```
+
+```{python}
+context_input_list[0].shape
+```
+
+```{python}
+top_k = args.top_k
+labels, nns, scores, encodings = _run_biencoder(
+    biencoder, bi_dataloader, candidate_encoding, top_k, faiss_indexer, False
+)
+```
+
+```{python}
+samples
+```
+
+```{python}
+nns
+```
+
+```{python}
+id2text[3422691]
+```
+
+```{python}
+# prepare crossencoder data
+context_input, candidate_input, label_input = prepare_crossencoder_data(
+    crossencoder.tokenizer, samples, labels, nns, id2title, id2text, keep_all=True,
+)
+
+context_input = modify(
+    context_input, candidate_input, crossencoder_params["max_seq_length"]
+)
+```
+
+```{python}
+cross_dataloader = _process_crossencoder_dataloader(
+    context_input, label_input, crossencoder_params
+)
+
+crossencoder.model.eval()
+device = "cuda"
+crossencoder.to(device)
+for batch in cross_dataloader:
+    batch = tuple(t.to(device) for t in batch)
+    with torch.no_grad():
+        crossencoder(batch[0], batch[1], biencoder_params["max_context_length"])
+```
+
+```{python}
+crossencoder.model.eval()
+with torch.no_grad():
+    res = crossencoder(context_input.to("cuda"), label_input.to("cuda"), biencoder_params["max_context_length"])
+res
+```
+
+```{python}
+res[1][1].max()
+```
+
+```{python}
+cross_dataloader = _process_crossencoder_dataloader(
+    context_input, label_input, crossencoder_params
+)
+
+# run crossencoder and get accuracy
+accuracy, index_array, unsorted_scores = _run_crossencoder(
+    crossencoder,
+    cross_dataloader,
+    logger,
+    context_len=biencoder_params["max_context_length"],
+)
+```
+
+```{python}
+id2url = {
+    v: "https://en.wikipedia.org/wiki?curid=%s" % k
+    for k, v in wikipedia_id2local_id.items()
+}
+```
+
+```{python}
+print("\naccurate (crossencoder) predictions:")
+
+_print_colorful_text(text, samples)
+
+# print crossencoder prediction
+idx = 0
+for entity_list, index_list, sample, _scores in zip(nns, index_array, samples, unsorted_scores):
+    e_id = entity_list[index_list[-1]]
+    e_title = id2title[e_id]
+    e_text = id2text[e_id]
+    e_url = id2url[e_id]
+    _print_colorful_prediction(
+        idx, sample, e_id, e_title, e_text, e_url, args.show_url
+    )
+    print("cross_score:", _scores[index_list[-1]])
+    print("all scores:", _scores)
+    idx += 1
+print()
+```
+
+```{python}
+res
+```
+
+```{python}
+nns
+```
+
+```{python}
+for batch in cross_dataloader:
+    print(batch[0].shape, batch[1].shape)
+```
+
+```{python}
+label_input
 ```
