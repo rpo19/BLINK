@@ -1,0 +1,415 @@
+---
+jupyter:
+  jupytext:
+    text_representation:
+      extension: .Rmd
+      format_name: rmarkdown
+      format_version: '1.2'
+      jupytext_version: 1.11.4
+  kernelspec:
+    display_name: Python 3
+    language: python
+    name: python3
+---
+
+```{python}
+from sklearn.metrics import confusion_matrix, classification_report
+import pandas as pd
+import statistics
+import pickle
+import os
+```
+
+```{python}
+# ls ../output* -d
+
+```
+
+```{python}
+basepath = '../output_ip_20200905/'
+```
+
+```{python}
+datasets = [
+    #'AIDA-YAGO2_testa_scores',
+    'AIDA-YAGO2_testb_scores',
+    #'AIDA-YAGO2_train_scores',
+    #'ace2004_questions_scores',
+    #'aquaint_questions_scores',
+    #'clueweb_questions_scores',
+    #'msnbc_questions_scores',
+    #'wnedwiki_questions_scores'
+]
+```
+
+```{python}
+def _bi_get_stats(x, remove_correct = False):
+    assert len(x.scores) == len(x.nns)
+    scores = x.scores.copy()
+    correct = None
+    if x.labels in x.nns:
+        # found correct entity
+        i_correct = x.nns.index(x.labels)
+        correct = scores[i_correct]
+
+    _stats = {
+        "correct": correct,
+        "max": max(scores),
+        "second": sorted(scores, reverse=True)[1],
+        "min": min(scores),
+        "mean": statistics.mean(scores),
+        "median": statistics.median(scores),
+        "stdev": statistics.stdev(scores)
+    }
+    return _stats
+
+def _cross_get_stats(x, remove_correct=False):
+    assert len(x.unsorted_scores) == len(x.nns)
+    scores = x.unsorted_scores.copy()
+    correct = None
+    if x.labels in x.nns:
+        # found correct entity
+        i_correct = x.nns.index(x.labels)
+        correct = scores[i_correct]
+
+    _stats = {
+        "correct": correct,
+        "max": max(scores),
+        "second": sorted(scores, reverse=True)[1],
+        "min": min(scores),
+        "mean": statistics.mean(scores),
+        "median": statistics.median(scores),
+        "stdev": statistics.stdev(scores),
+    }
+    return _stats
+
+```
+
+```{python}
+def _load_scores(bi_scores, cross_scores, basepath='.'):
+    bi_scores = os.path.join(basepath, bi_scores)
+    cross_scores = os.path.join(basepath, cross_scores)
+
+    bi_df = pd.read_json(bi_scores)
+
+    assert (bi_df['labels'].apply(lambda x: len(x)) != 1).sum() == 0
+    bi_df['labels'] = bi_df['labels'].apply(lambda x: x[0])
+
+    bi_stats = bi_df.apply(_bi_get_stats, axis=1, result_type='expand')
+
+    cross_df = pd.read_json(cross_scores)
+
+    assert (cross_df['labels'].apply(lambda x: len(x)) != 1).sum() == 0
+    cross_df['labels'] = cross_df['labels'].apply(lambda x: x[0])
+
+    cross_stats = cross_df.apply(_cross_get_stats, axis=1, result_type='expand')
+
+    assert all(bi_df['labels'] == cross_df['labels'])
+
+    combined_stats = bi_stats.copy()
+    combined_stats.columns = [c+'_bi' for c in combined_stats.columns]
+    combined_stats[[c+'_cross' for c in cross_stats.columns]] = cross_stats
+
+    combined_stats['idx'] = combined_stats.index
+
+    return bi_stats, cross_stats, combined_stats, bi_df, cross_df
+```
+
+```{python}
+import numpy as np
+def _eval_line(x, scores_col='scores'):
+    assert len(x[scores_col]) == len(x.nns)
+    scores = x[scores_col].copy()
+    correct = -1
+    if x.labels in x.nns:
+        # found correct entity
+        i_correct = x.nns.index(x.labels)
+        # correct is position of the correct entity according to the estimated score
+        # correct = 0 means the best scored entity is the correct one
+        # correct = -1 means the correct entity is not in the top k
+        correct = np.argsort(x[scores_col])[::-1].tolist().index(i_correct)
+
+    return correct
+```
+
+```{python}
+def _best_candidate(scores, nns, nil_score=None, nil_threshold=0.5):
+    if nil_score is not None and nil_score < nil_threshold:
+        # identified as NIL
+        return -1
+    else:
+        return nns[np.argmax(scores)]        
+```
+
+```{python}
+nil_model_bi_path = 'modelsnrl_ip/svc_bi+train_hard_aug.pkl'
+features_bi = [
+    'max', 'second', 'min', 'mean', 'median', 'stdev'
+]
+nil_model_path = 'modelsnrl_ip/svc_all+train_hard_aug.pkl'
+features = [
+    'max_bi', 'second_bi', 'min_bi', 'mean_bi', 'median_bi',
+    'stdev_bi', 'max_cross', 'second_cross', 'min_cross',
+    'mean_cross', 'median_cross', 'stdev_cross'
+]
+
+with open(nil_model_bi_path, 'rb') as fd:
+    nilclf_bi = pickle.load(fd)
+
+with open(nil_model_path, 'rb') as fd:
+    nilclf = pickle.load(fd)
+```
+
+```{python}
+report = pd.DataFrame(columns = [
+    'bi_acc',
+    'bi_acc_nil',
+    'bi_recall10',
+    'bi_recall30',
+    'bi_recall100',
+    'cross_norm_acc',
+    'overall_unn_acc',
+    'cross_norm_acc_nil',
+    'overall_unn_acc_nil',
+    'nil_p_bi',
+    'nil_r_bi',
+    'nil_f1_bi',
+    'nil_acc_bi',
+    'nil_p_cross',
+    'nil_r_cross',
+    'nil_f1_cross',
+    'nil_acc_cross'
+])
+for d in datasets:
+    bi_path = f'{d}_bi.jsonl'
+    cross_path = f'{d}_cross.jsonl'
+    bi_stats, _, combined_stats, bi_df, cross_df = _load_scores(bi_path, cross_path, basepath)
+    assert bi_df.shape[0] == cross_df.shape[0]
+
+    bi_df['recall@'] = bi_df.apply(lambda x: _eval_line(x, 'scores'), axis=1)
+    bi_df['best_candidate'] = bi_df.apply(lambda x: _best_candidate(x['scores'], x.nns), axis=1)
+    
+    bi_df['nil_b'] = nilclf_bi.predict(bi_stats[features_bi].values)
+    bi_df['best_candidate+nil'] = bi_df.apply(
+        lambda x: _best_candidate(x['scores'], x.nns, x['nil_b']), axis=1)
+
+    biencoder_accuracy = bi_df.query('`recall@` == 0').shape[0] / bi_df.shape[0]
+    biencoder_accuracy_nil = bi_df.query('labels == `best_candidate+nil`').shape[0] / bi_df.shape[0]
+
+    biencoder_recall10 = bi_df.query('`recall@` >= 0 and `recall@` < 10').shape[0] / bi_df.shape[0]
+    biencoder_recall30 = bi_df.query('`recall@` >= 0 and `recall@` < 30').shape[0] / bi_df.shape[0]
+    biencoder_recall100 = bi_df.query('`recall@` >= 0 and `recall@` < 100').shape[0] / bi_df.shape[0]
+    
+    nil_tp_bi = bi_df.query('labels != -1 and nil_b >= 0.5').shape[0]
+    nil_tn_bi = bi_df.query('labels == -1 and nil_b < 0.5').shape[0]
+    nil_fp_bi = bi_df.query('labels == -1 and nil_b >= 0.5').shape[0]
+    nil_fn_bi = bi_df.query('labels != -1 and nil_b < 0.5').shape[0]
+    
+    nil_p_bi = nil_tn_bi / (nil_tn_bi + nil_fn_bi)
+    nil_r_bi = nil_tn_bi / (nil_tn_bi + nil_fp_bi)
+    nil_f1_bi = 2*nil_p_bi*nil_r_bi/(nil_p_bi+nil_r_bi)
+    nil_acc_bi = (nil_tp_bi+nil_tn_bi)/(nil_tp_bi+nil_tn_bi+nil_fp_bi+nil_fn_bi)
+
+    cross_df['recall@'] = cross_df.apply(lambda x: _eval_line(x, 'unsorted_scores'), axis=1)
+    cross_df['best_candidate'] = cross_df.apply(lambda x: _best_candidate(x['unsorted_scores'], x.nns), axis=1)
+    
+    cross_df['nil_b'] = nilclf.predict(combined_stats[features].values)
+    cross_df['best_candidate+nil'] = cross_df.apply(
+        lambda x: _best_candidate(x['unsorted_scores'], x.nns, x['nil_b']), axis=1)
+    
+    overall_unnormalized_accuracy = cross_df.query('`recall@` == 0').shape[0] / cross_df.shape[0]
+    overall_unnormalized_accuracy_nil = cross_df.query('labels == `best_candidate+nil`').shape[0] / cross_df.shape[0]
+    
+    cross_df_fnd = cross_df[cross_df.apply(lambda x: x.labels in x.nns, axis=1)]
+    
+    crossencoder_normalized_accuracy = cross_df_fnd.query('`recall@` == 0').shape[0] / cross_df_fnd.shape[0]
+    crossencoder_normalized_accuracy_nil = cross_df_fnd.query('labels == `best_candidate+nil`').shape[0] / cross_df_fnd.shape[0]
+
+    nil_y = (cross_df['labels'] != -1).astype(int)
+    nil_y_pred = cross_df
+    
+    nil_tp_cr = cross_df.query('labels != -1 and nil_b >= 0.5').shape[0]
+    nil_tn_cr = cross_df.query('labels == -1 and nil_b < 0.5').shape[0]
+    nil_fp_cr = cross_df.query('labels == -1 and nil_b >= 0.5').shape[0]
+    nil_fn_cr = cross_df.query('labels != -1 and nil_b < 0.5').shape[0]
+    
+    # precision of class 0 == nil
+    
+    nil_p_cross = nil_tn_cr / (nil_tn_cr + nil_fn_cr)
+    nil_r_cross = nil_tn_cr / (nil_tn_cr + nil_fp_cr)
+    nil_f1_cross = 2*nil_p_cross*nil_r_cross/(nil_p_cross+nil_r_cross)
+    nil_acc_cross = (nil_tp_cr+nil_tn_cr)/(nil_tp_cr+nil_tn_cr+nil_fp_cr+nil_fn_cr)
+
+    bi_not_nil = bi_df.query('labels != -1')
+    cross_not_nil = cross_df.query('labels != -1')
+    assert bi_not_nil.shape[0] == cross_not_nil.shape[0]
+    
+    biencoder_accuracy_nn = bi_not_nil.query('`recall@` == 0').shape[0] / bi_not_nil.shape[0]
+    biencoder_accuracy_nn_nil = bi_not_nil.query('labels == `best_candidate+nil`').shape[0] / bi_not_nil.shape[0]
+
+    biencoder_recall10_nn = bi_not_nil.query('`recall@` >= 0 and `recall@` < 10').shape[0] / bi_not_nil.shape[0]
+    biencoder_recall30_nn = bi_not_nil.query('`recall@` >= 0 and `recall@` < 30').shape[0] / bi_not_nil.shape[0]
+    biencoder_recall100_nn = bi_not_nil.query('`recall@` >= 0 and `recall@` < 100').shape[0] / bi_not_nil.shape[0]
+    
+    overall_unnormalized_accuracy_nn = cross_not_nil.query('`recall@` == 0').shape[0] / cross_not_nil.shape[0]
+    overall_unnormalized_accuracy_nn_nil = cross_not_nil.query('labels == `best_candidate+nil`').shape[0] / cross_not_nil.shape[0]
+    
+    cross_not_nil_fnd = cross_not_nil[cross_not_nil.apply(lambda x: x.labels in x.nns, axis=1)]
+    
+    crossencoder_normalized_accuracy_nn = cross_not_nil_fnd.query('`recall@` == 0').shape[0] / cross_not_nil_fnd.shape[0]
+    crossencoder_normalized_accuracy_nn_nil = cross_not_nil_fnd.query('labels == `best_candidate+nil`').shape[0] / cross_not_nil_fnd.shape[0]
+
+
+    report.loc[f'{d}-nil'] = {
+            'bi_acc': biencoder_accuracy_nn,
+            'bi_acc_nil': biencoder_accuracy_nn_nil,
+            'bi_recall10': biencoder_recall10_nn,
+            'bi_recall30': biencoder_recall30_nn,
+            'bi_recall100': biencoder_recall100_nn,
+            'cross_norm_acc': crossencoder_normalized_accuracy_nn,
+            'overall_unn_acc': overall_unnormalized_accuracy_nn,
+            'cross_norm_acc_nil': crossencoder_normalized_accuracy_nn_nil,
+            'overall_unn_acc_nil': overall_unnormalized_accuracy_nn_nil,
+            'nil_p_bi': -1,
+            'nil_r_bi': -1,
+            'nil_f1_bi': -1,
+            'nil_acc_bi': -1,
+            'nil_p_cross': -1,
+            'nil_r_cross': -1,
+            'nil_f1_cross': -1,
+            'nil_acc_cross': -1
+        }
+    
+    report.loc[f'{d}+nil'] = {
+            'bi_acc': biencoder_accuracy,
+            'bi_acc_nil': biencoder_accuracy_nil,
+            'bi_recall10': biencoder_recall10,
+            'bi_recall30': biencoder_recall30,
+            'bi_recall100': biencoder_recall100,
+            'cross_norm_acc': crossencoder_normalized_accuracy,
+            'overall_unn_acc': overall_unnormalized_accuracy,
+            'cross_norm_acc_nil': crossencoder_normalized_accuracy_nil,
+            'overall_unn_acc_nil': overall_unnormalized_accuracy_nil,
+            'nil_p_bi': nil_p_bi,
+            'nil_r_bi': nil_r_bi,
+            'nil_f1_bi': nil_f1_bi,
+            'nil_acc_bi': nil_acc_bi,
+            'nil_p_cross': nil_p_cross,
+            'nil_r_cross': nil_r_cross,
+            'nil_f1_cross': nil_f1_cross,
+            'nil_acc_cross': nil_acc_cross
+        }
+report
+```
+
+```{python}
+y = (cross_df['labels'] != -1).astype(int).values
+y
+```
+
+```{python}
+y_pred= cross_df['nil_b'].values
+y_pred
+```
+
+```{python}
+from sklearn.metrics import classification_report
+```
+
+```{python}
+print(classification_report(y, y_pred))
+```
+
+```{python}
+report.to_csv
+```
+
+```{python}
+cross_df.query('labels == -1').shape
+```
+
+```{python}
+nil_tp_cr = cross_df.query('labels != -1 and nil_b >= 0.5').shape[0]
+nil_tn_cr = cross_df.query('labels == -1 and nil_b < 0.5').shape[0]
+nil_fp_cr = cross_df.query('labels == -1 and nil_b >= 0.5').shape[0]
+nil_fn_cr = cross_df.query('labels != -1 and nil_b < 0.5').shape[0]
+
+nil_p_cross = nil_tp_cr / (nil_tp_cr + nil_fp_cr)
+nil_r_cross = nil_tp_cr / (nil_tp_cr + nil_fn_cr)
+nil_f1_cross = 2*nil_p_cross*nil_r_cross/(nil_p_cross+nil_r_cross)
+nil_acc_cross = (nil_tp_cr+nil_tn_cr)/(nil_tp_cr+nil_tn_cr+nil_fp_cr+nil_fn_cr)
+```
+
+```{python}
+nil_tn_cr / (nil_tn_cr + nil_fn_cr)
+```
+
+```{python}
+cross_df['nil_b'] = cross_df['nil_score'].round().astype(int)
+```
+
+```{python}
+scores_col = 'unsorted_scores'
+#cross_df['best_candidate_05'] = cross_df.apply(lambda x: _best_candidate(x[scores_col], x.nns, x.nil_score, 0.5), axis=1)
+cross_df['best_candidate_03'] = cross_df.apply(lambda x: _best_candidate(x[scores_col], x.nns, x.nil_score, 0.3), axis=1)
+#cross_df['best_candidate_-1'] = cross_df.apply(lambda x: _best_candidate(x[scores_col], x.nns, x.nil_score, -1), axis=1)
+```
+
+```{python}
+print("\t", "Acc", "NIL")
+print('NIL@0.5', (cross_df['labels'] == cross_df['best_candidate_05']).sum() / cross_df.shape[0],
+      cross_df.query('labels == -1 and best_candidate_05 == -1').count()[0] / cross_df.query('labels == -1').count()[0])
+print('NIL@0.3', (cross_df['labels'] == cross_df['best_candidate_03']).sum() / cross_df.shape[0],
+     cross_df.query('labels == -1 and best_candidate_03 == -1').count()[0] / cross_df.query('labels == -1').count()[0])
+print('NIL@-1', (cross_df['labels'] == cross_df['best_candidate_-1']).sum() / cross_df.shape[0],
+     cross_df.query('labels == -1 and "best_candidate_-1" == -1').count()[0] / cross_df.query('labels == -1').count()[0])
+```
+
+```{python}
+(cross_df['labels'] == cross_df['best_candidate_05']).sum() / cross_df.shape[0]
+```
+
+```{python}
+cross_df.query('labels == -1 and best_candidate_05 == -1').count()[0] / cross_df.query('labels == -1').count()[0]
+```
+
+```{python}
+cross_df.query('nil_score > 0.8 and labels == best_candidate_05').count()[0] / \
+    cross_df.query('nil_score > 0.8').count()[0]
+```
+
+```{python}
+cross_df.query('nil_score < 0.2 and labels == best_candidate_05').count()[0] / \
+    cross_df.query('nil_score < 0.2').count()[0]
+```
+
+```{python}
+th = 0.2
+cross_df.query(f'nil_score < {th}')['labels'].value_counts() / cross_df.query(f'nil_score < {th}').count()[0]
+```
+
+```{python}
+cross_df[['labels', 'best_candidate_05']]
+```
+
+```{python}
+# roc curve
+fpr, tpr, thresholds = sklearn.metrics.roc_curve(cross_df.labels, cross_df.best_candidate_05)
+pd.DataFrame({
+    'tpr': tpr,
+    'fpr': fpr,
+    'thresholds': thresholds
+}).plot(x='fpr', y='tpr', title='roc curve')
+plt.show()
+```
+
+```{python}
+import sklearn
+```
+
+```{python}
+df = cross_df.query('nil_score <= 0.2 or nil_score >= 0.8')
+target = df['labels']
+pred = df['best_candidate_05']
+sklearn.metrics.accuracy_score(target, pred)
+```
