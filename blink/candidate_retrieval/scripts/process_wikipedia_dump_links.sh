@@ -37,14 +37,14 @@ if [[ ! -f $full_wikipedia_data_file_path ]]; then
       git clone https://github.com/attardi/wikiextractor.git $LIBS_PATH/wikiextractor
   fi
 
-  $LIBS_PATH/wikiextractor/WikiExtractor.py --processes 40 -o ${output_folder_extractor} -q -s -l $xml_file_path
+  $LIBS_PATH/wikiextractor/wikiextractor/WikiExtractor.py --processes 40 -o ${output_folder_extractor} -q -s -l $xml_file_path
 
 
   # Merge the output of the processing (wikiextractor outputs many files) into one file
 
   c=0
-  for small_file in $(find $output_folder_extractor -type f); 
-  do	
+  for small_file in $(find $output_folder_extractor -type f);
+  do
     cat ${small_file} >> $full_wikipedia_data_file_path
     c=$((c + 1))
     echo "Processed $c files"
