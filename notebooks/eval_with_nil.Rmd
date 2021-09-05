@@ -200,15 +200,10 @@ for d in datasets:
     biencoder_recall30 = bi_df.query('`recall@` >= 0 and `recall@` < 30').shape[0] / bi_df.shape[0]
     biencoder_recall100 = bi_df.query('`recall@` >= 0 and `recall@` < 100').shape[0] / bi_df.shape[0]
     
-    nil_tp_bi = bi_df.query('labels != -1 and nil_b >= 0.5').shape[0]
-    nil_tn_bi = bi_df.query('labels == -1 and nil_b < 0.5').shape[0]
-    nil_fp_bi = bi_df.query('labels == -1 and nil_b >= 0.5').shape[0]
-    nil_fn_bi = bi_df.query('labels != -1 and nil_b < 0.5').shape[0]
+    nil_y_bi = (bi_df['labels'] != -1).astype(int).values
+    nil_y_bi_pred = bi_df['nil_b'].values
     
-    nil_p_bi = nil_tn_bi / (nil_tn_bi + nil_fn_bi)
-    nil_r_bi = nil_tn_bi / (nil_tn_bi + nil_fp_bi)
-    nil_f1_bi = 2*nil_p_bi*nil_r_bi/(nil_p_bi+nil_r_bi)
-    nil_acc_bi = (nil_tp_bi+nil_tn_bi)/(nil_tp_bi+nil_tn_bi+nil_fp_bi+nil_fn_bi)
+    nil_report_bi = classification_report(nil_y_bi, nil_y_bi_pred, output_dict=True)
 
     cross_df['recall@'] = cross_df.apply(lambda x: _eval_line(x, 'unsorted_scores'), axis=1)
     cross_df['best_candidate'] = cross_df.apply(lambda x: _best_candidate(x['unsorted_scores'], x.nns), axis=1)
@@ -225,20 +220,10 @@ for d in datasets:
     crossencoder_normalized_accuracy = cross_df_fnd.query('`recall@` == 0').shape[0] / cross_df_fnd.shape[0]
     crossencoder_normalized_accuracy_nil = cross_df_fnd.query('labels == `best_candidate+nil`').shape[0] / cross_df_fnd.shape[0]
 
-    nil_y = (cross_df['labels'] != -1).astype(int)
-    nil_y_pred = cross_df
+    nil_y_cross = (cross_df['labels'] != -1).astype(int).values
+    nil_y_cross_pred = cross_df['nil_b'].values
     
-    nil_tp_cr = cross_df.query('labels != -1 and nil_b >= 0.5').shape[0]
-    nil_tn_cr = cross_df.query('labels == -1 and nil_b < 0.5').shape[0]
-    nil_fp_cr = cross_df.query('labels == -1 and nil_b >= 0.5').shape[0]
-    nil_fn_cr = cross_df.query('labels != -1 and nil_b < 0.5').shape[0]
-    
-    # precision of class 0 == nil
-    
-    nil_p_cross = nil_tn_cr / (nil_tn_cr + nil_fn_cr)
-    nil_r_cross = nil_tn_cr / (nil_tn_cr + nil_fp_cr)
-    nil_f1_cross = 2*nil_p_cross*nil_r_cross/(nil_p_cross+nil_r_cross)
-    nil_acc_cross = (nil_tp_cr+nil_tn_cr)/(nil_tp_cr+nil_tn_cr+nil_fp_cr+nil_fn_cr)
+    nil_report_cross = classification_report(nil_y_cross, nil_y_cross_pred, output_dict=True)
 
     bi_not_nil = bi_df.query('labels != -1')
     cross_not_nil = cross_df.query('labels != -1')
@@ -290,14 +275,14 @@ for d in datasets:
             'overall_unn_acc': overall_unnormalized_accuracy,
             'cross_norm_acc_nil': crossencoder_normalized_accuracy_nil,
             'overall_unn_acc_nil': overall_unnormalized_accuracy_nil,
-            'nil_p_bi': nil_p_bi,
-            'nil_r_bi': nil_r_bi,
-            'nil_f1_bi': nil_f1_bi,
-            'nil_acc_bi': nil_acc_bi,
-            'nil_p_cross': nil_p_cross,
-            'nil_r_cross': nil_r_cross,
-            'nil_f1_cross': nil_f1_cross,
-            'nil_acc_cross': nil_acc_cross
+            'nil_p_bi': nil_report_bi['0']['precision'],
+            'nil_r_bi': nil_report_bi['0']['recall'],
+            'nil_f1_bi': nil_report_bi['0']['f1-score'],
+            'nil_acc_bi': nil_report_bi['accuracy'],
+            'nil_p_cross': nil_report_cross['0']['precision'],
+            'nil_r_cross': nil_report_cross['0']['recall'],
+            'nil_f1_cross': nil_report_cross['0']['f1-score'],
+            'nil_acc_cross': nil_report_cross['accuracy']
         }
 report
 ```
@@ -317,7 +302,16 @@ from sklearn.metrics import classification_report
 ```
 
 ```{python}
+(cross_df['labels'] == -1)
+```
+
+```{python}
 print(classification_report(y, y_pred))
+```
+
+```{python}
+d = classification_report(y, y_pred, output_dict=True)
+d
 ```
 
 ```{python}
