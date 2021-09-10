@@ -31,14 +31,14 @@ basepath = '../output_ip_20200905/'
 
 ```{python}
 datasets = [
-    #'AIDA-YAGO2_testa_scores',
+    'AIDA-YAGO2_testa_scores',
     'AIDA-YAGO2_testb_scores',
-    #'AIDA-YAGO2_train_scores',
-    #'ace2004_questions_scores',
-    #'aquaint_questions_scores',
-    #'clueweb_questions_scores',
-    #'msnbc_questions_scores',
-    #'wnedwiki_questions_scores'
+    'AIDA-YAGO2_train_scores',
+    'ace2004_questions_scores',
+    'aquaint_questions_scores',
+    'clueweb_questions_scores',
+    'msnbc_questions_scores',
+    'wnedwiki_questions_scores'
 ]
 ```
 
@@ -285,6 +285,31 @@ for d in datasets:
             'nil_acc_cross': nil_report_cross['accuracy']
         }
 report
+```
+
+```{python}
+report.columns
+```
+
+```{python}
+# - nil
+report.loc[[i for i in report.index if i.endswith("-nil")]][['bi_acc', 'bi_acc_nil', 'bi_recall10', 'bi_recall30', 'bi_recall100',
+       'cross_norm_acc', 'overall_unn_acc', 'cross_norm_acc_nil',
+       'overall_unn_acc_nil']]
+```
+
+```{python}
+# + nil
+report.loc[[i for i in report.index if i.endswith("+nil")]][['bi_acc', 'bi_acc_nil', 'bi_recall10', 'bi_recall30', 'bi_recall100',
+       'cross_norm_acc', 'overall_unn_acc', 'cross_norm_acc_nil',
+       'overall_unn_acc_nil']]
+```
+
+```{python}
+# nil perf
+report.loc[[i for i in report.index if i.endswith("+nil")]][['nil_p_bi', 'nil_r_bi', 'nil_f1_bi',
+       'nil_acc_bi', 'nil_p_cross', 'nil_r_cross', 'nil_f1_cross',
+       'nil_acc_cross']]
 ```
 
 ```{python}
