@@ -812,6 +812,34 @@ def _load_torch_model(path, n):
 ```
 
 ```{python}
+nil_model_bi_path = 'modelsnrl_ip/svc_bi+train_hard_aug.pkl'
+features_bi = [
+    'max', 'second', 'min', 'mean', 'median', 'stdev'
+]
+nil_model_path = 'modelsnrl_ip/svc_all+train_hard_aug.pkl'
+features = [
+    'max_bi', 'second_bi', 'min_bi', 'mean_bi', 'median_bi',
+    'stdev_bi', 'max_cross', 'second_cross', 'min_cross',
+    'mean_cross', 'median_cross', 'stdev_cross'
+]
+
+with open(nil_model_bi_path, 'rb') as fd:
+    nilclf_bi = pickle.load(fd)
+
+with open(nil_model_path, 'rb') as fd:
+    nilclf = pickle.load(fd)
+```
+
+```{python}
+# ls ../model/nil_pred/models_ip/svc_bi+train_hard_aug.pkl
+
+```
+
+```{python}
+# ls ../models/nil_pred/stdscaler+max_bi+second_bi+min_bi+mean_bi+median_bi+stdev_bi+max_cross+second_cross+min_cross+mean_cross+median_cross+stdev_cross+train_hard_aug.pkl
+```
+
+```{python}
 # interactive
 args = Dict()
 
@@ -933,7 +961,7 @@ ner_model = NER.get_model()
 ```
 
 ```{python}
-text = """Riccardo Pozzi is studying computer science at Milano Bicocca."""
+text = """Henry, king of England from 22 April 1509, married for the fifth time with Catherine Howard in 1540."""
 ```
 
 ```{python}
@@ -977,7 +1005,7 @@ retrieved
 ```
 
 ```{python}
-id2title[4679300]
+[id2title[i] for i in retrieved[1][0]]
 ```
 
 ```{python}
@@ -1177,4 +1205,31 @@ for batch in cross_dataloader:
 
 ```{python}
 label_input
+```
+
+## save entity ids structures
+
+```{python}
+with open('entity_ids/title2id.pickle', 'wb') as fd:
+    pickle.dump(title2id, fd)
+```
+
+```{python}
+with open('entity_ids/id2title.pickle', 'wb') as fd:
+    pickle.dump(id2title, fd)
+```
+
+```{python}
+with open('entity_ids/id2text.pickle', 'wb') as fd:
+    pickle.dump(id2text, fd)
+```
+
+```{python}
+with open('entity_ids/wikipedia_id2local_id.pickle', 'wb') as fd:
+    pickle.dump(wikipedia_id2local_id, fd)
+```
+
+```{python}
+with open('entity_ids/local_id2wikipedia_id.pickle', 'wb') as fd:
+    pickle.dump(local_id2wikipedia_id, fd)
 ```
