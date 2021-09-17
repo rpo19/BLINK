@@ -14,6 +14,10 @@ import os
 
 DATASETS = [
     {
+        "name": "AIDA-YAGO2_train",
+        "filename": "data/BLINK_benchmark/AIDA-YAGO2_train.jsonl",
+    },
+    {
         "name": "AIDA-YAGO2 testa",
         "filename": "data/BLINK_benchmark/AIDA-YAGO2_testa.jsonl",
     },
