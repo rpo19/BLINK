@@ -190,6 +190,7 @@ for d in datasets:
     bi_df['best_candidate'] = bi_df.apply(lambda x: _best_candidate(x['scores'], x.nns), axis=1)
     
     bi_df['nil_b'] = nilclf_bi.predict(bi_stats[features_bi].values)
+    bi_df['nil_p'] = [i_1 for i_0, i_1 in nilclf_bi.predict_proba(bi_stats[features_bi].values)]
     bi_df['best_candidate+nil'] = bi_df.apply(
         lambda x: _best_candidate(x['scores'], x.nns, x['nil_b']), axis=1)
 
@@ -209,6 +210,8 @@ for d in datasets:
     cross_df['best_candidate'] = cross_df.apply(lambda x: _best_candidate(x['unsorted_scores'], x.nns), axis=1)
     
     cross_df['nil_b'] = nilclf.predict(combined_stats[features].values)
+    cross_df['nil_p'] = [i_1 for i_0, i_1 in nilclf.predict_proba(combined_stats[features].values)]
+
     cross_df['best_candidate+nil'] = cross_df.apply(
         lambda x: _best_candidate(x['unsorted_scores'], x.nns, x['nil_b']), axis=1)
     
@@ -340,7 +343,7 @@ d
 ```
 
 ```{python}
-report.to_csv
+report.to_csv('report_20200916.csv')
 ```
 
 ```{python}
@@ -431,4 +434,553 @@ df = cross_df.query('nil_score <= 0.2 or nil_score >= 0.8')
 target = df['labels']
 pred = df['best_candidate_05']
 sklearn.metrics.accuracy_score(target, pred)
+```
+
+```{python}
+pd.read_csv('report.csv', index_col=0)
+```
+
+```{python}
+datasets
+```
+
+```{python}
+d = 'AIDA-YAGO2_testa_scores'
+
+bi_path = f'{d}_bi.jsonl'
+cross_path = f'{d}_cross.jsonl'
+bi_stats, _, combined_stats, bi_df, cross_df = _load_scores(bi_path, cross_path, basepath)
+```
+
+```{python}
+assert bi_df.shape[0] == cross_df.shape[0]
+
+bi_df['recall@'] = bi_df.apply(lambda x: _eval_line(x, 'scores'), axis=1)
+bi_df['best_candidate'] = bi_df.apply(lambda x: _best_candidate(x['scores'], x.nns), axis=1)
+
+bi_df['nil_b'] = nilclf_bi.predict(bi_stats[features_bi].values)
+bi_df['nil_p'] = [i_1 for i_0, i_1 in nilclf_bi.predict_proba(bi_stats[features_bi].values)]
+bi_df['best_candidate+nil'] = bi_df.apply(
+    lambda x: _best_candidate(x['scores'], x.nns, x['nil_b']), axis=1)
+
+cross_df['recall@'] = cross_df.apply(lambda x: _eval_line(x, 'unsorted_scores'), axis=1)
+cross_df['best_candidate'] = cross_df.apply(lambda x: _best_candidate(x['unsorted_scores'], x.nns), axis=1)
+
+cross_df['nil_b'] = nilclf.predict(combined_stats[features].values)
+cross_df['nil_p'] = [i_1 for i_0, i_1 in nilclf.predict_proba(combined_stats[features].values)]
+cross_df['best_candidate+nil'] = cross_df.apply(
+    lambda x: _best_candidate(x['unsorted_scores'], x.nns, x['nil_b']), axis=1)
+```
+
+```{python}
+['../data/BLINK_benchmark_with_NIL/{}.jsonl'.format(d) for d in datasets]
+```
+
+```{python}
+base_path = '../data/BLINK_benchmark_with_NIL'
+save_path = './dataset_and_preds/'
+if not os.path.isdir(save_path):
+    os.mkdir(save_path)
+for d in datasets:
+    bi_path = f'{d}_bi.jsonl'
+    cross_path = f'{d}_cross.jsonl'
+    bi_stats, _, combined_stats, bi_df, cross_df = _load_scores(bi_path, cross_path, basepath)
+
+    assert bi_df.shape[0] == cross_df.shape[0]
+
+    bi_df['recall@'] = bi_df.apply(lambda x: _eval_line(x, 'scores'), axis=1)
+    bi_df['best_candidate'] = bi_df.apply(lambda x: _best_candidate(x['scores'], x.nns), axis=1)
+
+    bi_df['nil_b'] = nilclf_bi.predict(bi_stats[features_bi].values)
+    bi_df['nil_p'] = [i_1 for i_0, i_1 in nilclf_bi.predict_proba(bi_stats[features_bi].values)]
+    bi_df['best_candidate+nil'] = bi_df.apply(
+        lambda x: _best_candidate(x['scores'], x.nns, x['nil_b']), axis=1)
+
+    cross_df['recall@'] = cross_df.apply(lambda x: _eval_line(x, 'unsorted_scores'), axis=1)
+    cross_df['best_candidate'] = cross_df.apply(lambda x: _best_candidate(x['unsorted_scores'], x.nns), axis=1)
+
+    cross_df['nil_b'] = nilclf.predict(combined_stats[features].values)
+    cross_df['nil_p'] = [i_1 for i_0, i_1 in nilclf.predict_proba(combined_stats[features].values)]
+    cross_df['best_candidate+nil'] = cross_df.apply(
+        lambda x: _best_candidate(x['unsorted_scores'], x.nns, x['nil_b']), axis=1)
+    
+    d_source = pd.read_json('{}.jsonl'.format(os.path.join(base_path, d.replace('_scores',''))), lines=True)
+    d_source[['bi_'+c for c in bi_df.columns]] = bi_df
+    d_source[['cross_'+c for c in cross_df.columns]] = cross_df
+    
+    dest = os.path.join(save_path, d.replace('_scores', ''), '.csv')
+    d_source.to_csv(dest)
+```
+
+```{python}
+base_path = '../data/BLINK_benchmark_with_NIL'
+print('{}.jsonl'.format(os.path.join(base_path, d.replace('_scores',''))))
+os.path.isfile('{}.jsonl'.format(os.path.join(base_path, d.replace('_scores',''))))
+```
+
+```{python}
+d_source = pd.read_json('../data/BLINK_benchmark_with_NIL/AIDA-YAGO2_testa.jsonl', lines=True)
+d_source
+```
+
+```{python}
+['bi_'+c for c in bi_df.columns]
+```
+
+```{python}
+d_source[['bi_'+c for c in bi_df.columns]] = bi_df
+```
+
+```{python}
+d_source[['cross_'+c for c in cross_df.columns]] = cross_df
+```
+
+```{python}
+d_source.columns
+```
+
+```{python}
+d_source.query('cross_best_candidate != cross_labels').count()[0] / d_source.shape[0]
+```
+
+```{python}
+d_source.query('cross_best_candidate != cross_labels and cross_labels != -1').count()[0]  / d_source.shape[0]
+```
+
+```{python}
+d_source.query('`cross_best_candidate+nil` != cross_labels').count()[0] / d_source.shape[0]
+```
+
+```{python}
+import pickle
+with open('entity_ids/wikipedia_id2local_id.pickle', 'rb') as fd:
+    #wikipedia_id2local_id = pickle.load(fd)
+    pass
+with open('entity_ids/title2id.pickle', 'rb') as fd:
+    #title2id = pickle.load(fd)
+    pass
+with open('entity_ids/local_id2wikipedia_id.pickle', 'rb') as fd:
+    #local_id2wikipedia_id = pickle.load(fd)
+    pass
+with open('entity_ids/id2text.pickle', 'rb') as fd:
+    id2text = pickle.load(fd)
+    pass
+with open('entity_ids/id2title.pickle', 'rb') as fd:
+    #id2title = pickle.load(fd)
+    pass
+```
+
+```{python}
+import redis
+```
+
+```{python}
+r_id2title = redis.Redis(host='localhost', port=6379, db=0)
+r_id2text = redis.Redis(host='localhost', port=6379, db=1)
+r_local_id2wikipedia_id = redis.Redis(host='localhost', port=6379, db=2)
+r_title2id = redis.Redis(host='localhost', port=6379, db=3)
+r_wikipedia_id2local_id = redis.Redis(host='localhost', port=6379, db=4)
+# db=0 id2title
+# 1 id2text
+```
+
+```{python}
+#for k,v in id2title.items():
+#    r_id2title.set(k, v)
+```
+
+```{python}
+for k,v in id2text.items():
+    r_id2text.set(k, v)
+```
+
+```{python}
+#for k,v in local_id2wikipedia_id.items():
+#    r_local_id2wikipedia_id.set(k, v)
+```
+
+```{python}
+#for k,v in title2id.items():
+#    r_title2id.set(k, v)
+```
+
+```{python}
+#for k,v in wikipedia_id2local_id.items():
+#    r_wikipedia_id2local_id.set(k, v)
+```
+
+```{python}
+pd.options.display.max_colwidth = 100
+def myf(x, nwords=20):
+    x['cross_labels'] = id2title[x['cross_labels']]
+    x['cross_best_candidate'] = id2title[x['cross_best_candidate']]
+    x['context_left'] = ' '.join(x['context_left'].split(' ')[-nwords:])
+    x['context_right'] = ' '.join(x['context_right'].split(' ')[:nwords])
+    x['text'] = '{} [{}] {}'.format(x['context_left'], x['mention'], x['context_right'])
+    return x
+```
+
+```{python}
+# cross errors
+df = d_source.query('cross_best_candidate != cross_labels and cross_labels != -1')\
+    .apply(myf, axis=1)
+```
+
+```{python}
+d_source.columns
+```
+
+```{python}
+# cross ok nil errors (false nil)
+print(d_source.query('cross_best_candidate == cross_labels and `cross_best_candidate+nil` == -1').count()[0]\
+      / d_source.shape[0])
+print(d_source.query('cross_labels == -1 and `cross_best_candidate+nil` != -1').count()[0]\
+      / d_source.shape[0])
+print(d_source.query('cross_labels == -1 and `cross_best_candidate+nil` == -1').count()[0]\
+      / d_source.shape[0])
+df = d_source.query('cross_best_candidate == cross_labels and `cross_best_candidate+nil` == -1')\
+    .apply(myf, axis=1)
+```
+
+```{python}
+for i, row in df.iterrows():
+    print('[{}]\t[{}] - {}/{:.2f}'.format(row['Wikipedia_title'], row['cross_best_candidate'],
+                                      row['cross_nil_b'], row['cross_nil_p']))
+    print(row['text'])
+    print()
+```
+
+```{python}
+df = d_source.query('cross_best_candidate != cross_labels and cross_labels != -1')\
+    [['context_left', 'mention','context_right', 'Wikipedia_title', 'cross_labels', 'cross_best_candidate']]
+```
+
+```{python}
+for i in df.iterrows():
+    print(i)
+```
+
+```{python}
+os.path.join('a','b','.csv')
+```
+
+```{python}
+os.listdir('./dataset_and_preds/')
+```
+
+```{python}
+dpreds_path = ['msnbc_questions.csv',
+ 'AIDA-YAGO2_train.csv',
+ 'clueweb_questions.csv',
+ 'AIDA-YAGO2_testa.csv',
+ 'AIDA-YAGO2_testb.csv',
+ 'wnedwiki_questions.csv',
+ 'aquaint_questions.csv',
+ 'ace2004_questions.csv']
+dpreds_path = [os.path.join('dataset_and_preds', p) for p in dpreds_path]
+```
+
+```{python}
+whole = pd.DataFrame()
+for dp in dpreds_path:
+    current = pd.read_csv(dp, index_col=0)
+    current['src'] = dp
+    whole = pd.concat([whole, current])
+```
+
+```{python}
+# shuffle
+whole = whole.sample(frac=1)
+```
+
+```{python}
+whole.columns
+```
+
+```{python}
+whole.query('cross_best_candidate != cross_labels and cross_labels != -1')
+```
+
+```{python}
+pd.options.display.max_colwidth = 100
+def myf(x, nwords=20):
+    x['cross_labels_title'] = id2title[x['cross_labels']] if x['cross_labels'] != -1 else 'NIL'
+    x['cross_best_candidate_title'] = id2title[x['cross_best_candidate']]
+    x['cross_best_candidate+nil_title'] = id2title[x['cross_best_candidate+nil']] if x['cross_best_candidate+nil'] != -1 else 'NIL'
+    
+    x['bi_labels_title'] = id2title[x['bi_labels']] if x['bi_labels'] != -1 else 'NIL'
+    x['bi_best_candidate_title'] = id2title[x['bi_best_candidate']]
+    x['bi_best_candidate+nil_title'] = id2title[x['bi_best_candidate+nil']] if x['bi_best_candidate+nil'] != -1 else 'NIL'
+
+    return x
+```
+
+```{python}
+whole2 = whole.apply(myf, axis=1)
+```
+
+```{python}
+whole2.to_csv('dataset_and_preds/whole2.csv')
+```
+
+```{python}
+whole2 = pd.read_csv('dataset_and_preds/whole2.csv', index_col=0)
+```
+
+```{python}
+cross_errors = whole2.query('cross_best_candidate != cross_labels and cross_labels != -1')
+```
+
+```{python}
+#cross_errors.to_csv('dataset_and_preds/cross_errors.csv')
+```
+
+```{python}
+wrongly_identified_as_nil = whole2.query('cross_best_candidate == cross_labels and `cross_best_candidate+nil` == -1')
+#wrongly_identified_as_nil.to_csv('dataset_and_preds/wrongly_identified_as_nil.csv')
+```
+
+```{python}
+wrongly_identified_as_not_nil = whole2.query('cross_labels == -1 and `cross_best_candidate+nil` != -1')
+#wrongly_identified_as_not_nil.to_csv('dataset_and_preds/wrongly_identified_as_not_nil.csv')
+```
+
+```{python}
+bi_errors = whole2.query('bi_best_candidate != bi_labels and bi_labels != -1')
+#bi_errors.to_csv('dataset_and_preds/bi_errors.csv')
+```
+
+```{python}
+wrongly_identified_as_nil_bi = whole2.query('bi_best_candidate == bi_labels and `bi_best_candidate+nil` == -1')
+#wrongly_identified_as_nil_bi.to_csv('dataset_and_preds/wrongly_identified_as_nil_bi.csv')
+```
+
+```{python}
+wrongly_identified_as_not_nil_bi = whole2.query('bi_labels == -1 and `bi_best_candidate+nil` != -1')
+#wrongly_identified_as_not_nil_bi.to_csv('dataset_and_preds/wrongly_identified_as_not_nil_bi.csv')
+```
+
+```{python}
+wrongly_identified_as_not_nil.query('Wikipedia_title == `cross_best_candidate+nil_title`')[['Wikipedia_title', 'cross_best_candidate+nil_title']]
+```
+
+```{python}
+wrongly_identified_as_not_nil.query('Wikipedia_title == `cross_best_candidate+nil_title`').count()[0] / \
+    wrongly_identified_as_not_nil.shape[0]
+```
+
+```{python}
+wrongly_identified_as_not_nil
+```
+
+```{python}
+import json
+```
+
+```{python}
+def show_errors(df, nw=20):
+    for i, row in df.iterrows():
+
+        if isinstance(row['bi_scores'], str):
+            bi_scores = json.loads(row['bi_scores'])
+        else:
+            bi_scores = row['bi_scores']
+
+        bi_best_score = max(bi_scores)
+
+        if isinstance(row['cross_unsorted_scores'], str):
+            cross_scores = json.loads(row['cross_unsorted_scores'])
+        else:
+            cross_scores = row['cross_unsorted_scores']
+
+        cross_best_score = max(cross_scores)
+
+        print('<{}> [{}] [{}] [{}] - {}/{:.2f}/{:.2f} - {:.2f}|{:.2f} - {}'.format(
+            row['Wikipedia_title'],
+            row['cross_labels_title'],
+            row['cross_best_candidate_title'],
+            row['cross_best_candidate+nil_title'],
+            row['cross_nil_b'],
+            row['cross_nil_p'],
+            row['bi_nil_p'],
+            bi_best_score,
+            cross_best_score,
+            row['mention']
+
+        ))
+
+
+        left = ' '.join(str(row['context_left']).split(' ')[-nw:])
+        right = ' '.join(str(row['context_right']).split(' ')[:nw])
+        print('{} **[**{}**]** {}'.format(left, row['mention'], right))
+        print()
+```
+
+```{python}
+df = wrongly_identified_as_not_nil.query('Wikipedia_title != `cross_best_candidate+nil_title`')
+show_errors(df)
+```
+
+```{python}
+df = wrongly_identified_as_nil
+# sembra che quando le menzioni non matchano esattamente lo score di blink è un po' basso
+show_errors(df)
+```
+
+```{python}
+wrongly_identified_as_nil.count()[0]/whole2.shape[0]
+```
+
+```{python}
+df = cross_errors.query('Wikipedia_title != `cross_best_candidate+nil_title`')
+show_errors(df)
+```
+
+```{python}
+df = bi_errors.query('Wikipedia_title != `bi_best_candidate+nil_title`')
+
+show_errors(df)
+```
+
+```{python}
+df = wrongly_identified_as_not_nil_bi.query('Wikipedia_title != `cross_best_candidate+nil_title`')
+
+show_errors(df)
+```
+
+```{python}
+df = wrongly_identified_as_nil_bi
+# sembra che quando le menzioni non matchano esattamente lo score di blink è un po' basso
+
+show_errors(df)
+```
+
+```{python}
+wrongly_identified_as_nil_bi.query('`cross_best_candidate+nil` == cross_labels').count()[0]/ \
+    wrongly_identified_as_nil_bi.shape[0]
+# cross corrects 45% samples wrongly identified as nil
+```
+
+```{python}
+wrongly_identified_as_not_nil_bi_correct = wrongly_identified_as_not_nil_bi.query('Wikipedia_title != `cross_best_candidate+nil_title`')
+```
+
+```{python}
+wrongly_identified_as_not_nil_bi_correct.query('`cross_best_candidate+nil` == cross_labels').count()[0] / \
+    wrongly_identified_as_not_nil_bi_correct.shape[0]
+# cross corrects only 2% of samples identified as not nil while they should have been nil
+```
+
+```{python}
+wrongly_identified_as_not_nil_correct  = wrongly_identified_as_not_nil.query('Wikipedia_title != `cross_best_candidate+nil_title`')
+```
+
+```{python}
+wrongly_identified_as_not_nil_correct.query('`bi_best_candidate+nil` == bi_labels').count()[0] / \
+    wrongly_identified_as_not_nil_correct.shape[0]
+# bi corrects 18% of samples identified as not nil while they should have been nil
+# # ??
+```
+
+```{python}
+# investigare su id di wikipedia. aida magari è su un dump diverso
+```
+
+```{python}
+report = pd.read_csv('report_20200916.csv', index_col=0)
+```
+
+```{python}
+report
+```
+
+# oracolo
+
+```{python}
+whole2.columns
+```
+
+```{python}
+whole2['src'].value_counts()
+```
+
+```{python}
+print(whole2.query('cross_labels == `bi_best_candidate+nil`').shape[0] / whole2.shape[0])
+whole2.query('cross_labels == `bi_best_candidate+nil` or Wikipedia_title == `bi_best_candidate+nil_title`').shape[0] / whole2.shape[0]
+```
+
+```{python}
+print(whole2.query('cross_labels == `cross_best_candidate+nil`').shape[0] / whole2.shape[0])
+whole2.query('cross_labels == `cross_best_candidate+nil` or Wikipedia_title == `cross_best_candidate+nil_title`').shape[0] / whole2.shape[0]
+```
+
+```{python}
+whole2.query('cross_labels == `bi_best_candidate+nil`').shape[0] / whole2.shape[0]
+```
+
+```{python}
+th = 0.6
+tl = 0.3
+subs = whole2.query(f'cross_nil_p <= {tl} or cross_nil_p >= {th}')
+print('requests to human', 1 - subs.shape[0]/whole2.shape[0])
+print(subs.query('cross_labels == `cross_best_candidate+nil` or Wikipedia_title == `cross_best_candidate+nil_title`').shape[0] / subs.shape[0])
+```
+
+```{python}
+th = 0.6
+tl = 0.3
+subs = whole2.query(f'bi_nil_p <= {tl} or bi_nil_p >= {th}')
+print('requests to human', 1 - subs.shape[0]/whole2.shape[0])
+print(subs.query('cross_labels == `bi_best_candidate+nil` or Wikipedia_title == `bi_best_candidate+nil_title`').shape[0] / subs.shape[0])
+```
+
+```{python}
+aida_traina = whole2.query('src == "dataset_and_preds/AIDA-YAGO2_testa.csv"')
+aida_traina
+```
+
+```{python}
+aida_traina.query('cross_labels == `bi_best_candidate`').shape[0] / aida_traina.shape[0]
+```
+
+```{python}
+aida_traina.query('cross_labels == `cross_best_candidate`').shape[0] / aida_traina.shape[0]
+```
+
+```{python}
+aida_traina.query('cross_labels == `bi_best_candidate+nil`').shape[0] / aida_traina.shape[0]
+```
+
+```{python}
+aida_traina.query('cross_labels == `cross_best_candidate+nil`').shape[0] / aida_traina.shape[0]
+```
+
+```{python}
+(whole2['cross_labels'] != -1).astype(int).plot(kind='density')
+```
+
+```{python}
+whole2['cross_nil_p'].plot(kind='density')
+```
+
+```{python}
+whole2['bi_nil_p'].plot(kind='density')
+```
+
+```{python}
+print(wrongly_identified_as_nil['cross_nil_p'].describe())
+wrongly_identified_as_nil['cross_nil_p'].plot(kind='density')
+```
+
+```{python}
+(wrongly_identified_as_nil['cross_nil_p'] <= 0.25).sum() / wrongly_identified_as_nil.shape[0]
+```
+
+```{python}
+print(wrongly_identified_as_nil_bi['bi_nil_p'].describe())
+wrongly_identified_as_nil_bi['bi_nil_p'].plot(kind='density')
+```
+
+```{python}
+(wrongly_identified_as_nil_bi['bi_nil_p'] <= 0.25).sum() / wrongly_identified_as_nil_bi.shape[0]
 ```
