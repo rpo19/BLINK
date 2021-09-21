@@ -161,6 +161,25 @@ with open(nil_model_path, 'rb') as fd:
 ```
 
 ```{python}
+nil_model_bi_path = 'modelsnrl_ip/svc_bi+train_hard.pkl'
+features_bi = [
+    'max', 'second', 'min', 'mean', 'median', 'stdev'
+]
+nil_model_path = 'modelsnrl_ip/svc_all+train_hard.pkl'
+features = [
+    'max_bi', 'second_bi', 'min_bi', 'mean_bi', 'median_bi',
+    'stdev_bi', 'max_cross', 'second_cross', 'min_cross',
+    'mean_cross', 'median_cross', 'stdev_cross'
+]
+
+with open(nil_model_bi_path, 'rb') as fd:
+    nilclf_bi = pickle.load(fd)
+
+with open(nil_model_path, 'rb') as fd:
+    nilclf = pickle.load(fd)
+```
+
+```{python}
 report = pd.DataFrame(columns = [
     'bi_acc',
     'bi_acc_nil',
@@ -291,6 +310,11 @@ report
 ```
 
 ```{python}
+report_aug = pd.read_csv('report_20200916.csv', index_col=0)
+report_aug
+```
+
+```{python}
 report.columns
 ```
 
@@ -343,7 +367,7 @@ d
 ```
 
 ```{python}
-report.to_csv('report_20200916.csv')
+report.to_csv('report_20210921_svc_all_train_hard.csv')
 ```
 
 ```{python}
@@ -450,6 +474,10 @@ d = 'AIDA-YAGO2_testa_scores'
 bi_path = f'{d}_bi.jsonl'
 cross_path = f'{d}_cross.jsonl'
 bi_stats, _, combined_stats, bi_df, cross_df = _load_scores(bi_path, cross_path, basepath)
+```
+
+```{python}
+bi_stats
 ```
 
 ```{python}

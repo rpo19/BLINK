@@ -8,7 +8,7 @@ import re
 import math
 import os
 
-from sklearn.svm import LinearSVC
+from sklearn.svm import SVC
 from sklearn.pipeline import make_pipeline
 from sklearn.preprocessing import StandardScaler
 from sklearn.model_selection import train_test_split
@@ -209,7 +209,7 @@ def _svc_cross_max(datasets, title='svc_cross_max'):
         print('training on...', k)
         d = datasets[k]
         clf = make_pipeline(StandardScaler(),
-                            LinearSVC(random_state=42, tol=1e-5, max_iter=100000))
+                            SVC(random_state=42, tol=1e-5, max_iter=100000, probability=True))
         X = d[['max_cross']].values
         y = d['y'].values
         clf.fit(X, y)
@@ -235,7 +235,7 @@ def _svc_max(datasets, title='svc_max'):
         print('training on...', k)
         d = datasets[k]
         clf = make_pipeline(StandardScaler(),
-                            LinearSVC(random_state=42, tol=1e-5, max_iter=100000))
+                            SVC(random_state=42, tol=1e-5, max_iter=100000, probability=True))
         X = d[['max_bi', 'max_cross']].values
         y = d['y'].values
         clf.fit(X, y)
@@ -261,7 +261,7 @@ def _svc_cross(datasets, title='svc_cross'):
         print('training on...', k)
         d = datasets[k]
         clf = make_pipeline(StandardScaler(),
-                            LinearSVC(random_state=42, tol=1e-5, max_iter=100000))
+                            SVC(random_state=42, tol=1e-5, max_iter=100000, probability=True))
         X = d[['max_cross', 'second_cross', 'min_cross',
                'mean_cross', 'median_cross', 'stdev_cross']].values
         y = d['y'].values
@@ -289,7 +289,7 @@ def _svc_bi(datasets, title='svc_bi'):
         print('training on...', k)
         d = datasets[k]
         clf = make_pipeline(StandardScaler(),
-                            LinearSVC(random_state=42, tol=1e-5, max_iter=100000))
+                            SVC(random_state=42, tol=1e-5, max_iter=100000, probability=True))
         X = d[['max_bi', 'second_bi', 'min_bi', 'mean_bi', 'median_bi',
                'stdev_bi']].values
         y = d['y'].values
@@ -317,7 +317,7 @@ def _svc_all(datasets, title='svc_all'):
         print('training on...', k)
         d = datasets[k]
         clf = make_pipeline(StandardScaler(),
-                            LinearSVC(random_state=42, tol=1e-5, max_iter=100000))
+                            SVC(random_state=42, tol=1e-5, max_iter=100000, probability=True))
         X = d[['max_bi', 'second_bi', 'min_bi', 'mean_bi', 'median_bi',
                'stdev_bi', 'max_cross', 'second_cross', 'min_cross',
                'mean_cross', 'median_cross', 'stdev_cross']].values
@@ -496,27 +496,26 @@ def main(data_path, results, sort, fast, grep, reverse, save):
         # _lr_all(datasets, '.*_bi', 'all_bi'),
         # _lr_all(datasets, '.*_cross', 'all_cross'),
         # _lr_all(datasets),
-        _svc_all(datasets),
-        _svc_bi(datasets),
-        _svc_cross(datasets),
-        _svc_max(datasets),
-        _svc_cross_max(datasets),
+        # _svc_all(datasets),
+        # _svc_bi(datasets),
+        # _svc_cross(datasets),
+        # _svc_max(datasets),
+        # _svc_cross_max(datasets),
         _nrl(datasets, features=['max_cross']),
         _nrl(datasets, features=['max_bi']),
-        _nrl(datasets, features=['min_bi']),
-        _nrl(datasets, features=['min_bi', 'max_cross']),
+        _nrl(datasets, features=['max_bi', 'max_cross']),
         _nrl(datasets, features=['max_bi',
                        'second_bi',
                        'min_bi',
                        'mean_bi',
                        'median_bi',
                        'stdev_bi']),
-        _nrl(datasets, features=['max_cross',
-                       'second_cross',
-                       'min_cross',
-                       'mean_cross',
-                       'median_cross',
-                       'stdev_cross']),
+        # _nrl(datasets, features=['max_cross',
+        #                'second_cross',
+        #                'min_cross',
+        #                'mean_cross',
+        #                'median_cross',
+        #                'stdev_cross']),
         _nrl(datasets, features=['max_bi',
                        'second_bi',
                        'min_bi',
