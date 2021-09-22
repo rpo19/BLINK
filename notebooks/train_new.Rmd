@@ -188,35 +188,6 @@ def _nrl(datasets, title='nrl', features=['max_cross'], EPOCHS=100, BATCH_SIZE=6
 ```
 
 ```{python}
-list(whole2.columns)
-```
-
-```{python}
-nil100_columns = [
- 'cross_stats_100_max',
- 'cross_stats_100_second',
- 'cross_stats_100_min',
- 'cross_stats_100_mean',
- 'cross_stats_100_median',
- 'cross_stats_100_stdev',
- 'bi_stats_100_max',
- 'bi_stats_100_second',
- 'bi_stats_100_min',
- 'bi_stats_100_mean',
- 'bi_stats_100_median',
- 'bi_stats_100_stdev',
- 'cross_jaccard',
- 'cross_damerau_levenshtein',
- 'bi_jaccard',
- 'bi_damerau_levenshtein'
-]
-```
-
-```{python}
-train_df = whole2
-```
-
-```{python}
 def eval_plot(df):
     print(classification_report(df['y'], df['y_pred_rnd']))
     print('y kde')
@@ -250,6 +221,63 @@ def eval_plot(df):
 ```
 
 ```{python}
+list(whole2.columns)
+```
+
+```{python}
+nil100_columns = [
+ 'cross_stats_100_max',
+ 'cross_stats_100_min',
+ 'cross_stats_100_mean',
+ 'cross_stats_100_median',
+ 'cross_stats_100_stdev',
+ 'bi_stats_100_max',
+ 'bi_stats_100_min',
+ 'bi_stats_100_mean',
+ 'bi_stats_100_median',
+ 'bi_stats_100_stdev',
+ 'cross_jaccard',
+ 'cross_damerau_levenshtein',
+ 'bi_jaccard',
+ 'bi_damerau_levenshtein'
+]
+```
+
+```{python}
+nil10_columns = [
+ 'cross_stats_10_max',
+ 'cross_stats_10_min',
+ 'cross_stats_10_mean',
+ 'cross_stats_10_median',
+ 'cross_stats_10_stdev',
+ 'bi_stats_10_max',
+ 'bi_stats_10_min',
+ 'bi_stats_10_mean',
+ 'bi_stats_10_median',
+ 'bi_stats_10_stdev',
+ 'cross_jaccard',
+ 'cross_damerau_levenshtein',
+ 'bi_jaccard',
+ 'bi_damerau_levenshtein'
+]
+```
+
+```{python}
+nil1_columns = [
+    'bi_stats_10_max',
+    'cross_stats_10_max',
+    'cross_jaccard',
+    'cross_damerau_levenshtein',
+    'bi_jaccard',
+    'bi_damerau_levenshtein'
+]
+```
+
+```{python}
+train_df = whole2
+```
+
+```{python}
 # quando deve essere nil e quando cross sbaglia
 train_df['y'] = ((train_df['cross_labels'] != -1) & (train_df['cross_labels'] == train_df['cross_best_candidate'])).astype(int)
 ```
@@ -278,7 +306,7 @@ train_df['y'].value_counts()
 ```
 
 ```{python}
-features = nil100_columns
+features = nil1_columns
 ```
 
 ```{python}
@@ -387,6 +415,17 @@ eval_df.head()
 
 ```{python}
 eval_plot(eval_df)
+```
+
+```{python}
+if False:
+    import os
+    models_path = 'models_new_20210922'
+    if not os.path.isdir(models_path):
+        os.mkdir(models_path)
+    with open(os.path.join(models_path, 'stdscaler_all_top100.pkl'), 'wb') as fd:
+        pickle.dump(scaler, fd)
+    torch.save(model.state_dict(), os.path.join(models_path, 'nrl_all_top100.torch'))
 ```
 
 ```{python}
