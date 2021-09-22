@@ -21,6 +21,23 @@ import os
 ```
 
 ```{python}
+import torch
+import torch.nn as nn
+import torch.nn.functional as F
+from torch.utils.data import Dataset, DataLoader
+
+from sklearn.preprocessing import StandardScaler
+from sklearn.metrics import confusion_matrix, classification_report
+
+import sklearn.metrics
+import os
+import matplotlib.pyplot as plt
+import pickle
+
+from sklearn.model_selection import train_test_split
+```
+
+```{python}
 # ls ../output* -d
 
 ```
@@ -142,41 +159,99 @@ def _best_candidate(scores, nns, nil_score=None, nil_threshold=0.5):
 ```
 
 ```{python}
-nil_model_bi_path = 'modelsnrl_ip/svc_bi+train_hard_aug.pkl'
-features_bi = [
-    'max', 'second', 'min', 'mean', 'median', 'stdev'
-]
-nil_model_path = 'modelsnrl_ip/svc_all+train_hard_aug.pkl'
-features = [
-    'max_bi', 'second_bi', 'min_bi', 'mean_bi', 'median_bi',
-    'stdev_bi', 'max_cross', 'second_cross', 'min_cross',
-    'mean_cross', 'median_cross', 'stdev_cross'
-]
-
-with open(nil_model_bi_path, 'rb') as fd:
-    nilclf_bi = pickle.load(fd)
-
-with open(nil_model_path, 'rb') as fd:
-    nilclf = pickle.load(fd)
+device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+print(device)
 ```
 
 ```{python}
-nil_model_bi_path = 'modelsnrl_ip/svc_bi+train_hard.pkl'
+## train data
+class trainData(Dataset):
+    
+    def __init__(self, X_data, y_data):
+        self.X_data = X_data
+        self.y_data = y_data
+        
+    def __getitem__(self, index):
+        return self.X_data[index], self.y_data[index]
+        
+    def __len__ (self):
+        return len(self.X_data)
+```
+
+```{python}
+class testData(Dataset):
+    
+    def __init__(self, X_data):
+        self.X_data = X_data
+        
+    def __getitem__(self, index):
+        return self.X_data[index]
+        
+    def __len__ (self):
+        return len(self.X_data)
+```
+
+```{python}
+class binaryClassification(nn.Module):
+    def __init__(self, n):
+        super(binaryClassification, self).__init__()
+        self.fc1 = nn.Linear(n, 2)
+        self.fc2 = nn.Linear(2, 1)
+        self.relu = nn.ReLU()
+        self.dropout = nn.Dropout(p=0.1)
+        
+    def forward(self, inputs):
+        x = self.fc1(inputs)
+        x = self.relu(x)
+        x = self.dropout(x)
+        x = self.fc2(x)
+        #x = nn.Sigmoid(x)
+        
+        return x
+```
+
+```{python}
+nil_scaler_bi_path = 'models_nb_20210921_bi/stdscaler+max_bi+second_bi+min_bi+mean_bi+median_bi+stdev_bi+train_hard_aug.pkl'
+nil_model_bi_path = 'models_nb_20210921_bi/nrl+max_bi+second_bi+min_bi+mean_bi+median_bi+stdev_bi+train_hard_aug.torch'
 features_bi = [
     'max', 'second', 'min', 'mean', 'median', 'stdev'
 ]
-nil_model_path = 'modelsnrl_ip/svc_all+train_hard.pkl'
+
+nil_scaler_path = 'models_nb_20210921/stdscaler+max_bi+second_bi+min_bi+mean_bi+median_bi+stdev_bi+max_cross+second_cross+min_cross+mean_cross+median_cross+stdev_cross+train_hard_aug.pkl'
+nil_model_path = 'models_nb_20210921/nrl+max_bi+second_bi+min_bi+mean_bi+median_bi+stdev_bi+max_cross+second_cross+min_cross+mean_cross+median_cross+stdev_cross+train_hard_aug.torch'
 features = [
     'max_bi', 'second_bi', 'min_bi', 'mean_bi', 'median_bi',
     'stdev_bi', 'max_cross', 'second_cross', 'min_cross',
     'mean_cross', 'median_cross', 'stdev_cross'
 ]
 
-with open(nil_model_bi_path, 'rb') as fd:
-    nilclf_bi = pickle.load(fd)
+with open(nil_scaler_bi_path, 'rb') as fd:
+    nilclf_scaler_bi = pickle.load(fd)
+    
+with open(nil_scaler_path, 'rb') as fd:
+    nilclf_scaler = pickle.load(fd)
 
-with open(nil_model_path, 'rb') as fd:
-    nilclf = pickle.load(fd)
+nilclf_model_bi = binaryClassification(len(features_bi))
+nilclf_model_bi.load_state_dict(torch.load(nil_model_bi_path))
+
+nilclf_model = binaryClassification(len(features))
+nilclf_model.load_state_dict(torch.load(nil_model_path))
+
+def nilclf_bi(x):
+    x = nilclf_scaler_bi.transform(x)
+    x = torch.FloatTensor(x)
+    y = nilclf_model_bi(x)
+    y = torch.sigmoid(y)
+    y = y.detach().numpy().reshape(-1,)
+    return y
+
+def nilclf(x):
+    x = nilclf_scaler.transform(x)
+    x = torch.FloatTensor(x)
+    y = nilclf_model(x)
+    y = torch.sigmoid(y)
+    y = y.detach().numpy().reshape(-1,)
+    return y
 ```
 
 ```{python}
@@ -208,8 +283,9 @@ for d in datasets:
     bi_df['recall@'] = bi_df.apply(lambda x: _eval_line(x, 'scores'), axis=1)
     bi_df['best_candidate'] = bi_df.apply(lambda x: _best_candidate(x['scores'], x.nns), axis=1)
     
-    bi_df['nil_b'] = nilclf_bi.predict(bi_stats[features_bi].values)
-    bi_df['nil_p'] = [i_1 for i_0, i_1 in nilclf_bi.predict_proba(bi_stats[features_bi].values)]
+    bi_df['nil_p'] = nilclf_bi(bi_stats[features_bi].values)
+    bi_df['nil_b'] = np.round(bi_df['nil_p'])
+
     bi_df['best_candidate+nil'] = bi_df.apply(
         lambda x: _best_candidate(x['scores'], x.nns, x['nil_b']), axis=1)
 
@@ -228,8 +304,8 @@ for d in datasets:
     cross_df['recall@'] = cross_df.apply(lambda x: _eval_line(x, 'unsorted_scores'), axis=1)
     cross_df['best_candidate'] = cross_df.apply(lambda x: _best_candidate(x['unsorted_scores'], x.nns), axis=1)
     
-    cross_df['nil_b'] = nilclf.predict(combined_stats[features].values)
-    cross_df['nil_p'] = [i_1 for i_0, i_1 in nilclf.predict_proba(combined_stats[features].values)]
+    cross_df['nil_p'] = nilclf(combined_stats[features].values)
+    cross_df['nil_b'] = np.round(cross_df['nil_p'])
 
     cross_df['best_candidate+nil'] = cross_df.apply(
         lambda x: _best_candidate(x['unsorted_scores'], x.nns, x['nil_b']), axis=1)
@@ -310,7 +386,11 @@ report
 ```
 
 ```{python}
-report_aug = pd.read_csv('report_20200916.csv', index_col=0)
+report.to_csv('report_20210922_nrl.csv')
+```
+
+```{python}
+report_aug = pd.read_csv('report_20210922_nrl.csv', index_col=0)
 report_aug
 ```
 
@@ -486,22 +566,27 @@ assert bi_df.shape[0] == cross_df.shape[0]
 bi_df['recall@'] = bi_df.apply(lambda x: _eval_line(x, 'scores'), axis=1)
 bi_df['best_candidate'] = bi_df.apply(lambda x: _best_candidate(x['scores'], x.nns), axis=1)
 
-bi_df['nil_b'] = nilclf_bi.predict(bi_stats[features_bi].values)
-bi_df['nil_p'] = [i_1 for i_0, i_1 in nilclf_bi.predict_proba(bi_stats[features_bi].values)]
+bi_df['nil_p'] = nilclf_bi(bi_stats[features_bi].values)
+bi_df['nil_b'] = np.round(bi_df['nil_p'])
 bi_df['best_candidate+nil'] = bi_df.apply(
     lambda x: _best_candidate(x['scores'], x.nns, x['nil_b']), axis=1)
 
 cross_df['recall@'] = cross_df.apply(lambda x: _eval_line(x, 'unsorted_scores'), axis=1)
 cross_df['best_candidate'] = cross_df.apply(lambda x: _best_candidate(x['unsorted_scores'], x.nns), axis=1)
 
-cross_df['nil_b'] = nilclf.predict(combined_stats[features].values)
-cross_df['nil_p'] = [i_1 for i_0, i_1 in nilclf.predict_proba(combined_stats[features].values)]
+cross_df['nil_p'] = nilclf(combined_stats[features].values)
+cross_df['nil_b'] = np.round(cross_df['nil_p'])
+
 cross_df['best_candidate+nil'] = cross_df.apply(
     lambda x: _best_candidate(x['unsorted_scores'], x.nns, x['nil_b']), axis=1)
 ```
 
 ```{python}
 ['../data/BLINK_benchmark_with_NIL/{}.jsonl'.format(d) for d in datasets]
+```
+
+```{python}
+datasets
 ```
 
 ```{python}
@@ -519,16 +604,18 @@ for d in datasets:
     bi_df['recall@'] = bi_df.apply(lambda x: _eval_line(x, 'scores'), axis=1)
     bi_df['best_candidate'] = bi_df.apply(lambda x: _best_candidate(x['scores'], x.nns), axis=1)
 
-    bi_df['nil_b'] = nilclf_bi.predict(bi_stats[features_bi].values)
-    bi_df['nil_p'] = [i_1 for i_0, i_1 in nilclf_bi.predict_proba(bi_stats[features_bi].values)]
+    bi_df['nil_p'] = nilclf_bi(bi_stats[features_bi].values)
+    bi_df['nil_b'] = np.round(bi_df['nil_p'])
+
     bi_df['best_candidate+nil'] = bi_df.apply(
         lambda x: _best_candidate(x['scores'], x.nns, x['nil_b']), axis=1)
 
     cross_df['recall@'] = cross_df.apply(lambda x: _eval_line(x, 'unsorted_scores'), axis=1)
     cross_df['best_candidate'] = cross_df.apply(lambda x: _best_candidate(x['unsorted_scores'], x.nns), axis=1)
 
-    cross_df['nil_b'] = nilclf.predict(combined_stats[features].values)
-    cross_df['nil_p'] = [i_1 for i_0, i_1 in nilclf.predict_proba(combined_stats[features].values)]
+    cross_df['nil_p'] = nilclf(combined_stats[features].values)
+    cross_df['nil_b'] = np.round(cross_df['nil_p'])
+
     cross_df['best_candidate+nil'] = cross_df.apply(
         lambda x: _best_candidate(x['unsorted_scores'], x.nns, x['nil_b']), axis=1)
     
@@ -536,7 +623,7 @@ for d in datasets:
     d_source[['bi_'+c for c in bi_df.columns]] = bi_df
     d_source[['cross_'+c for c in cross_df.columns]] = cross_df
     
-    dest = os.path.join(save_path, d.replace('_scores', ''), '.csv')
+    dest = os.path.join(save_path, d.replace('_scores', ''))+ '.csv'
     d_source.to_csv(dest)
 ```
 
@@ -591,10 +678,10 @@ with open('entity_ids/local_id2wikipedia_id.pickle', 'rb') as fd:
     #local_id2wikipedia_id = pickle.load(fd)
     pass
 with open('entity_ids/id2text.pickle', 'rb') as fd:
-    id2text = pickle.load(fd)
+    #id2text = pickle.load(fd)
     pass
 with open('entity_ids/id2title.pickle', 'rb') as fd:
-    #id2title = pickle.load(fd)
+    id2title = pickle.load(fd)
     pass
 ```
 
@@ -886,7 +973,7 @@ show_errors(df)
 ```{python}
 wrongly_identified_as_nil_bi.query('`cross_best_candidate+nil` == cross_labels').count()[0]/ \
     wrongly_identified_as_nil_bi.shape[0]
-# cross corrects 45% samples wrongly identified as nil
+# cross corrects 43% samples wrongly identified as nil
 ```
 
 ```{python}
@@ -896,7 +983,7 @@ wrongly_identified_as_not_nil_bi_correct = wrongly_identified_as_not_nil_bi.quer
 ```{python}
 wrongly_identified_as_not_nil_bi_correct.query('`cross_best_candidate+nil` == cross_labels').count()[0] / \
     wrongly_identified_as_not_nil_bi_correct.shape[0]
-# cross corrects only 2% of samples identified as not nil while they should have been nil
+# cross corrects 8% of samples identified as not nil while they should have been nil
 ```
 
 ```{python}
@@ -920,6 +1007,33 @@ report = pd.read_csv('report_20200916.csv', index_col=0)
 
 ```{python}
 report
+```
+
+```{python}
+fn+tp
+```
+
+```{python}
+(whole2['cross_labels'] == -1).sum()
+```
+
+```{python}
+whole2.query('cross_labels == -1').count()[0]
+```
+
+```{python}
+tp = whole2.query('`cross_best_candidate+nil` == -1 and cross_labels == -1').shape[0]
+fp = whole2.query('`cross_best_candidate+nil` == -1 and cross_labels != -1').shape[0]
+fn = whole2.query('`cross_best_candidate+nil` != -1 and cross_labels == -1').shape[0]
+tot = (whole2['cross_labels'] == -1).sum()
+assert tp+fn == tot
+p = tp / (tp+fp)
+r = tp / tot
+print(p, r)
+```
+
+```{python}
+(whole2['cross_labels'] == -1).sum()
 ```
 
 # oracolo
@@ -1011,4 +1125,304 @@ wrongly_identified_as_nil_bi['bi_nil_p'].plot(kind='density')
 
 ```{python}
 (wrongly_identified_as_nil_bi['bi_nil_p'] <= 0.25).sum() / wrongly_identified_as_nil_bi.shape[0]
+```
+
+# whole with stats
+
+```{python}
+_test = np.array(np.array(list(range(0,100,5))[:10]))
+_test
+```
+
+```{python}
+_test[np.argsort(_test)[::-1]]
+```
+
+```{python}
+def _bc_get_stats(x, remove_correct = False, scores_col='scores', nns_col='nns', labels_col='labels', top_k=100):
+    scores = x[scores_col]
+    nns = x[nns_col]
+    if isinstance(scores, str):
+        scores = np.array(json.loads(scores))
+    if isinstance(nns, str):
+        nns = np.array(json.loads(nns))
+
+    assert len(scores) == len(nns)
+    scores = scores.copy()
+    
+    sort_scores_i = np.argsort(scores)[::-1]
+    scores = scores[sort_scores_i][:top_k]
+    
+    nns = nns.copy()
+    nns = nns[sort_scores_i][:top_k]
+    
+    correct = None
+    if x[labels_col] in nns:
+        # found correct entity
+        i_correct = list(nns).index(x[labels_col])
+        correct = scores[i_correct]
+
+    _stats = {
+        "correct": correct,
+        "max": max(scores),
+        "second": sorted(scores, reverse=True)[1],
+        "min": min(scores),
+        "mean": statistics.mean(scores),
+        "median": statistics.median(scores),
+        "stdev": statistics.stdev(scores)
+    }
+    return _stats
+```
+
+```{python}
+whole2.columns
+```
+
+```{python}
+isinstance(whole2.iloc[0]['cross_unsorted_scores'], str)
+```
+
+```{python}
+whole2.iloc[0:10]['cross_unsorted_scores']
+```
+
+```{python}
+whole2.iloc[0:10].apply(
+    lambda x: _bc_get_stats(x, 
+                            scores_col='cross_unsorted_scores',
+                            nns_col='cross_nns',
+                            labels_col='cross_labels',
+                            top_k=10
+                           ),
+    axis=1, result_type='expand')
+```
+
+```{python}
+temp = pd.DataFrame()
+cols = ['correct', 'max', 'second', 'min', 'median', 'stdev']
+cols = ['cross_10_'+c for c in cols]
+```
+
+```{python}
+cross_stats100 = whole2.apply(
+    lambda x: _bc_get_stats(x, 
+                            scores_col='cross_unsorted_scores',
+                            nns_col='cross_nns',
+                            labels_col='cross_labels',
+                            top_k=100
+                           ),
+    axis=1, result_type='expand')
+```
+
+```{python}
+whole2[['cross_stats_100_'+c for c in cross_stats100.columns]] = cross_stats100
+```
+
+```{python}
+cross_stats10 = whole2.apply(
+    lambda x: _bc_get_stats(x, 
+                            scores_col='cross_unsorted_scores',
+                            nns_col='cross_nns',
+                            labels_col='cross_labels',
+                            top_k=10
+                           ),
+    axis=1, result_type='expand')
+```
+
+```{python}
+whole2[['cross_stats_10_'+c for c in cross_stats10.columns]] = cross_stats10
+```
+
+```{python}
+bi_stats100 = whole2.apply(
+    lambda x: _bc_get_stats(x, 
+                            scores_col='bi_scores',
+                            nns_col='bi_nns',
+                            labels_col='bi_labels',
+                            top_k=100
+                           ),
+    axis=1, result_type='expand')
+```
+
+```{python}
+whole2[['bi_stats_100_'+c for c in bi_stats100.columns]] = bi_stats100
+```
+
+```{python}
+bi_stats10 = whole2.apply(
+    lambda x: _bc_get_stats(x, 
+                            scores_col='bi_scores',
+                            nns_col='bi_nns',
+                            labels_col='bi_labels',
+                            top_k=10
+                           ),
+    axis=1, result_type='expand')
+```
+
+```{python}
+whole2[['bi_stats_10_'+c for c in bi_stats10.columns]] = bi_stats10
+```
+
+```{python}
+whole2.columns
+```
+
+```{python}
+whole2.to_csv('whole2_with_100_10_stats.csv')
+```
+
+```{python}
+whole2 = pd.read_csv('whole2_with_100_10_stats.csv', index_col=0)
+whole2.head()
+```
+
+```{python}
+nns, lab, scores = whole2.iloc[1:2][['cross_nns', 'cross_labels', 'cross_unsorted_scores']].values[0]
+```
+
+```{python}
+list(nns).index(lab)
+```
+
+```{python}
+nns = np.array(json.loads(nns))
+nns
+```
+
+```{python}
+scores = np.array(json.loads(scores))
+scores
+```
+
+```{python}
+import textdistance
+
+textdistance.hamming('test', 'text')
+# 1
+
+textdistance.hamming.distance('test', 'text')
+# 1
+
+textdistance.hamming.similarity('test', 'text')
+# 3
+
+textdistance.hamming.normalized_distance('test', 'text')
+# 0.25
+
+textdistance.hamming.normalized_similarity('test', 'text')
+# 0.75
+
+textdistance.Hamming(qval=2).distance('test', 'text')
+```
+
+```{python}
+textdistance.jaccard.normalized_similarity('Christiano', 'ronaldo')
+```
+
+```{python}
+textdistance.jaccard.normalized_similarity('Christiano', 'chsristiano ronaldo')
+```
+
+```{python}
+textdistance.jaccard.normalized_similarity('Riccardo Pozzi', 'Riccardo Pozzo')
+```
+
+```{python}
+textdistance.damerau_levenshtein.normalized_similarity('Riccardo Pozzi', 'Riccardo Pozzo')
+```
+
+```{python}
+def _text_distance(x, a='mention', b='cross_labels_title'):
+    token = textdistance.jaccard.normalized_similarity(x[a], x[b])
+    edit = textdistance.damerau_levenshtein.normalized_similarity(x[a], x[b])
+    r = {
+        'jaccard': token,
+        'damerau_levenshtein': edit
+    }
+    return r
+```
+
+```{python}
+dsNN = wrongly_identified_as_nil.apply(_text_distance, axis=1, result_type='expand')
+```
+
+```{python}
+dsNN.describe()
+```
+
+```{python}
+dsNN.plot(kind='density')
+```
+
+```{python}
+whole2.columns
+```
+
+```{python}
+cross_text_ds = whole2.apply(
+    lambda x: _text_distance(x, a='mention', b='cross_best_candidate_title'),
+    axis=1, result_type='expand')
+whole2[['cross_'+c for c in cross_text_ds.columns]] = cross_text_ds
+```
+
+```{python}
+bi_text_ds = whole2.apply(
+    lambda x: _text_distance(x, a='mention', b='bi_best_candidate_title'),
+    axis=1, result_type='expand')
+whole2[['bi_'+c for c in bi_text_ds.columns]] = bi_text_ds
+```
+
+```{python}
+whole2.columns
+```
+
+```{python}
+whole2[['bi_jaccard', 'bi_damerau_levenshtein', 'cross_jaccard', 'cross_damerau_levenshtein']].plot(kind='density')
+```
+
+```{python}
+whole2.to_csv('whole2_with_100_10_stats_ds.csv')
+```
+
+```{python}
+ds.describe()
+```
+
+```{python}
+ds
+```
+
+```{python}
+ds = whole2.query('cross_labels == -1 and `cross_best_candidate+nil` != -1').apply(
+    lambda x: _text_distance(x, a='mention', b='cross_best_candidate+nil_title'),
+    axis=1, result_type='expand')
+```
+
+```{python}
+ds.plot(kind='density')
+```
+
+```{python}
+ds.plot(kind='density')
+```
+
+```{python}
+ds = whole2.query('cross_labels == `cross_best_candidate+nil`').apply(
+    lambda x: _text_distance(x, a='mention', b='cross_best_candidate+nil_title'),
+    axis=1, result_type='expand')
+ds.plot(kind='density')
+```
+
+```{python}
+ds = whole2.query('cross_labels != -1 and `cross_best_candidate+nil` == -1').apply(
+    lambda x: _text_distance(x, a='mention', b='cross_best_candidate_title'),
+    axis=1, result_type='expand')
+ds.plot(kind='density')
+```
+
+```{python}
+ds = whole2.query('cross_labels == -1 and `cross_best_candidate+nil` != -1').apply(
+    lambda x: _text_distance(x, a='mention', b='cross_labels_title'),
+    axis=1, result_type='expand')
+ds.plot(kind='density')
 ```

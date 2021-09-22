@@ -12,6 +12,10 @@ jupyter:
     name: python3
 ---
 
+```{python active="", eval=FALSE}
+
+```
+
 ```{python}
 from prepare_dataset import _load_datasets
 import pandas as pd
