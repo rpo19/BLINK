@@ -429,5 +429,210 @@ if False:
 ```
 
 ```{python}
+# lr
+```
 
+```{python}
+from sklearn.linear_model import LogisticRegression
+
+from sklearn.ensemble import RandomForestClassifier
+```
+
+```{python}
+train_df = whole2
+```
+
+```{python}
+# quando deve essere nil e quando cross sbaglia
+train_df['y'] = ((train_df['cross_labels'] != -1) & (train_df['cross_labels'] == train_df['cross_best_candidate'])).astype(int)
+```
+
+```{python}
+train_df['y'].value_counts()
+```
+
+```{python}
+train_df, test_df = train_test_split(train_df, test_size=0.33, random_state=17)
+```
+
+```{python}
+downsample = True
+
+if downsample:
+    train_df_0 = train_df.query('y == 0')
+    train_df_1 = train_df.query('y == 1')
+
+    train_df_1 = train_df_1.sample(frac=1).iloc[:train_df_0.shape[0]]
+    train_df = pd.concat([train_df_0, train_df_1]).sample(frac=1)
+```
+
+```{python}
+train_df['y'].value_counts()
+```
+
+```{python}
+nil1_columns = [
+    'bi_stats_10_max',
+    'cross_stats_10_max',
+    'cross_hamming',
+    'bi_hamming',
+]
+nil1_columns_bi = [
+    'bi_stats_10_max',
+    'bi_hamming',
+]
+nil10_columns = [
+    'cross_stats_10_max',
+    'cross_stats_10_min',
+    'cross_stats_10_mean',
+    'cross_stats_10_median',
+    'cross_stats_10_stdev',
+    'bi_stats_10_max',
+    'bi_stats_10_min',
+    'bi_stats_10_mean',
+    'bi_stats_10_median',
+    'bi_stats_10_stdev',
+    'cross_hamming',
+    'bi_hamming',
+]
+nil10_columns_bi = [
+    'bi_stats_10_max',
+    'bi_stats_10_min',
+    'bi_stats_10_mean',
+    'bi_stats_10_median',
+    'bi_stats_10_stdev',
+    'cross_hamming',
+    'bi_hamming',
+]
+nil100_columns = [
+    'cross_stats_100_max',
+    'cross_stats_100_min',
+    'cross_stats_100_mean',
+    'cross_stats_100_median',
+    'cross_stats_100_stdev',
+    'bi_stats_100_max',
+    'bi_stats_100_min',
+    'bi_stats_100_mean',
+    'bi_stats_100_median',
+    'bi_stats_100_stdev',
+    'cross_jaccard',
+    'cross_damerau_levenshtein',
+    'bi_jaccard',
+    'bi_damerau_levenshtein'
+]
+```
+
+```{python}
+features = nil10_columns_bi
+```
+
+```{python}
+X_train = train_df[features].values
+y_train = train_df['y'].values
+```
+
+```{python}
+X_test = test_df[features].values
+y_test = test_df['y'].values
+```
+
+```{python}
+#X_train, X_validation, y_train, y_validation = train_test_split(X_train, y_train, test_size=0.15, random_state=17)
+```
+
+```{python}
+print(X_train.shape)
+#print(X_validation.shape)
+print(X_test.shape)
+```
+
+```{python}
+lr_scaler = StandardScaler()
+X_train = lr_scaler.fit_transform(X_train)
+```
+
+```{python}
+X_test = lr_scaler.transform(X_test)
+```
+
+```{python}
+_type = 'lr'
+if _type == 'lr':
+    clf = LogisticRegression(random_state=10, max_iter=200).fit(X_train, y_train)
+if _type == 'rf':
+    clf = RandomForestClassifier(max_depth=2, random_state=0).fit(X_train, y_train)
+
+
+```
+
+```{python}
+clf.predict(X_test)
+```
+
+```{python}
+y_pred = np.array(list(map(lambda x: x[1], clf.predict_proba(X_test))))
+y_pred
+```
+
+```{python}
+eval_df = pd.DataFrame({
+    'y': y_test,
+    'y_pred': y_pred,
+    'y_pred_rnd': np.round(y_pred)
+})
+```
+
+```{python}
+eval_plot(eval_df)
+```
+
+```{python}
+tl = 0.25
+th = 0.65
+print('ratio', eval_df.query(f'y_pred <= {tl} or y_pred >= {th}').shape[0] / eval_df.shape[0])
+eval_plot(eval_df.query(f'y_pred <= {tl} or y_pred >= {th}'))
+```
+
+```{python}
+import textdistance
+```
+
+```{python}
+dfun = textdistance.hamming.normalized_similarity
+```
+
+```{python}
+train_df.query('y==1').apply(
+    lambda x: dfun(x['mention'], x['cross_best_candidate_title']),
+    axis=1
+).plot(kind='density')
+```
+
+```{python}
+train_df.apply(
+    lambda x: dfun(x['mention'], x['cross_best_candidate_title']),
+    axis=1
+).plot(kind='density')
+```
+
+```{python}
+whole2['cross_hamming'] = whole2.apply(
+    lambda x: textdistance.hamming.normalized_similarity(x['mention'], x['cross_best_candidate_title']),
+    axis=1
+)
+```
+
+```{python}
+whole2['bi_hamming'] = whole2.apply(
+    lambda x: textdistance.hamming.normalized_similarity(x['mention'], x['bi_best_candidate_title']),
+    axis=1
+)
+```
+
+```{python}
+whole2.
+```
+
+```{python}
+whole2.to_csv('whole2_with_100_10_stats_ds.csv')
 ```
