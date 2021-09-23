@@ -58,6 +58,8 @@ def myplot(y, y_pred, y_pred_round, title, outpath):
     plt.savefig(os.path.join(outpath, title+'_kde_errors.png'))
     plt.close()
 
+    plt.close('all')
+
 
 
 outpath = 'train_new_out'
@@ -383,7 +385,7 @@ tasks = [
             ]
     },
     {
-        'name': 'aida_under_bi_max_dst_ner',
+        'name': 'aida_under_bi_dst_ner_stats',
         'train': ['dataset_and_preds/AIDA-YAGO2_train.csv'],
         'test': ['dataset_and_preds/AIDA-YAGO2_testa.csv', 'dataset_and_preds/AIDA-YAGO2_testb.csv'],
         'sampling': 'undersample',
@@ -664,9 +666,932 @@ tasks = [
                 'avg_ner_misc_bi',
             ]
     },
+    {
+        'name': 'alldata_under_all10_but_ner_tested_on_all',
+        'train': [
+            'dataset_and_preds/AIDA-YAGO2_train.csv',
+            'dataset_and_preds/AIDA-YAGO2_testa.csv',
+            'dataset_and_preds/AIDA-YAGO2_testb.csv',
+            'dataset_and_preds/clueweb_questions.csv',
+            'dataset_and_preds/wnedwiki_questions.csv',
+            'dataset_and_preds/aquaint_questions.csv',
+            'dataset_and_preds/msnbc_questions.csv',
+            'dataset_and_preds/ace2004_questions.csv'
+        ],
+        'test': [
+            'dataset_and_preds/AIDA-YAGO2_train.csv',
+            'dataset_and_preds/AIDA-YAGO2_testa.csv',
+            'dataset_and_preds/AIDA-YAGO2_testb.csv',
+            'dataset_and_preds/clueweb_questions.csv',
+            'dataset_and_preds/wnedwiki_questions.csv',
+            'dataset_and_preds/aquaint_questions.csv',
+            'dataset_and_preds/msnbc_questions.csv',
+            'dataset_and_preds/ace2004_questions.csv'
+        ],
+        'sampling': 'undersample',
+        'features':  [
+                'cross_stats_10_max',
+                'cross_stats_10_min',
+                'cross_stats_10_mean',
+                'cross_stats_10_median',
+                'cross_stats_10_stdev',
+                'bi_stats_10_max',
+                'bi_stats_10_min',
+                'bi_stats_10_mean',
+                'bi_stats_10_median',
+                'bi_stats_10_stdev',
+                'cross_hamming',
+                'bi_hamming',
+            ]
+    },
+    {
+        'name': 'alldata_under_all10_but_ner_stats_tested_on_all',
+        'train': [
+            'dataset_and_preds/AIDA-YAGO2_train.csv',
+            'dataset_and_preds/AIDA-YAGO2_testa.csv',
+            'dataset_and_preds/AIDA-YAGO2_testb.csv',
+            'dataset_and_preds/clueweb_questions.csv',
+            'dataset_and_preds/wnedwiki_questions.csv',
+            'dataset_and_preds/aquaint_questions.csv',
+            'dataset_and_preds/msnbc_questions.csv',
+            'dataset_and_preds/ace2004_questions.csv'
+        ],
+        'test': [
+            'dataset_and_preds/AIDA-YAGO2_train.csv',
+            'dataset_and_preds/AIDA-YAGO2_testa.csv',
+            'dataset_and_preds/AIDA-YAGO2_testb.csv',
+            'dataset_and_preds/clueweb_questions.csv',
+            'dataset_and_preds/wnedwiki_questions.csv',
+            'dataset_and_preds/aquaint_questions.csv',
+            'dataset_and_preds/msnbc_questions.csv',
+            'dataset_and_preds/ace2004_questions.csv'
+        ],
+        'sampling': 'undersample',
+        'features':  [
+                'cross_stats_10_max',
+                'bi_stats_10_max',
+                'cross_hamming',
+                'bi_hamming',
+            ]
+    },
+    {
+        'name': 'alldata_under_bi10_but_ner_tested_on_all',
+        'train': [
+            'dataset_and_preds/AIDA-YAGO2_train.csv',
+            'dataset_and_preds/AIDA-YAGO2_testa.csv',
+            'dataset_and_preds/AIDA-YAGO2_testb.csv',
+            'dataset_and_preds/clueweb_questions.csv',
+            'dataset_and_preds/wnedwiki_questions.csv',
+            'dataset_and_preds/aquaint_questions.csv',
+            'dataset_and_preds/msnbc_questions.csv',
+            'dataset_and_preds/ace2004_questions.csv'
+        ],
+        'test': [
+            'dataset_and_preds/AIDA-YAGO2_train.csv',
+            'dataset_and_preds/AIDA-YAGO2_testa.csv',
+            'dataset_and_preds/AIDA-YAGO2_testb.csv',
+            'dataset_and_preds/clueweb_questions.csv',
+            'dataset_and_preds/wnedwiki_questions.csv',
+            'dataset_and_preds/aquaint_questions.csv',
+            'dataset_and_preds/msnbc_questions.csv',
+            'dataset_and_preds/ace2004_questions.csv'
+        ],
+        'sampling': 'undersample',
+        'features':  [
+                'bi_stats_10_max',
+                'bi_stats_10_min',
+                'bi_stats_10_mean',
+                'bi_stats_10_median',
+                'bi_stats_10_stdev',
+                'bi_hamming',
+            ]
+    },
+    {
+        'name': 'alldata_under_bi10_but_ner_stats_tested_on_all',
+        'train': [
+            'dataset_and_preds/AIDA-YAGO2_train.csv',
+            'dataset_and_preds/AIDA-YAGO2_testa.csv',
+            'dataset_and_preds/AIDA-YAGO2_testb.csv',
+            'dataset_and_preds/clueweb_questions.csv',
+            'dataset_and_preds/wnedwiki_questions.csv',
+            'dataset_and_preds/aquaint_questions.csv',
+            'dataset_and_preds/msnbc_questions.csv',
+            'dataset_and_preds/ace2004_questions.csv'
+        ],
+        'test': [
+            'dataset_and_preds/AIDA-YAGO2_train.csv',
+            'dataset_and_preds/AIDA-YAGO2_testa.csv',
+            'dataset_and_preds/AIDA-YAGO2_testb.csv',
+            'dataset_and_preds/clueweb_questions.csv',
+            'dataset_and_preds/wnedwiki_questions.csv',
+            'dataset_and_preds/aquaint_questions.csv',
+            'dataset_and_preds/msnbc_questions.csv',
+            'dataset_and_preds/ace2004_questions.csv'
+        ],
+        'sampling': 'undersample',
+        'features':  [
+                'bi_stats_10_max',
+                'bi_hamming',
+            ]
+    },
+    {
+        'name': 'alldata_under_all10_but_ner_tested_on_aida_train',
+        'train': [
+            'dataset_and_preds/AIDA-YAGO2_train.csv',
+        ],
+        'test': [
+            'dataset_and_preds/AIDA-YAGO2_train.csv',
+        ],
+        'sampling': 'undersample',
+        'features':  [
+                'cross_stats_10_max',
+                'cross_stats_10_min',
+                'cross_stats_10_mean',
+                'cross_stats_10_median',
+                'cross_stats_10_stdev',
+                'bi_stats_10_max',
+                'bi_stats_10_min',
+                'bi_stats_10_mean',
+                'bi_stats_10_median',
+                'bi_stats_10_stdev',
+                'cross_hamming',
+                'bi_hamming',
+            ]
+    },
+    {
+        'name': 'alldata_under_all10_but_ner_stats_tested_on_aida_train',
+        'train': [
+            'dataset_and_preds/AIDA-YAGO2_train.csv',
+        ],
+        'test': [
+            'dataset_and_preds/AIDA-YAGO2_train.csv',
+        ],
+        'sampling': 'undersample',
+        'features':  [
+                'cross_stats_10_max',
+                'bi_stats_10_max',
+                'cross_hamming',
+                'bi_hamming',
+            ]
+    },
+    {
+        'name': 'alldata_under_bi10_but_ner_tested_on_aida_train',
+        'train': [
+            'dataset_and_preds/AIDA-YAGO2_train.csv',
+            'dataset_and_preds/AIDA-YAGO2_testa.csv',
+            'dataset_and_preds/AIDA-YAGO2_testb.csv',
+            'dataset_and_preds/clueweb_questions.csv',
+            'dataset_and_preds/wnedwiki_questions.csv',
+            'dataset_and_preds/aquaint_questions.csv',
+            'dataset_and_preds/msnbc_questions.csv',
+            'dataset_and_preds/ace2004_questions.csv'
+        ],
+        'test': [
+            'dataset_and_preds/AIDA-YAGO2_train.csv',
+        ],
+        'sampling': 'undersample',
+        'features':  [
+                'bi_stats_10_max',
+                'bi_stats_10_min',
+                'bi_stats_10_mean',
+                'bi_stats_10_median',
+                'bi_stats_10_stdev',
+                'bi_hamming',
+            ]
+    },
+    {
+        'name': 'alldata_under_bi10_but_ner_stats_tested_on_aida_train',
+        'train': [
+            'dataset_and_preds/AIDA-YAGO2_train.csv',
+            'dataset_and_preds/AIDA-YAGO2_testa.csv',
+            'dataset_and_preds/AIDA-YAGO2_testb.csv',
+            'dataset_and_preds/clueweb_questions.csv',
+            'dataset_and_preds/wnedwiki_questions.csv',
+            'dataset_and_preds/aquaint_questions.csv',
+            'dataset_and_preds/msnbc_questions.csv',
+            'dataset_and_preds/ace2004_questions.csv'
+        ],
+        'test': [
+            'dataset_and_preds/AIDA-YAGO2_train.csv',
+        ],
+        'sampling': 'undersample',
+        'features':  [
+                'bi_stats_10_max',
+                'bi_hamming',
+            ]
+    },
+    {
+        'name': 'alldata_under_all10_but_ner_tested_on_aida_testa',
+        'train': [
+            'dataset_and_preds/AIDA-YAGO2_train.csv',
+            'dataset_and_preds/AIDA-YAGO2_testa.csv',
+            'dataset_and_preds/AIDA-YAGO2_testb.csv',
+            'dataset_and_preds/clueweb_questions.csv',
+            'dataset_and_preds/wnedwiki_questions.csv',
+            'dataset_and_preds/aquaint_questions.csv',
+            'dataset_and_preds/msnbc_questions.csv',
+            'dataset_and_preds/ace2004_questions.csv'
+        ],
+        'test': [
+            'dataset_and_preds/AIDA-YAGO2_testa.csv',
+        ],
+        'sampling': 'undersample',
+        'features':  [
+                'cross_stats_10_max',
+                'cross_stats_10_min',
+                'cross_stats_10_mean',
+                'cross_stats_10_median',
+                'cross_stats_10_stdev',
+                'bi_stats_10_max',
+                'bi_stats_10_min',
+                'bi_stats_10_mean',
+                'bi_stats_10_median',
+                'bi_stats_10_stdev',
+                'cross_hamming',
+                'bi_hamming',
+            ]
+    },
+    {
+        'name': 'alldata_under_all10_but_ner_stats_tested_on_aida_testa',
+        'train': [
+            'dataset_and_preds/AIDA-YAGO2_train.csv',
+            'dataset_and_preds/AIDA-YAGO2_testa.csv',
+            'dataset_and_preds/AIDA-YAGO2_testb.csv',
+            'dataset_and_preds/clueweb_questions.csv',
+            'dataset_and_preds/wnedwiki_questions.csv',
+            'dataset_and_preds/aquaint_questions.csv',
+            'dataset_and_preds/msnbc_questions.csv',
+            'dataset_and_preds/ace2004_questions.csv'
+        ],
+        'test': [
+            'dataset_and_preds/AIDA-YAGO2_testa.csv',
+        ],
+        'sampling': 'undersample',
+        'features':  [
+                'cross_stats_10_max',
+                'bi_stats_10_max',
+                'cross_hamming',
+                'bi_hamming',
+            ]
+    },
+    {
+        'name': 'alldata_under_bi10_but_ner_tested_on_aida_testa',
+        'train': [
+            'dataset_and_preds/AIDA-YAGO2_train.csv',
+            'dataset_and_preds/AIDA-YAGO2_testa.csv',
+            'dataset_and_preds/AIDA-YAGO2_testb.csv',
+            'dataset_and_preds/clueweb_questions.csv',
+            'dataset_and_preds/wnedwiki_questions.csv',
+            'dataset_and_preds/aquaint_questions.csv',
+            'dataset_and_preds/msnbc_questions.csv',
+            'dataset_and_preds/ace2004_questions.csv'
+        ],
+        'test': [
+            'dataset_and_preds/AIDA-YAGO2_testa.csv',
+        ],
+        'sampling': 'undersample',
+        'features':  [
+                'bi_stats_10_max',
+                'bi_stats_10_min',
+                'bi_stats_10_mean',
+                'bi_stats_10_median',
+                'bi_stats_10_stdev',
+                'bi_hamming',
+            ]
+    },
+    {
+        'name': 'alldata_under_bi10_but_ner_stats_tested_on_aida_testa',
+        'train': [
+            'dataset_and_preds/AIDA-YAGO2_train.csv',
+            'dataset_and_preds/AIDA-YAGO2_testa.csv',
+            'dataset_and_preds/AIDA-YAGO2_testb.csv',
+            'dataset_and_preds/clueweb_questions.csv',
+            'dataset_and_preds/wnedwiki_questions.csv',
+            'dataset_and_preds/aquaint_questions.csv',
+            'dataset_and_preds/msnbc_questions.csv',
+            'dataset_and_preds/ace2004_questions.csv'
+        ],
+        'test': [
+            'dataset_and_preds/AIDA-YAGO2_testa.csv',
+        ],
+        'sampling': 'undersample',
+        'features':  [
+                'bi_stats_10_max',
+                'bi_hamming',
+            ]
+    },
+    {
+        'name': 'alldata_under_all10_but_ner_tested_on_aida_testb',
+        'train': [
+            'dataset_and_preds/AIDA-YAGO2_train.csv',
+            'dataset_and_preds/AIDA-YAGO2_testa.csv',
+            'dataset_and_preds/AIDA-YAGO2_testb.csv',
+            'dataset_and_preds/clueweb_questions.csv',
+            'dataset_and_preds/wnedwiki_questions.csv',
+            'dataset_and_preds/aquaint_questions.csv',
+            'dataset_and_preds/msnbc_questions.csv',
+            'dataset_and_preds/ace2004_questions.csv'
+        ],
+        'test': [
+            'dataset_and_preds/AIDA-YAGO2_testb.csv',
+        ],
+        'sampling': 'undersample',
+        'features':  [
+                'cross_stats_10_max',
+                'cross_stats_10_min',
+                'cross_stats_10_mean',
+                'cross_stats_10_median',
+                'cross_stats_10_stdev',
+                'bi_stats_10_max',
+                'bi_stats_10_min',
+                'bi_stats_10_mean',
+                'bi_stats_10_median',
+                'bi_stats_10_stdev',
+                'cross_hamming',
+                'bi_hamming',
+            ]
+    },
+    {
+        'name': 'alldata_under_all10_but_ner_stats_tested_on_aida_testb',
+        'train': [
+            'dataset_and_preds/AIDA-YAGO2_train.csv',
+            'dataset_and_preds/AIDA-YAGO2_testa.csv',
+            'dataset_and_preds/AIDA-YAGO2_testb.csv',
+            'dataset_and_preds/clueweb_questions.csv',
+            'dataset_and_preds/wnedwiki_questions.csv',
+            'dataset_and_preds/aquaint_questions.csv',
+            'dataset_and_preds/msnbc_questions.csv',
+            'dataset_and_preds/ace2004_questions.csv'
+        ],
+        'test': [
+            'dataset_and_preds/AIDA-YAGO2_testb.csv',
+        ],
+        'sampling': 'undersample',
+        'features':  [
+                'cross_stats_10_max',
+                'bi_stats_10_max',
+                'cross_hamming',
+                'bi_hamming',
+            ]
+    },
+    {
+        'name': 'alldata_under_bi10_but_ner_tested_on_aida_testb',
+        'train': [
+            'dataset_and_preds/AIDA-YAGO2_train.csv',
+            'dataset_and_preds/AIDA-YAGO2_testa.csv',
+            'dataset_and_preds/AIDA-YAGO2_testb.csv',
+            'dataset_and_preds/clueweb_questions.csv',
+            'dataset_and_preds/wnedwiki_questions.csv',
+            'dataset_and_preds/aquaint_questions.csv',
+            'dataset_and_preds/msnbc_questions.csv',
+            'dataset_and_preds/ace2004_questions.csv'
+        ],
+        'test': [
+            'dataset_and_preds/AIDA-YAGO2_testb.csv',
+        ],
+        'sampling': 'undersample',
+        'features':  [
+                'bi_stats_10_max',
+                'bi_stats_10_min',
+                'bi_stats_10_mean',
+                'bi_stats_10_median',
+                'bi_stats_10_stdev',
+                'bi_hamming',
+            ]
+    },
+    {
+        'name': 'alldata_under_bi10_but_ner_stats_tested_on_aida_testb',
+        'train': [
+            'dataset_and_preds/AIDA-YAGO2_train.csv',
+            'dataset_and_preds/AIDA-YAGO2_testa.csv',
+            'dataset_and_preds/AIDA-YAGO2_testb.csv',
+            'dataset_and_preds/clueweb_questions.csv',
+            'dataset_and_preds/wnedwiki_questions.csv',
+            'dataset_and_preds/aquaint_questions.csv',
+            'dataset_and_preds/msnbc_questions.csv',
+            'dataset_and_preds/ace2004_questions.csv'
+        ],
+        'test': [
+            'dataset_and_preds/AIDA-YAGO2_testb.csv',
+        ],
+        'sampling': 'undersample',
+        'features':  [
+                'bi_stats_10_max',
+                'bi_hamming',
+            ]
+    },
+    {
+        'name': 'alldata_under_all10_but_ner_tested_on_clueweb',
+        'train': [
+            'dataset_and_preds/AIDA-YAGO2_train.csv',
+            'dataset_and_preds/AIDA-YAGO2_testa.csv',
+            'dataset_and_preds/AIDA-YAGO2_testb.csv',
+            'dataset_and_preds/clueweb_questions.csv',
+            'dataset_and_preds/wnedwiki_questions.csv',
+            'dataset_and_preds/aquaint_questions.csv',
+            'dataset_and_preds/msnbc_questions.csv',
+            'dataset_and_preds/ace2004_questions.csv'
+        ],
+        'test': [
+            'dataset_and_preds/clueweb_questions.csv',
+        ],
+        'sampling': 'undersample',
+        'features':  [
+                'cross_stats_10_max',
+                'cross_stats_10_min',
+                'cross_stats_10_mean',
+                'cross_stats_10_median',
+                'cross_stats_10_stdev',
+                'bi_stats_10_max',
+                'bi_stats_10_min',
+                'bi_stats_10_mean',
+                'bi_stats_10_median',
+                'bi_stats_10_stdev',
+                'cross_hamming',
+                'bi_hamming',
+            ]
+    },
+    {
+        'name': 'alldata_under_all10_but_ner_stats_tested_on_clueweb',
+        'train': [
+            'dataset_and_preds/AIDA-YAGO2_train.csv',
+            'dataset_and_preds/AIDA-YAGO2_testa.csv',
+            'dataset_and_preds/AIDA-YAGO2_testb.csv',
+            'dataset_and_preds/clueweb_questions.csv',
+            'dataset_and_preds/wnedwiki_questions.csv',
+            'dataset_and_preds/aquaint_questions.csv',
+            'dataset_and_preds/msnbc_questions.csv',
+            'dataset_and_preds/ace2004_questions.csv'
+        ],
+        'test': [
+            'dataset_and_preds/clueweb_questions.csv',
+        ],
+        'sampling': 'undersample',
+        'features':  [
+                'cross_stats_10_max',
+                'bi_stats_10_max',
+                'cross_hamming',
+                'bi_hamming',
+            ]
+    },
+    {
+        'name': 'alldata_under_bi10_but_ner_tested_on_clueweb',
+        'train': [
+            'dataset_and_preds/AIDA-YAGO2_train.csv',
+            'dataset_and_preds/AIDA-YAGO2_testa.csv',
+            'dataset_and_preds/AIDA-YAGO2_testb.csv',
+            'dataset_and_preds/clueweb_questions.csv',
+            'dataset_and_preds/wnedwiki_questions.csv',
+            'dataset_and_preds/aquaint_questions.csv',
+            'dataset_and_preds/msnbc_questions.csv',
+            'dataset_and_preds/ace2004_questions.csv'
+        ],
+        'test': [
+            'dataset_and_preds/clueweb_questions.csv',
+        ],
+        'sampling': 'undersample',
+        'features':  [
+                'bi_stats_10_max',
+                'bi_stats_10_min',
+                'bi_stats_10_mean',
+                'bi_stats_10_median',
+                'bi_stats_10_stdev',
+                'bi_hamming',
+            ]
+    },
+    {
+        'name': 'alldata_under_bi10_but_ner_stats_tested_on_clueweb',
+        'train': [
+            'dataset_and_preds/AIDA-YAGO2_train.csv',
+            'dataset_and_preds/AIDA-YAGO2_testa.csv',
+            'dataset_and_preds/AIDA-YAGO2_testb.csv',
+            'dataset_and_preds/clueweb_questions.csv',
+            'dataset_and_preds/wnedwiki_questions.csv',
+            'dataset_and_preds/aquaint_questions.csv',
+            'dataset_and_preds/msnbc_questions.csv',
+            'dataset_and_preds/ace2004_questions.csv'
+        ],
+        'test': [
+            'dataset_and_preds/clueweb_questions.csv',
+        ],
+        'sampling': 'undersample',
+        'features':  [
+                'bi_stats_10_max',
+                'bi_hamming',
+            ]
+    },
+    {
+        'name': 'alldata_under_all10_but_ner_tested_on_wnedwiki',
+        'train': [
+            'dataset_and_preds/AIDA-YAGO2_train.csv',
+            'dataset_and_preds/AIDA-YAGO2_testa.csv',
+            'dataset_and_preds/AIDA-YAGO2_testb.csv',
+            'dataset_and_preds/clueweb_questions.csv',
+            'dataset_and_preds/wnedwiki_questions.csv',
+            'dataset_and_preds/aquaint_questions.csv',
+            'dataset_and_preds/msnbc_questions.csv',
+            'dataset_and_preds/ace2004_questions.csv'
+        ],
+        'test': [
+            'dataset_and_preds/wnedwiki_questions.csv',
+        ],
+        'sampling': 'undersample',
+        'features':  [
+                'cross_stats_10_max',
+                'cross_stats_10_min',
+                'cross_stats_10_mean',
+                'cross_stats_10_median',
+                'cross_stats_10_stdev',
+                'bi_stats_10_max',
+                'bi_stats_10_min',
+                'bi_stats_10_mean',
+                'bi_stats_10_median',
+                'bi_stats_10_stdev',
+                'cross_hamming',
+                'bi_hamming',
+            ]
+    },
+    {
+        'name': 'alldata_under_all10_but_ner_stats_tested_on_wnedwiki',
+        'train': [
+            'dataset_and_preds/AIDA-YAGO2_train.csv',
+            'dataset_and_preds/AIDA-YAGO2_testa.csv',
+            'dataset_and_preds/AIDA-YAGO2_testb.csv',
+            'dataset_and_preds/clueweb_questions.csv',
+            'dataset_and_preds/wnedwiki_questions.csv',
+            'dataset_and_preds/aquaint_questions.csv',
+            'dataset_and_preds/msnbc_questions.csv',
+            'dataset_and_preds/ace2004_questions.csv'
+        ],
+        'test': [
+            'dataset_and_preds/wnedwiki_questions.csv',
+        ],
+        'sampling': 'undersample',
+        'features':  [
+                'cross_stats_10_max',
+                'bi_stats_10_max',
+                'cross_hamming',
+                'bi_hamming',
+            ]
+    },
+    {
+        'name': 'alldata_under_bi10_but_ner_tested_on_wnedwiki',
+        'train': [
+            'dataset_and_preds/AIDA-YAGO2_train.csv',
+            'dataset_and_preds/AIDA-YAGO2_testa.csv',
+            'dataset_and_preds/AIDA-YAGO2_testb.csv',
+            'dataset_and_preds/clueweb_questions.csv',
+            'dataset_and_preds/wnedwiki_questions.csv',
+            'dataset_and_preds/aquaint_questions.csv',
+            'dataset_and_preds/msnbc_questions.csv',
+            'dataset_and_preds/ace2004_questions.csv'
+        ],
+        'test': [
+            'dataset_and_preds/wnedwiki_questions.csv',
+        ],
+        'sampling': 'undersample',
+        'features':  [
+                'bi_stats_10_max',
+                'bi_stats_10_min',
+                'bi_stats_10_mean',
+                'bi_stats_10_median',
+                'bi_stats_10_stdev',
+                'bi_hamming',
+            ]
+    },
+    {
+        'name': 'alldata_under_bi10_but_ner_stats_tested_on_wnedwiki',
+        'train': [
+            'dataset_and_preds/AIDA-YAGO2_train.csv',
+            'dataset_and_preds/AIDA-YAGO2_testa.csv',
+            'dataset_and_preds/AIDA-YAGO2_testb.csv',
+            'dataset_and_preds/clueweb_questions.csv',
+            'dataset_and_preds/wnedwiki_questions.csv',
+            'dataset_and_preds/aquaint_questions.csv',
+            'dataset_and_preds/msnbc_questions.csv',
+            'dataset_and_preds/ace2004_questions.csv'
+        ],
+        'test': [
+            'dataset_and_preds/wnedwiki_questions.csv',
+        ],
+        'sampling': 'undersample',
+        'features':  [
+                'bi_stats_10_max',
+                'bi_hamming',
+            ]
+    },
+    {
+        'name': 'alldata_under_all10_but_ner_tested_on_aquaint',
+        'train': [
+            'dataset_and_preds/AIDA-YAGO2_train.csv',
+            'dataset_and_preds/AIDA-YAGO2_testa.csv',
+            'dataset_and_preds/AIDA-YAGO2_testb.csv',
+            'dataset_and_preds/clueweb_questions.csv',
+            'dataset_and_preds/wnedwiki_questions.csv',
+            'dataset_and_preds/aquaint_questions.csv',
+            'dataset_and_preds/msnbc_questions.csv',
+            'dataset_and_preds/ace2004_questions.csv'
+        ],
+        'test': [
+            'dataset_and_preds/aquaint_questions.csv',
+        ],
+        'sampling': 'undersample',
+        'features':  [
+                'cross_stats_10_max',
+                'cross_stats_10_min',
+                'cross_stats_10_mean',
+                'cross_stats_10_median',
+                'cross_stats_10_stdev',
+                'bi_stats_10_max',
+                'bi_stats_10_min',
+                'bi_stats_10_mean',
+                'bi_stats_10_median',
+                'bi_stats_10_stdev',
+                'cross_hamming',
+                'bi_hamming',
+            ]
+    },
+    {
+        'name': 'alldata_under_all10_but_ner_stats_tested_on_aquaint',
+        'train': [
+            'dataset_and_preds/AIDA-YAGO2_train.csv',
+            'dataset_and_preds/AIDA-YAGO2_testa.csv',
+            'dataset_and_preds/AIDA-YAGO2_testb.csv',
+            'dataset_and_preds/clueweb_questions.csv',
+            'dataset_and_preds/wnedwiki_questions.csv',
+            'dataset_and_preds/aquaint_questions.csv',
+            'dataset_and_preds/msnbc_questions.csv',
+            'dataset_and_preds/ace2004_questions.csv'
+        ],
+        'test': [
+            'dataset_and_preds/aquaint_questions.csv',
+        ],
+        'sampling': 'undersample',
+        'features':  [
+                'cross_stats_10_max',
+                'bi_stats_10_max',
+                'cross_hamming',
+                'bi_hamming',
+            ]
+    },
+    {
+        'name': 'alldata_under_bi10_nut_ner_tested_on_aquaint',
+        'train': [
+            'dataset_and_preds/AIDA-YAGO2_train.csv',
+            'dataset_and_preds/AIDA-YAGO2_testa.csv',
+            'dataset_and_preds/AIDA-YAGO2_testb.csv',
+            'dataset_and_preds/clueweb_questions.csv',
+            'dataset_and_preds/wnedwiki_questions.csv',
+            'dataset_and_preds/aquaint_questions.csv',
+            'dataset_and_preds/msnbc_questions.csv',
+            'dataset_and_preds/ace2004_questions.csv'
+        ],
+        'test': [
+            'dataset_and_preds/aquaint_questions.csv',
+        ],
+        'sampling': 'undersample',
+        'features':  [
+                'bi_stats_10_max',
+                'bi_stats_10_min',
+                'bi_stats_10_mean',
+                'bi_stats_10_median',
+                'bi_stats_10_stdev',
+                'bi_hamming',
+            ]
+    },
+    {
+        'name': 'alldata_under_bi10_but_ner_stats_tested_on_aquaint',
+        'train': [
+            'dataset_and_preds/AIDA-YAGO2_train.csv',
+            'dataset_and_preds/AIDA-YAGO2_testa.csv',
+            'dataset_and_preds/AIDA-YAGO2_testb.csv',
+            'dataset_and_preds/clueweb_questions.csv',
+            'dataset_and_preds/wnedwiki_questions.csv',
+            'dataset_and_preds/aquaint_questions.csv',
+            'dataset_and_preds/msnbc_questions.csv',
+            'dataset_and_preds/ace2004_questions.csv'
+        ],
+        'test': [
+            'dataset_and_preds/aquaint_questions.csv',
+        ],
+        'sampling': 'undersample',
+        'features':  [
+                'bi_stats_10_max',
+                'bi_hamming',
+            ]
+    },
+    {
+        'name': 'alldata_under_all10_but_ner_tested_on_msnbc',
+        'train': [
+            'dataset_and_preds/AIDA-YAGO2_train.csv',
+            'dataset_and_preds/AIDA-YAGO2_testa.csv',
+            'dataset_and_preds/AIDA-YAGO2_testb.csv',
+            'dataset_and_preds/clueweb_questions.csv',
+            'dataset_and_preds/wnedwiki_questions.csv',
+            'dataset_and_preds/aquaint_questions.csv',
+            'dataset_and_preds/msnbc_questions.csv',
+            'dataset_and_preds/ace2004_questions.csv'
+        ],
+        'test': [
+            'dataset_and_preds/msnbc_questions.csv',
+        ],
+        'sampling': 'undersample',
+        'features':  [
+                'cross_stats_10_max',
+                'cross_stats_10_min',
+                'cross_stats_10_mean',
+                'cross_stats_10_median',
+                'cross_stats_10_stdev',
+                'bi_stats_10_max',
+                'bi_stats_10_min',
+                'bi_stats_10_mean',
+                'bi_stats_10_median',
+                'bi_stats_10_stdev',
+                'cross_hamming',
+                'bi_hamming',
+            ]
+    },
+    {
+        'name': 'alldata_under_all10_but_ner_stats_tested_on_msnbc',
+        'train': [
+            'dataset_and_preds/AIDA-YAGO2_train.csv',
+            'dataset_and_preds/AIDA-YAGO2_testa.csv',
+            'dataset_and_preds/AIDA-YAGO2_testb.csv',
+            'dataset_and_preds/clueweb_questions.csv',
+            'dataset_and_preds/wnedwiki_questions.csv',
+            'dataset_and_preds/aquaint_questions.csv',
+            'dataset_and_preds/msnbc_questions.csv',
+            'dataset_and_preds/ace2004_questions.csv'
+        ],
+        'test': [
+            'dataset_and_preds/msnbc_questions.csv',
+        ],
+        'sampling': 'undersample',
+        'features':  [
+                'cross_stats_10_max',
+                'bi_stats_10_max',
+                'cross_hamming',
+                'bi_hamming',
+            ]
+    },
+    {
+        'name': 'alldata_under_bi10_but_ner_tested_on_msnbc',
+        'train': [
+            'dataset_and_preds/AIDA-YAGO2_train.csv',
+            'dataset_and_preds/AIDA-YAGO2_testa.csv',
+            'dataset_and_preds/AIDA-YAGO2_testb.csv',
+            'dataset_and_preds/clueweb_questions.csv',
+            'dataset_and_preds/wnedwiki_questions.csv',
+            'dataset_and_preds/aquaint_questions.csv',
+            'dataset_and_preds/msnbc_questions.csv',
+            'dataset_and_preds/ace2004_questions.csv'
+        ],
+        'test': [
+            'dataset_and_preds/msnbc_questions.csv',
+        ],
+        'sampling': 'undersample',
+        'features':  [
+                'bi_stats_10_max',
+                'bi_stats_10_min',
+                'bi_stats_10_mean',
+                'bi_stats_10_median',
+                'bi_stats_10_stdev',
+                'bi_hamming',
+            ]
+    },
+    {
+        'name': 'alldata_under_bi10_but_ner_stats_tested_on_msnbc',
+        'train': [
+            'dataset_and_preds/AIDA-YAGO2_train.csv',
+            'dataset_and_preds/AIDA-YAGO2_testa.csv',
+            'dataset_and_preds/AIDA-YAGO2_testb.csv',
+            'dataset_and_preds/clueweb_questions.csv',
+            'dataset_and_preds/wnedwiki_questions.csv',
+            'dataset_and_preds/aquaint_questions.csv',
+            'dataset_and_preds/msnbc_questions.csv',
+            'dataset_and_preds/ace2004_questions.csv'
+        ],
+        'test': [
+            'dataset_and_preds/msnbc_questions.csv',
+        ],
+        'sampling': 'undersample',
+        'features':  [
+                'bi_stats_10_max',
+                'bi_hamming',
+            ]
+    },
+    {
+        'name': 'alldata_under_all10_but_ner_tested_on_ace2004',
+        'train': [
+            'dataset_and_preds/AIDA-YAGO2_train.csv',
+            'dataset_and_preds/AIDA-YAGO2_testa.csv',
+            'dataset_and_preds/AIDA-YAGO2_testb.csv',
+            'dataset_and_preds/clueweb_questions.csv',
+            'dataset_and_preds/wnedwiki_questions.csv',
+            'dataset_and_preds/aquaint_questions.csv',
+            'dataset_and_preds/msnbc_questions.csv',
+            'dataset_and_preds/ace2004_questions.csv'
+        ],
+        'test': [
+            'dataset_and_preds/ace2004_questions.csv',
+        ],
+        'sampling': 'undersample',
+        'features':  [
+                'cross_stats_10_max',
+                'cross_stats_10_min',
+                'cross_stats_10_mean',
+                'cross_stats_10_median',
+                'cross_stats_10_stdev',
+                'bi_stats_10_max',
+                'bi_stats_10_min',
+                'bi_stats_10_mean',
+                'bi_stats_10_median',
+                'bi_stats_10_stdev',
+                'cross_hamming',
+                'bi_hamming',
+            ]
+    },
+    {
+        'name': 'alldata_under_all10_but_ner_stats_tested_on_ace2004',
+        'train': [
+            'dataset_and_preds/AIDA-YAGO2_train.csv',
+            'dataset_and_preds/AIDA-YAGO2_testa.csv',
+            'dataset_and_preds/AIDA-YAGO2_testb.csv',
+            'dataset_and_preds/clueweb_questions.csv',
+            'dataset_and_preds/wnedwiki_questions.csv',
+            'dataset_and_preds/aquaint_questions.csv',
+            'dataset_and_preds/msnbc_questions.csv',
+            'dataset_and_preds/ace2004_questions.csv'
+        ],
+        'test': [
+            'dataset_and_preds/ace2004_questions.csv',
+        ],
+        'sampling': 'undersample',
+        'features':  [
+                'cross_stats_10_max',
+                'bi_stats_10_max',
+                'cross_hamming',
+                'bi_hamming',
+            ]
+    },
+    {
+        'name': 'alldata_under_bi10_but_ner_tested_on_ace2004',
+        'train': [
+            'dataset_and_preds/AIDA-YAGO2_train.csv',
+            'dataset_and_preds/AIDA-YAGO2_testa.csv',
+            'dataset_and_preds/AIDA-YAGO2_testb.csv',
+            'dataset_and_preds/clueweb_questions.csv',
+            'dataset_and_preds/wnedwiki_questions.csv',
+            'dataset_and_preds/aquaint_questions.csv',
+            'dataset_and_preds/msnbc_questions.csv',
+            'dataset_and_preds/ace2004_questions.csv'
+        ],
+        'test': [
+            'dataset_and_preds/ace2004_questions.csv',
+        ],
+        'sampling': 'undersample',
+        'features':  [
+                'bi_stats_10_max',
+                'bi_stats_10_min',
+                'bi_stats_10_mean',
+                'bi_stats_10_median',
+                'bi_stats_10_stdev',
+                'bi_hamming',
+            ]
+    },
+    {
+        'name': 'alldata_under_bi10_but_ner_stats_tested_on_ace2004',
+        'train': [
+            'dataset_and_preds/AIDA-YAGO2_train.csv',
+            'dataset_and_preds/AIDA-YAGO2_testa.csv',
+            'dataset_and_preds/AIDA-YAGO2_testb.csv',
+            'dataset_and_preds/clueweb_questions.csv',
+            'dataset_and_preds/wnedwiki_questions.csv',
+            'dataset_and_preds/aquaint_questions.csv',
+            'dataset_and_preds/msnbc_questions.csv',
+            'dataset_and_preds/ace2004_questions.csv'
+        ],
+        'test': [
+            'dataset_and_preds/ace2004_questions.csv',
+        ],
+        'sampling': 'undersample',
+        'features':  [
+                'bi_stats_10_max',
+                'bi_hamming',
+            ]
+    },
 ]
 
 #['max', 'stats', 'dst', 'ner', 'avg_ner', 'avg_ner_correct']
+
+# assert no duplicates
+vc = pd.DataFrame([task['name'] for task in tasks]).value_counts()
+if not (vc <= 1).all():
+    print('!' * 30)
+    print('Duplicates:')
+    print('!' * 30)
+    print(vc[vc > 1])
+    raise Exception('duplicate task!')
 
 for task in tasks:
     print('-'*30)
@@ -686,6 +1611,9 @@ for task in tasks:
     train_df = train_df[train_df[task['features']].notna().all(axis=1)]
     test_df = test_df[test_df[task['features']].notna().all(axis=1)]
 
+    train_df_shape_notna = train_df.shape[0]
+    test_df_shape_notna = test_df.shape[0]
+
     if task['sampling'] == 'undersample':
         print('undersampling...')
 
@@ -702,6 +1630,12 @@ for task in tasks:
 
     train_df_shape_actual = train_df.shape[0]
     test_df_shape_actual = test_df.shape[0]
+
+    df_size_report = pd.DataFrame({
+        'train': [train_df_shape_original, train_df_shape_notna, train_df_shape_actual],
+        'test': [test_df_shape_original, test_df_shape_notna, test_df_shape_actual]
+    }, index=['original', 'notna', 'actual']).to_markdown()
+    print(df_size_report)
 
     print(pd.DataFrame(train_df['y'].value_counts()).to_markdown())
 
@@ -722,36 +1656,74 @@ for task in tasks:
     y_pred = np.array(list(map(lambda x: x[1], clf.predict_proba(X_test))))
     y_pred_round = np.round(y_pred)
 
-    test_df['y_pred'] = y_pred_round
+    test_df['y_pred_round'] = y_pred_round
+    test_df['y_pred'] = y_pred
 
-    bi_baseline = test_df.query('bi_labels == bi_best_candidate or Wikipedia_title == bi_best_candidate_title').shape[0] / test_df.shape[0]
-    cross_baseline = test_df.query('cross_labels == cross_best_candidate or Wikipedia_title == cross_best_candidate_title').shape[0] / test_df.shape[0]
+    bi_baseline = test_df.query('bi_labels == bi_best_candidate or Wikipedia_title == bi_best_candidate_title').shape[0]
+    cross_baseline = test_df.query('cross_labels == cross_best_candidate or Wikipedia_title == cross_best_candidate_title').shape[0]
 
-    bi_acc = test_df.query('(y_pred == 1 and (bi_labels == bi_best_candidate or Wikipedia_title == bi_best_candidate_title)) or (bi_labels == -1 and y_pred == 0)').shape[0] / test_df.shape[0]
-    cross_acc = test_df.query('(y_pred == 1 and (cross_labels == cross_best_candidate or Wikipedia_title == cross_best_candidate_title)) or (cross_labels == -1 and y_pred == 0)').shape[0] / test_df.shape[0]
-
-    df_size_report = pd.DataFrame({
-        'train': [train_df_shape_original, train_df_shape_actual],
-        'test': [test_df_shape_original, test_df_shape_actual]
-    }, index=['original', 'actual']).to_markdown()
-    print(df_size_report)
+    bi_acc = test_df.query('(y_pred_round == 1 and (bi_labels == bi_best_candidate or Wikipedia_title == bi_best_candidate_title)) or (bi_labels == -1 and y_pred_round == 0)').shape[0]
+    cross_acc = test_df.query('(y_pred_round == 1 and (cross_labels == cross_best_candidate or Wikipedia_title == cross_best_candidate_title)) or (cross_labels == -1 and y_pred_round == 0)').shape[0]
 
     _classification_report = classification_report(y_test, y_pred_round)
+
+    # oracle corrects in [0.25, 0.75]
+    # TODO maybe look for a better way to get them (e.g. correct-error kde intersections ?)
+    tl = 0.25
+    th = 0.75
+    oracle_df = pd.DataFrame({
+        'y_test': y_test,
+        'y_pred': y_pred,
+        'y_pred_round': y_pred_round
+    })
+    oracle_original_shape = oracle_df.shape[0]
+    oracle_df = oracle_df.query(f'y_pred <= {tl} or y_pred >= {th}')
+
+    _classification_report_oracle = classification_report(oracle_df['y_test'], oracle_df['y_pred_round'])
+
+    test_df_oracle = test_df.query(f'y_pred <= {tl} or y_pred >= {th}')
+
+    bi_acc_oracle = test_df_oracle.query('(y_pred_round == 1 and (bi_labels == bi_best_candidate or Wikipedia_title == bi_best_candidate_title)) or (bi_labels == -1 and y_pred_round == 0)').shape[0]
+    cross_acc_oracle = test_df_oracle.query('(y_pred_round == 1 and (cross_labels == cross_best_candidate or Wikipedia_title == cross_best_candidate_title)) or (cross_labels == -1 and y_pred_round == 0)').shape[0]
+
     print(_classification_report)
 
-    print('Bi acc:', bi_acc)
-    print('Cross acc:', cross_acc)
-    print('Bi baseline:', bi_baseline)
-    print('Cross baseline:', cross_baseline)
+    print('-- Performances over test set:', task['test'], '--')
+    print('Bi baseline:', bi_baseline / test_df_shape_actual)
+    print('Cross baseline:', cross_baseline / test_df_shape_actual)
+    print('Bi acc:', bi_acc / test_df_shape_actual)
+    print('Cross acc:', cross_acc / test_df_shape_actual)
+    print('Bi acc adjusted:', bi_acc / test_df_shape_original)
+    print('Cross acc adjusted:', cross_acc / test_df_shape_original)
+
+    print(f'-- Oracle HITL evaluation when y_pred in [{tl}, {th}]')
+    print('Ratio to human validator:', oracle_df.shape[0] / oracle_original_shape)
+    print(_classification_report_oracle)
+
+    print('Bi acc oracle:', bi_acc_oracle / test_df_oracle.shape[0])
+    print('Cross acc oracle:', cross_acc_oracle / test_df_oracle.shape[0])
+
 
     with open(os.path.join(outpath, task['name']+'_report.txt'), 'w') as fd:
+        print(pd.DataFrame(train_df['y'].value_counts()).to_markdown(), file=fd)
         print(df_size_report, file=fd)
         print(_classification_report, file=fd)
 
-        print('Bi acc:', bi_acc, file=fd)
-        print('Cross acc:', cross_acc, file=fd)
-        print('Bi baseline:', bi_baseline, file=fd)
-        print('Cross baseline:', cross_baseline, file=fd)
+        print('-- Performances over test set:', task['test'], '--', file=fd)
+        print('Bi baseline:', bi_baseline / test_df_shape_actual, file=fd)
+        print('Cross baseline:', cross_baseline / test_df_shape_actual, file=fd)
+        print('Bi acc:', bi_acc / test_df_shape_actual, file=fd)
+        print('Cross acc:', cross_acc / test_df_shape_actual, file=fd)
+        print('Bi acc adjusted:', bi_acc / test_df_shape_original, file=fd)
+        print('Cross acc adjusted:', cross_acc / test_df_shape_original, file=fd)
+
+        print(f'-- Oracle HITL evaluation when y_pred in [{tl}, {th}]', file=fd)
+        print('Ratio to human validator:', oracle_df / oracle_original_shape, file=fd)
+        print(_classification_report_oracle, file=fd)
+        print('Bi acc oracle:', bi_acc_oracle / test_df_oracle.shape[0], file=fd)
+        print('Cross acc oracle:', cross_acc_oracle / test_df_oracle.shape[0], file=fd)
+
+
 
     with open(os.path.join(outpath, task['name']+'_model.pickle'), 'wb') as fd:
         pickle.dump(clf, fd)
