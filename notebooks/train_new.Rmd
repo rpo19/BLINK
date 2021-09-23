@@ -32,7 +32,7 @@ import matplotlib.pyplot as plt
 ```
 
 ```{python}
-whole2 = pd.read_csv('whole2_with_100_10_stats_ds.csv', index_col=0)
+whole2 = pd.read_csv('', index_col=0)
 whole2.head()
 ```
 
@@ -306,6 +306,10 @@ train_df['y'].value_counts()
 ```
 
 ```{python}
+print(pd.DataFrame(train_df['y'].value_counts()).to_markdown())
+```
+
+```{python}
 features = nil1_columns
 ```
 
@@ -428,9 +432,7 @@ if False:
     torch.save(model.state_dict(), os.path.join(models_path, 'nrl_all_top100.torch'))
 ```
 
-```{python}
 # lr
-```
 
 ```{python}
 from sklearn.linear_model import LogisticRegression
@@ -439,7 +441,136 @@ from sklearn.ensemble import RandomForestClassifier
 ```
 
 ```{python}
-train_df = whole2
+train_df = df
+```
+
+```{python}
+aida_only = True
+if aida_only:
+    train_df = whole2#[whole2.apply(lambda x: 'AIDA-YAGO2' in x['src'], axis=1)]
+    
+    ner_types_p = [
+        '../data/BLINK_benchmark_NIL_ner/AIDA-YAGO2_train_ner.jsonl',
+        '../data/BLINK_benchmark_NIL_ner/AIDA-YAGO2_testa_ner.jsonl',
+        '../data/BLINK_benchmark_NIL_ner/AIDA-YAGO2_testb_ner.jsonl',
+    ]
+    ner_types = pd.DataFrame()
+    for p in ner_types_p:
+        ner_types = pd.concat([ner_types, pd.read_json(p, lines=True)])
+        
+    # one hot
+    ner_types[['ner_per', 'ner_loc', 'ner_org', 'ner_misc']] = ner_types.apply(lambda x: {
+        'ner_per': x['ner'] == 'PER',
+        'ner_loc': x['ner'] == 'LOC',
+        'ner_org': x['ner'] == 'ORG',
+        'ner_misc': x['ner'] == 'MISC'
+    }, axis=1, result_type='expand').astype(int)
+        
+    wiki_types_p = [
+        'wd2ner/AIDA-YAGO2_train.jsonl_ner_type.csv',
+        'wd2ner/AIDA-YAGO2_testa.jsonl_ner_type.csv',
+        'wd2ner/AIDA-YAGO2_testb.jsonl_ner_type.csv',
+    ]
+    wiki_types = pd.DataFrame()
+    for p in wiki_types_p:
+        wiki_types = pd.concat([wiki_types, pd.read_csv(p, index_col=0).astype(int).rename(columns={
+            'per': 'wiki_per',
+            'loc': 'wiki_loc',
+            'org': 'wiki_org',
+            'misc': 'wiki_misc',
+        })])
+        
+    assert ner_types.shape[0] == wiki_types.shape[0]
+        
+    ner_types[wiki_types.columns] = wiki_types
+    print(train_df.shape)
+    
+    train_df = train_df.merge(ner_types[[
+        'query_id', 'ner',
+        'ner_per', 'ner_loc', 'ner_org', 'ner_misc',
+        'wiki_per', 'wiki_loc', 'wiki_org', 'wiki_misc']], on='query_id', how='left')
+    
+    print(train_df.shape)
+```
+
+```{python}
+avg_ner = True
+if avg_ner:
+    # non va bene, serve best candidate
+    avg_ner_types_correct = train_df.query('cross_best_candidate == cross_labels').groupby('cross_best_candidate')[['ner_per', 'ner_loc', 'ner_org', 'ner_misc']].mean()
+    avg_ner_types_correct = avg_ner_types_correct.rename(columns={
+        'ner_per': 'avg_ner_per_correct',
+        'ner_loc': 'avg_ner_loc_correct',
+        'ner_org': 'avg_ner_org_correct',
+        'ner_misc': 'avg_ner_misc_correct',
+    })
+    
+    avg_ner_types = train_df.groupby('cross_best_candidate')[['ner_per', 'ner_loc', 'ner_org', 'ner_misc']].mean()
+    avg_ner_types = avg_ner_types.rename(columns={
+        'ner_per': 'avg_ner_per',
+        'ner_loc': 'avg_ner_loc',
+        'ner_org': 'avg_ner_org',
+        'ner_misc': 'avg_ner_misc',
+    })
+    
+    #avg_ner_types[['avg_ner_per', 'avg_ner_loc', 'avg_ner_org', 'avg_ner_misc']] = np.array(list(map(lambda x: (x == x.max()).astype(int), avg_ner_types[['avg_ner_per', 'avg_ner_loc', 'avg_ner_org', 'avg_ner_misc']].values)))
+    
+    train_df = train_df.join(avg_ner_types_correct, on='cross_best_candidate')
+    train_df = train_df.join(avg_ner_types, on='cross_best_candidate')
+```
+
+```{python}
+train_df[train_df['avg_ner_per_correct'].notna()].query('cross_best_candidate != cross_labels')['src'].value_counts()
+```
+
+```{python}
+whole2.shape
+```
+
+```{python}
+train_df.shape
+```
+
+```{python}
+[i for i in list(train_df.columns) if 'nil' in i]
+```
+
+```{python}
+train_df = train_df.drop(columns=['bi_nil_p',
+ 'bi_nil_b',
+ 'bi_best_candidate+nil',
+ 'cross_nil_p',
+ 'cross_nil_b',
+ 'cross_best_candidate+nil',
+ 'cross_best_candidate+nil_title',
+ 'bi_best_candidate+nil_title',
+ #'cross_nil_p_lr',
+ #'cross_nil_b_lr',
+])
+```
+
+```{python}
+#train_df.to_csv('whole3_ner_avg_also_correct.csv')
+```
+
+```{python}
+if True:
+    train_df = train_df[train_df.apply(lambda x: 'AIDA-YAGO2' in x['src'], axis=1)]
+    assert train_df[train_df.apply(lambda x: 'AIDA-YAGO2' in x['src'], axis=1)]['ner_per'].isna().sum() == 0
+    assert train_df[train_df.apply(lambda x: 'AIDA-YAGO2' in x['src'], axis=1)]['avg_ner_per'].isna().sum() == 0
+```
+
+```{python}
+train_df[train_df['avg_ner_per_correct'].notna()].query('cross_best_candidate != cross_labels')['src'].value_counts()
+```
+
+```{python}
+if True:
+    train_df = train_df[train_df['avg_ner_per_correct'].notna()]
+```
+
+```{python}
+train_df.query('cross_labels == -1').shape[0]
 ```
 
 ```{python}
@@ -456,14 +587,16 @@ train_df, test_df = train_test_split(train_df, test_size=0.33, random_state=17)
 ```
 
 ```{python}
-downsample = True
+downsample = 'downsample'
 
-if downsample:
+if downsample == 'downsample':
     train_df_0 = train_df.query('y == 0')
     train_df_1 = train_df.query('y == 1')
 
     train_df_1 = train_df_1.sample(frac=1).iloc[:train_df_0.shape[0]]
     train_df = pd.concat([train_df_0, train_df_1]).sample(frac=1)
+elif downsample == 'augment':
+    pass
 ```
 
 ```{python}
@@ -471,15 +604,90 @@ train_df['y'].value_counts()
 ```
 
 ```{python}
+# wiki types are biased!!!!
+nil10_types_avg = [
+    'cross_stats_10_max',
+    'cross_stats_10_min',
+    'cross_stats_10_mean',
+    'cross_stats_10_median',
+    'cross_stats_10_stdev',
+    'bi_stats_10_max',
+    'bi_stats_10_min',
+    'bi_stats_10_mean',
+    'bi_stats_10_median',
+    'bi_stats_10_stdev',
+    'cross_hamming',
+    'bi_hamming',
+    'ner_per',
+    'ner_loc',
+    'ner_org',
+    'ner_misc',
+    'avg_ner_per',
+    'avg_ner_loc',
+    'avg_ner_org',
+    'avg_ner_misc',
+]
+nil10_types_avg_correct = [
+    'cross_stats_10_max',
+    'cross_stats_10_min',
+    'cross_stats_10_mean',
+    'cross_stats_10_median',
+    'cross_stats_10_stdev',
+    'bi_stats_10_max',
+    'bi_stats_10_min',
+    'bi_stats_10_mean',
+    'bi_stats_10_median',
+    'bi_stats_10_stdev',
+    'cross_hamming',
+    'bi_hamming',
+    'ner_per',
+    'ner_loc',
+    'ner_org',
+    'ner_misc',
+    'avg_ner_per_correct',
+    'avg_ner_loc_correct',
+    'avg_ner_org_correct',
+    'avg_ner_misc_correct',
+]
 nil1_columns = [
     'bi_stats_10_max',
     'cross_stats_10_max',
     'cross_hamming',
     'bi_hamming',
+    'ner_per',
+    'ner_loc',
+    'ner_org',
+    'ner_misc',
+    'avg_ner_per',
+    'avg_ner_loc',
+    'avg_ner_org',
+    'avg_ner_misc',
+]
+nil1_columns_correct = [
+    'bi_stats_10_max',
+    'cross_stats_10_max',
+    'cross_hamming',
+    'bi_hamming',
+    'ner_per',
+    'ner_loc',
+    'ner_org',
+    'ner_misc',
+    'avg_ner_per_correct',
+    'avg_ner_loc_correct',
+    'avg_ner_org_correct',
+    'avg_ner_misc_correct',
 ]
 nil1_columns_bi = [
     'bi_stats_10_max',
     'bi_hamming',
+    'ner_per',
+    'ner_loc',
+    'ner_org',
+    'ner_misc',
+    'avg_ner_per',
+    'avg_ner_loc',
+    'avg_ner_org',
+    'avg_ner_misc',
 ]
 nil10_columns = [
     'cross_stats_10_max',
@@ -523,7 +731,11 @@ nil100_columns = [
 ```
 
 ```{python}
-features = nil10_columns_bi
+features = nil1_columns_correct
+```
+
+```{python}
+train_df[features].isna().sum().sum()
 ```
 
 ```{python}
@@ -559,8 +771,8 @@ X_test = lr_scaler.transform(X_test)
 _type = 'lr'
 if _type == 'lr':
     clf = LogisticRegression(random_state=10, max_iter=200).fit(X_train, y_train)
-if _type == 'rf':
-    clf = RandomForestClassifier(max_depth=2, random_state=0).fit(X_train, y_train)
+#if _type == 'rf':
+#    clf = RandomForestClassifier(max_depth=2, random_state=0).fit(X_train, y_train)
 
 
 ```
@@ -594,6 +806,66 @@ eval_plot(eval_df.query(f'y_pred <= {tl} or y_pred >= {th}'))
 ```
 
 ```{python}
+#whole2['cross_nil_p'] = 
+whole2['cross_nil_p_lr'] = np.array(
+    list(
+        map(
+            lambda x: x[1],
+            clf.predict_proba(
+                lr_scaler.transform(whole2[features].values)
+            )
+        )
+    )
+)
+```
+
+```{python}
+whole2['cross_nil_b_lr'] = np.round(whole2['cross_nil_p_lr'])
+```
+
+```{python}
+print(classification_report(whole2['y'], whole2['cross_nil_b']))
+```
+
+```{python}
+print(classification_report(whole2['y'], whole2['cross_nil_b_lr']))
+```
+
+```{python}
+def _myf(x):
+    if x['cross_nil_b_lr'] == 0:
+        return -1
+    else:
+        return x['cross_best_candidate']
+
+whole2['cross_best_candidate_nil_lr'] = whole2.apply(_myf, axis=1)
+```
+
+```{python}
+whole2.query('cross_labels == `cross_best_candidate+nil`').shape[0] / whole2.shape[0]
+```
+
+```{python}
+whole2.query('cross_labels == `cross_best_candidate_nil_lr`').shape[0] / whole2.shape[0]
+```
+
+```{python}
+whole2.query('cross_labels != -1 and cross_labels == cross_best_candidate and cross_nil_b == 0').shape[0]  / whole2.shape[0]
+```
+
+```{python}
+whole2.query('cross_labels != -1 and cross_labels == cross_best_candidate and cross_nil_b == 0')['cross_hamming'].plot(kind='density')
+```
+
+```{python}
+wrong_nil = whole2.query('cross_labels != -1 and cross_labels == cross_best_candidate and cross_nil_b_lr == 0')
+```
+
+```{python}
+wrong_nil.shape[0] / whole2.shape[0]
+```
+
+```{python}
 import textdistance
 ```
 
@@ -602,14 +874,22 @@ dfun = textdistance.hamming.normalized_similarity
 ```
 
 ```{python}
-train_df.query('y==1').apply(
+wrong_nil.apply(
     lambda x: dfun(x['mention'], x['cross_best_candidate_title']),
     axis=1
 ).plot(kind='density')
 ```
 
 ```{python}
-train_df.apply(
+wrong_nil['cross_nil_p_lr'].plot(kind='density')
+```
+
+```{python}
+wrong_nil['cross_nil_p_lr'].plot(kind='density')
+```
+
+```{python}
+whole2.apply(
     lambda x: dfun(x['mention'], x['cross_best_candidate_title']),
     axis=1
 ).plot(kind='density')
@@ -635,4 +915,131 @@ whole2.
 
 ```{python}
 whole2.to_csv('whole2_with_100_10_stats_ds.csv')
+```
+
+```{python}
+whole2
+```
+
+```{python}
+from flair.data import Sentence
+from flair.models import SequenceTagger
+
+# make a sentence
+sentence = Sentence('I love Berlin .')
+
+# load the NER tagger
+tagger = SequenceTagger.load('ner')
+
+# run NER over sentence
+tagger.predict(sentence)
+```
+
+```{python}
+# ls
+```
+
+```{python}
+df = pd.read_csv('whole3_ner_avg_also_correct.csv', index_col=0)
+```
+
+```{python}
+df['src'].value_counts()
+```
+
+```{python}
+[
+    {
+        'train': ['dataset_and_preds/AIDA-YAGO2_train.csv'],
+        'test': ['dataset_and_preds/AIDA-YAGO2_testa.csv', 'dataset_and_preds/AIDA-YAGO2_testb.csv'],
+        'augment': 'no',
+        'features': 'all'
+    },
+    {
+        'train': ['dataset_and_preds/AIDA-YAGO2_train.csv'],
+        'test': ['dataset_and_preds/AIDA-YAGO2_testa.csv', 'dataset_and_preds/AIDA-YAGO2_testb.csv'],
+        'augment': 'augment'
+        'features': 'all'
+    },
+    {
+        'train': ['dataset_and_preds/AIDA-YAGO2_train.csv'],
+        'test': ['dataset_and_preds/AIDA-YAGO2_testa.csv', 'dataset_and_preds/AIDA-YAGO2_testb.csv'],
+        'augment': 'undersample'
+        'features': 'all'
+    },
+]
+```
+
+```{python}
+df[df['src'].isin(['dataset_and_preds/AIDA-YAGO2_testa.csv', 'dataset_and_preds/AIDA-YAGO2_testb.csv'])]['src'].value_counts()
+```
+
+```{python}
+isinstance([4.0], list)
+```
+
+```{python}
+df['y']
+```
+
+```{python}
+train_df[['avg_ner_per_correct', 'avg_ner_org_correct']].notna().all(axis=1)
+```
+
+```{python}
+train_df[train_df[['avg_ner_per_correct', 'avg_ner_org_correct']].notna().all(axis=1)].isna().sum()
+```
+
+```{python}
+train_df.to_csv('whole3_ner_avg_also_correct2.csv')
+```
+
+```{python}
+list(dataset.columns)
+```
+
+```{python}
+train_df = train_df.rename(columns={
+    'avg_ner_misc': 'avg_ner_misc_cross'
+})
+```
+
+```{python}
+list(train_df.columns)
+```
+
+```{python}
+# non va bene, serve best candidate
+avg_ner_types_correct = train_df.query('bi_best_candidate == bi_labels').groupby('bi_best_candidate')[['ner_per', 'ner_loc', 'ner_org', 'ner_misc']].mean()
+avg_ner_types_correct = avg_ner_types_correct.rename(columns={
+    'ner_per': 'avg_ner_per_correct_bi',
+    'ner_loc': 'avg_ner_loc_correct_bi',
+    'ner_org': 'avg_ner_org_correct_bi',
+    'ner_misc': 'avg_ner_misc_correct_bi',
+})
+
+avg_ner_types = train_df.groupby('bi_best_candidate')[['ner_per', 'ner_loc', 'ner_org', 'ner_misc']].mean()
+avg_ner_types = avg_ner_types.rename(columns={
+    'ner_per': 'avg_ner_per_bi',
+    'ner_loc': 'avg_ner_loc_bi',
+    'ner_org': 'avg_ner_org_bi',
+    'ner_misc': 'avg_ner_misc_bi',
+})
+
+#avg_ner_types[['avg_ner_per', 'avg_ner_loc', 'avg_ner_org', 'avg_ner_misc']] = np.array(list(map(lambda x: (x == x.max()).astype(int), avg_ner_types[['avg_ner_per', 'avg_ner_loc', 'avg_ner_org', 'avg_ner_misc']].values)))
+
+train_df = train_df.join(avg_ner_types_correct, on='bi_best_candidate')
+train_df = train_df.join(avg_ner_types, on='bi_best_candidate')
+```
+
+```{python}
+dataset['src'].value_counts().index.tolist()
+```
+
+```{python}
+dataset.columns
+```
+
+```{python}
+dataset.query('(y_pred == 1 and (cross_labels == cross_best_candidate or Wikipedia_title == cross_best_candidate_title)) or (cross_labels == -1 and y_pred == 0)')
 ```
