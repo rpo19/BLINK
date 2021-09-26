@@ -71,6 +71,7 @@ if not os.path.isdir(outpath):
 
 print('loading dataset...')
 dataset = pd.read_csv('whole4wikitypes.csv', index_col=0)
+#dataset = pd.read_csv('whole_df5_dists_topk.csv', index_col=0)
 print('loaded...')
 
 tasks = [
@@ -152,6 +153,34 @@ tasks = [
                 'avg_ner_misc_cross',
             ]
     },
+    {
+        'name': 'aida_under_all10_stats',
+        'train': ['dataset_and_preds/AIDA-YAGO2_train.csv'],
+        'test': ['dataset_and_preds/AIDA-YAGO2_testa.csv', 'dataset_and_preds/AIDA-YAGO2_testb.csv'],
+        'sampling': 'undersample',
+        'features':  [
+                'cross_stats_10_max',
+                'cross_stats_10_mean',
+                'cross_stats_10_median',
+                'cross_stats_10_stdev',
+                'bi_stats_10_max',
+                'bi_stats_10_mean',
+                'bi_stats_10_median',
+                'bi_stats_10_stdev',
+            ]
+    },
+    {
+        'name': 'aida_under_all10_max_stdev',
+        'train': ['dataset_and_preds/AIDA-YAGO2_train.csv'],
+        'test': ['dataset_and_preds/AIDA-YAGO2_testa.csv', 'dataset_and_preds/AIDA-YAGO2_testb.csv'],
+        'sampling': 'undersample',
+        'features':  [
+                'cross_stats_10_max',
+                'cross_stats_10_stdev',
+                'bi_stats_10_max',
+                'bi_stats_10_stdev',
+            ]
+    }
     {
         'name': 'aida_under_cross10',
         'train': ['dataset_and_preds/AIDA-YAGO2_train.csv'],
