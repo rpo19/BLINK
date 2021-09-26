@@ -5,15 +5,16 @@ from sklearn.preprocessing import StandardScaler
 from sklearn.linear_model import LogisticRegression
 from sklearn.model_selection import train_test_split
 from sklearn.pipeline import make_pipeline
+from sklearn.metrics import f1_score
 
 import pickle
-from sklearn.metrics import confusion_matrix, classification_report, roc_curve
-import sklearn
+from sklearn.metrics import classification_report, roc_curve
 
 import os
 
 import matplotlib.pyplot as plt
 import seaborn as sns
+
 sns.set(style='ticks', palette='Set2')
 sns.despine()
 
@@ -43,19 +44,21 @@ def myplot(y, y_pred, y_pred_round, title, outpath):
     plt.close()
 
     # correct
-    correct = df.query('y == y_pred_rnd')['y_pred']
+    correct = df.query('y == y_pred_rnd')['y_pred'].rename('correct')
     plt.figure()
-    correct.plot(kind='kde', title=title+'correct kde')
+    correct.plot(kind='kde', title=title+'_kde', legend=True)
     plt.tight_layout(pad=0.5)
-    plt.savefig(os.path.join(outpath, title+'_kde_correct.png'))
-    plt.close()
+    # plt.savefig(os.path.join(outpath, title+'_kde_correct.png'))
+    # plt.close()
 
     # errors
-    errors = df.query('y != y_pred_rnd')['y_pred']
-    plt.figure()
-    errors.plot(kind='density', title=title+'errors kde')
+    errors = df.query('y != y_pred_rnd')['y_pred'].rename('errors')
+    # plt.figure()
+    # errors.plot(kind='density', title=title+'errors kde')
+    errors.plot(kind='density', title=title+'kde', legend=True)
     plt.tight_layout(pad=0.5)
-    plt.savefig(os.path.join(outpath, title+'_kde_errors.png'))
+    # plt.savefig(os.path.join(outpath, title+'_kde_errors.png'))
+    plt.savefig(os.path.join(outpath, title+'_kde_correct_errors.png'))
     plt.close()
 
     plt.close('all')
@@ -67,7 +70,7 @@ if not os.path.isdir(outpath):
     os.mkdir(outpath)
 
 print('loading dataset...')
-dataset = pd.read_csv('whole3_ner_avg_also_correct2.csv', index_col=0)
+dataset = pd.read_csv('whole4wikitypes.csv', index_col=0)
 print('loaded...')
 
 tasks = [
@@ -234,6 +237,34 @@ tasks = [
             ]
     },
     {
+        'name': 'aida_under_all10_ner_wiki',
+        'train': ['dataset_and_preds/AIDA-YAGO2_train.csv'],
+        'test': ['dataset_and_preds/AIDA-YAGO2_testa.csv', 'dataset_and_preds/AIDA-YAGO2_testb.csv'],
+        'sampling': 'undersample',
+        'features':  [
+                'cross_stats_10_max',
+                'cross_stats_10_min',
+                'cross_stats_10_mean',
+                'cross_stats_10_median',
+                'cross_stats_10_stdev',
+                'bi_stats_10_max',
+                'bi_stats_10_min',
+                'bi_stats_10_mean',
+                'bi_stats_10_median',
+                'bi_stats_10_stdev',
+                'cross_hamming',
+                'bi_hamming',
+                'ner_per',
+                'ner_loc',
+                'ner_org',
+                'ner_misc',
+                'wiki_per_cross',
+                'wiki_loc_cross',
+                'wiki_org_cross',
+                'wiki_misc_cross',
+            ]
+    },
+    {
         'name': 'aida_under_all10_but_stats',
         'train': ['dataset_and_preds/AIDA-YAGO2_train.csv'],
         'test': ['dataset_and_preds/AIDA-YAGO2_testa.csv', 'dataset_and_preds/AIDA-YAGO2_testb.csv'],
@@ -251,6 +282,26 @@ tasks = [
                 'avg_ner_loc_cross',
                 'avg_ner_org_cross',
                 'avg_ner_misc_cross',
+            ]
+    },
+    {
+        'name': 'aida_under_all10_ner_wiki_but_stats',
+        'train': ['dataset_and_preds/AIDA-YAGO2_train.csv'],
+        'test': ['dataset_and_preds/AIDA-YAGO2_testa.csv', 'dataset_and_preds/AIDA-YAGO2_testb.csv'],
+        'sampling': 'undersample',
+        'features':  [
+                'cross_stats_10_max',
+                'bi_stats_10_max',
+                'cross_hamming',
+                'bi_hamming',
+                'ner_per',
+                'ner_loc',
+                'ner_org',
+                'ner_misc',
+                'wiki_per_cross',
+                'wiki_loc_cross',
+                'wiki_org_cross',
+                'wiki_misc_cross'
             ]
     },
     {
@@ -385,6 +436,24 @@ tasks = [
             ]
     },
     {
+        'name': 'aida_under_bi_max_dst_ner_wiki',
+        'train': ['dataset_and_preds/AIDA-YAGO2_train.csv'],
+        'test': ['dataset_and_preds/AIDA-YAGO2_testa.csv', 'dataset_and_preds/AIDA-YAGO2_testb.csv'],
+        'sampling': 'undersample',
+        'features':  [
+                'bi_stats_10_max',
+                'bi_hamming',
+                'ner_per',
+                'ner_loc',
+                'ner_org',
+                'ner_misc',
+                'wiki_per_bi',
+                'wiki_loc_bi',
+                'wiki_org_bi',
+                'wiki_misc_bi',
+            ]
+    },
+    {
         'name': 'aida_under_bi_dst_ner_stats',
         'train': ['dataset_and_preds/AIDA-YAGO2_train.csv'],
         'test': ['dataset_and_preds/AIDA-YAGO2_testa.csv', 'dataset_and_preds/AIDA-YAGO2_testb.csv'],
@@ -507,6 +576,35 @@ tasks = [
                 'avg_ner_loc_cross',
                 'avg_ner_org_cross',
                 'avg_ner_misc_cross',
+            ]
+    },
+    {
+        'name': 'alldata_under_all10_ner_wiki_but_stats',
+        'train': [
+            'dataset_and_preds/AIDA-YAGO2_train.csv',
+            'dataset_and_preds/AIDA-YAGO2_testa.csv',
+            'dataset_and_preds/AIDA-YAGO2_testb.csv',
+            'dataset_and_preds/clueweb_questions.csv',
+            'dataset_and_preds/wnedwiki_questions.csv',
+            'dataset_and_preds/aquaint_questions.csv',
+            'dataset_and_preds/msnbc_questions.csv',
+            'dataset_and_preds/ace2004_questions.csv'
+        ],
+        'test': 0.33,
+        'sampling': 'undersample',
+        'features':  [
+                'cross_stats_10_max',
+                'bi_stats_10_max',
+                'cross_hamming',
+                'bi_hamming',
+                'ner_per',
+                'ner_loc',
+                'ner_org',
+                'ner_misc',
+                'wiki_per_cross',
+                'wiki_loc_cross',
+                'wiki_org_cross',
+                'wiki_misc_cross'
             ]
     },
     {
@@ -633,6 +731,33 @@ tasks = [
                 'avg_ner_loc_bi',
                 'avg_ner_org_bi',
                 'avg_ner_misc_bi',
+            ]
+    },
+    {
+        'name': 'alldata_under_bi10_max_dst_ner_wiki',
+        'train': [
+            'dataset_and_preds/AIDA-YAGO2_train.csv',
+            'dataset_and_preds/AIDA-YAGO2_testa.csv',
+            'dataset_and_preds/AIDA-YAGO2_testb.csv',
+            'dataset_and_preds/clueweb_questions.csv',
+            'dataset_and_preds/wnedwiki_questions.csv',
+            'dataset_and_preds/aquaint_questions.csv',
+            'dataset_and_preds/msnbc_questions.csv',
+            'dataset_and_preds/ace2004_questions.csv'
+        ],
+        'test': 0.33,
+        'sampling': 'undersample',
+        'features':  [
+                'bi_stats_10_max',
+                'bi_hamming',
+                'ner_per',
+                'ner_loc',
+                'ner_org',
+                'ner_misc',
+                'wiki_per_bi',
+                'wiki_loc_bi',
+                'wiki_org_bi',
+                'wiki_misc_bi',
             ]
     },
     {
@@ -1593,6 +1718,8 @@ if not (vc <= 1).all():
     print(vc[vc > 1])
     raise Exception('duplicate task!')
 
+csv_report = pd.DataFrame()
+
 for task in tasks:
     print('-'*30)
     print(task['name'])
@@ -1686,6 +1813,23 @@ for task in tasks:
     bi_acc_oracle = test_df_oracle.query('(y_pred_round == 1 and (bi_labels == bi_best_candidate or Wikipedia_title == bi_best_candidate_title)) or (bi_labels == -1 and y_pred_round == 0)').shape[0]
     cross_acc_oracle = test_df_oracle.query('(y_pred_round == 1 and (cross_labels == cross_best_candidate or Wikipedia_title == cross_best_candidate_title)) or (cross_labels == -1 and y_pred_round == 0)').shape[0]
 
+    csv_report = csv_report.append({
+        'name': task['name'],
+        'bi_baseline': bi_baseline / test_df_shape_actual,
+        'cross_baseline': cross_baseline / test_df_shape_actual,
+        'bi_acc': bi_acc / test_df_shape_actual,
+        'cross_acc': cross_acc / test_df_shape_actual,
+        'bi_acc_adjusted': bi_acc / test_df_shape_original,
+        'cross_acc_adjusted': cross_acc / test_df_shape_original,
+        '0-f1': f1_score(y_test, y_pred_round, pos_label=0),
+        '1-f1': f1_score(y_test, y_pred_round, pos_label=1),
+        'oracle_ratio': 1 - (oracle_df.shape[0] / oracle_original_shape),
+        'bi_acc_oracle': bi_acc_oracle / test_df_oracle.shape[0],
+        'cross_acc_oracle': cross_acc_oracle / test_df_oracle.shape[0],
+        '0-f1-oracle': f1_score(oracle_df['y_test'], oracle_df['y_pred_round'], pos_label=0),
+        '1-f1-oracle': f1_score(oracle_df['y_test'], oracle_df['y_pred_round'], pos_label=1),
+    }, ignore_index=True)
+
     print(_classification_report)
 
     print('-- Performances over test set:', task['test'], '--')
@@ -1697,7 +1841,7 @@ for task in tasks:
     print('Cross acc adjusted:', cross_acc / test_df_shape_original)
 
     print(f'-- Oracle HITL evaluation when y_pred in [{tl}, {th}]')
-    print('Ratio to human validator:', oracle_df.shape[0] / oracle_original_shape)
+    print('Ratio to human validator:', 1 - (oracle_df.shape[0] / oracle_original_shape))
     print(_classification_report_oracle)
 
     print('Bi acc oracle:', bi_acc_oracle / test_df_oracle.shape[0])
@@ -1718,7 +1862,7 @@ for task in tasks:
         print('Cross acc adjusted:', cross_acc / test_df_shape_original, file=fd)
 
         print(f'-- Oracle HITL evaluation when y_pred in [{tl}, {th}]', file=fd)
-        print('Ratio to human validator:', oracle_df / oracle_original_shape, file=fd)
+        print('Ratio to human validator:', oracle_df.shape[0] / oracle_original_shape, file=fd)
         print(_classification_report_oracle, file=fd)
         print('Bi acc oracle:', bi_acc_oracle / test_df_oracle.shape[0], file=fd)
         print('Cross acc oracle:', cross_acc_oracle / test_df_oracle.shape[0], file=fd)
@@ -1731,3 +1875,5 @@ for task in tasks:
     myplot(y_test, y_pred, y_pred_round, task['name'], outpath)
 
     print('-'*30)
+
+csv_report.to_csv(os.path.join(outpath, 'train_new_summary.csv'))
