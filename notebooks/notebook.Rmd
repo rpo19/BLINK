@@ -239,7 +239,7 @@ def __map_test_entities(test_entities_path, title2id, logger):
     return kb2id
 
 
-def __load_test(test_filename, kb2id, wikipedia_id2local_id, logger):
+def __load_test(test_filename, kb2id, wikipedia_id2local_id, logger, consider_all=False):
     test_samples = []
     with open(test_filename, "r") as fin:
         lines = fin.readlines()
@@ -252,7 +252,7 @@ def __load_test(test_filename, kb2id, wikipedia_id2local_id, logger):
                 if record["label"] in kb2id:
                     record["label_id"] = kb2id[record["label"]]
                 else:
-                    if hasattr(args, 'consider_all')  and args.consider_all:
+                    if consider_all:
                         # NIL
                         record["label_id"] = -1
                     else:
@@ -265,13 +265,13 @@ def __load_test(test_filename, kb2id, wikipedia_id2local_id, logger):
                     if key in wikipedia_id2local_id:
                         record["label_id"] = wikipedia_id2local_id[key]
                     else:
-                        if hasattr(args, 'consider_all') and args.consider_all:
+                        if consider_all:
                             # NIL
                             record["label_id"] = -1
                         else:
                             continue
                 except:
-                    if hasattr(args, 'consider_all') and args.consider_all:
+                    if consider_all:
                         # NIL
                         record["label_id"] = -1
                     else:
@@ -289,12 +289,12 @@ def __load_test(test_filename, kb2id, wikipedia_id2local_id, logger):
 
 
 def _get_test_samples(
-    test_filename, test_entities_path, title2id, wikipedia_id2local_id, logger
+    test_filename, test_entities_path, title2id, wikipedia_id2local_id, logger, consider_all=False
 ):
     kb2id = None
     if test_entities_path:
         kb2id = __map_test_entities(test_entities_path, title2id, logger)
-    test_samples = __load_test(test_filename, kb2id, wikipedia_id2local_id, logger)
+    test_samples = __load_test(test_filename, kb2id, wikipedia_id2local_id, logger, consider_all=consider_all)
     return test_samples
 
 
@@ -1256,4 +1256,75 @@ wikipedia_id2local_id[243710]
 
 ```{python}
 local_id2wikipedia_id[3674818]
+```
+
+# get encodings fast
+
+```{python}
+args.save_encodings = '../output/AIDA-YAGO2_train_encodings.jsonl'
+args.test_mentions = '../data/BLINK_benchmark/AIDA-YAGO2_train.jsonl'
+```
+
+```{python}
+samples = _get_test_samples(
+                    args.test_mentions,
+                    args.test_entities,
+                    title2id,
+                    wikipedia_id2local_id,
+                    logger,
+                    consider_all= True
+                )
+```
+
+```{python}
+def _run_biencoder_only_encodings(biencoder, dataloader, candidate_encoding, top_k=100, indexer=None, save_encodings=True):
+    biencoder.model.eval()
+    labels = []
+    #nns = []
+    #all_scores = []
+    encodings = []
+    for batch in tqdm(dataloader):
+        context_input, _, label_ids = batch
+        with torch.no_grad():
+            if indexer is not None:
+                context_encoding = biencoder.encode_context(context_input).numpy()
+                context_encoding = np.ascontiguousarray(context_encoding)
+                if save_encodings:
+                    encodings.extend([e.tolist() for e in context_encoding])
+                #scores, indicies = indexer.search_knn(context_encoding, top_k)
+            else:
+                raise Exception('not implemented for only getting encodings.')
+
+        labels.extend(label_ids.data.numpy())
+    return labels, encodings
+```
+
+```{python}
+dataloader = _process_biencoder_dataloader(
+    samples, biencoder.tokenizer, biencoder_params
+)
+```
+
+```{python}
+# run biencoder
+
+top_k = args.top_k
+labels, encodings = _run_biencoder_only_encodings(
+    biencoder, dataloader, candidate_encoding, top_k, faiss_indexer, bool(args.save_encodings) if hasattr(args, 'save_encodings') else False
+)
+```
+
+```{python}
+with open(args.save_encodings, 'w') as fd:
+    for _enc, _lab in zip(encodings, labels):
+        assert len(_lab) == 1
+        _lab = int(_lab[0])
+        current = {
+            "encoding": _enc,
+            "label": _lab,
+            "wikipedia_id": 0 if local_id2wikipedia_id is None or _lab not in local_id2wikipedia_id else local_id2wikipedia_id[_lab],
+            "title": id2title[_lab] if _lab in id2title else "**NOTFOUND**"
+        }
+        json.dump(current, fd)
+        fd.write('\n')
 ```
