@@ -669,19 +669,19 @@ d_source.query('`cross_best_candidate+nil` != cross_labels').count()[0] / d_sour
 ```{python}
 import pickle
 with open('entity_ids/wikipedia_id2local_id.pickle', 'rb') as fd:
-    #wikipedia_id2local_id = pickle.load(fd)
+    wikipedia_id2local_id = pickle.load(fd)
     pass
 with open('entity_ids/title2id.pickle', 'rb') as fd:
     #title2id = pickle.load(fd)
     pass
 with open('entity_ids/local_id2wikipedia_id.pickle', 'rb') as fd:
-    #local_id2wikipedia_id = pickle.load(fd)
+    local_id2wikipedia_id = pickle.load(fd)
     pass
 with open('entity_ids/id2text.pickle', 'rb') as fd:
     #id2text = pickle.load(fd)
     pass
 with open('entity_ids/id2title.pickle', 'rb') as fd:
-    id2title = pickle.load(fd)
+    #id2title = pickle.load(fd)
     pass
 ```
 
@@ -828,6 +828,10 @@ def myf(x, nwords=20):
     x['bi_best_candidate+nil_title'] = id2title[x['bi_best_candidate+nil']] if x['bi_best_candidate+nil'] != -1 else 'NIL'
 
     return x
+```
+
+```{python}
+whole2['cross_best_candidate+nil']
 ```
 
 ```{python}
@@ -1272,7 +1276,8 @@ whole2.to_csv('whole2_with_100_10_stats.csv')
 ```
 
 ```{python}
-whole2 = pd.read_csv('whole2_with_100_10_stats.csv', index_col=0)
+#whole2 = pd.read_csv('whole2_with_100_10_stats.csv', index_col=0)
+whole2= pd.read_csv('whole_df5_dists_topk.csv', index_col=0)
 whole2.head()
 ```
 
@@ -1425,4 +1430,436 @@ ds = whole2.query('cross_labels == -1 and `cross_best_candidate+nil` != -1').app
     lambda x: _text_distance(x, a='mention', b='cross_labels_title'),
     axis=1, result_type='expand')
 ds.plot(kind='density')
+```
+
+```{python}
+del whole2
+```
+
+# whole5
+
+```{python}
+import pandas as pd
+whole5 = pd.read_csv('whole6.csv', index_col=0)
+```
+
+```{python}
+import pickle
+```
+
+```{python}
+#with open('train_new_out/aida_under_all10_ner_wiki_but_stats_model.pickle', 'rb') as fd:
+with open('train_new_out/aida_under_all10_max_stdev4_hamming_ner_wiki_model.pickle', 'rb') as fd:
+    clf = pickle.load(fd)
+```
+
+```{python}
+#with open('train_new_out/aida_under_bi_max_dst_ner_wiki_model.pickle', 'rb') as fd:
+with open('train_new_out/aida_under_bi_max_ner_wiki_stdev4_model.pickle', 'rb') as fd:
+    clf_bi = pickle.load(fd)
+```
+
+```{python}
+features=  [
+                'cross_stats_10_max',
+                'bi_stats_10_max',
+                'cross_stats_4_stdev',
+                'bi_stats_4_stdev',    
+                'cross_hamming',
+                'bi_hamming',
+                #'cross_sim_jaccard',
+                #'bi_sim_jaccard',
+                'ner_per',
+                'ner_loc',
+                'ner_org',
+                'ner_misc',
+                'wiki_per_cross',
+                'wiki_loc_cross',
+                'wiki_org_cross',
+                'wiki_misc_cross'
+            ]
+features_bi=  [
+                'bi_stats_10_max',
+                'bi_stats_4_stdev',
+                #'bi_sim_jaccard',
+                'ner_per',
+                'ner_loc',
+                'ner_org',
+                'ner_misc',
+                'wiki_per_bi',
+                'wiki_loc_bi',
+                'wiki_org_bi',
+                'wiki_misc_bi',]
+```
+
+```{python}
+import numpy as np, json
+```
+
+```{python}
+aida5 = whole5[whole5['src'].apply(lambda x: 'aida' in x.lower())].copy()
+```
+
+```{python}
+aida5['y_pred_cross'] = np.array([i for _,i in clf.predict_proba(aida5[features])])
+```
+
+```{python}
+aida5['y_pred_bi'] = np.array([i for _,i in clf_bi.predict_proba(aida5[features_bi])])
+```
+
+```{python}
+cross_errors = aida5.query('cross_best_candidate != cross_labels and cross_labels != -1')
+```
+
+```{python}
+def show_errors(df, nw=20):
+    print('<{wiki_title}> [{cross_label_title}] [{cross_best_candidate_title}]'
+              '[{cross_best_cand_or_nil}] - {y_cross}/{y_bi} - {cross_best_score}|{bi_best_score} - {mention}')
+    print()
+    for i, row in df.iterrows():
+
+        if isinstance(row['bi_scores'], str):
+            bi_scores = json.loads(row['bi_scores'])
+        else:
+            bi_scores = row['bi_scores']
+
+        bi_best_score = max(bi_scores)
+
+        if isinstance(row['cross_unsorted_scores'], str):
+            cross_scores = json.loads(row['cross_unsorted_scores'])
+        else:
+            cross_scores = row['cross_unsorted_scores']
+
+        cross_best_score = max(cross_scores)
+        
+        best_cand_nil = row['cross_best_candidate_title'] if row['y_pred_cross'] >= 0.5 else 'NIL'
+        
+        wiki_title=row['Wikipedia_title']
+        cross_label_title = row['cross_labels_title']
+        cross_lab = row['cross_labels']
+        cross_best_candidate = row['cross_best_candidate']
+        cross_best_candidate_title = row['cross_best_candidate_title']
+
+        print(f'<{wiki_title}> [{cross_label_title} ({cross_lab})] [{cross_best_candidate_title} ({cross_best_candidate})]'
+              '[{}] - {:.2f}/{:.2f} - {:.2f}|{:.2f} - {}'.format(
+            
+            best_cand_nil,
+            row['y_pred_cross'],
+            row['y_pred_bi'],
+            cross_best_score,
+            bi_best_score,
+            row['mention']
+
+        ))
+
+
+        left = ' '.join(str(row['context_left']).split(' ')[-nw:])
+        right = ' '.join(str(row['context_right']).split(' ')[:nw])
+        print('{} **[**{}**]** {}'.format(left, row['mention'], right))
+        print()
+```
+
+```{python}
+show_errors(cross_errors)
+```
+
+```{python}
+wrongly_identified_as_nil = aida5.query('cross_best_candidate == cross_labels and y_pred_cross <0.5')
+```
+
+```{python}
+wrongly_identified_as_nil_bi = aida5.query('bi_best_candidate == bi_labels and y_pred_bi <0.5')
+print(wrongly_identified_as_nil_bi.shape[0]/aida5.shape[0])
+print(aida5.query('bi_best_candidate == bi_labels and y_pred_bi <0.25').shape[0]/aida5.shape[0])
+```
+
+```{python}
+# 37% corrected by cross
+wrongly_identified_as_nil_bi.query('y_pred_cross >=0.5').shape[0]/wrongly_identified_as_nil_bi.shape[0]
+```
+
+```{python}
+# 17% corrected by cross
+wrongly_identified_as_nil.query('y_pred_bi >=0.5').shape[0]/wrongly_identified_as_nil.shape[0]
+```
+
+```{python}
+aida5.query('cross_best_candidate == cross_labels and y_pred_cross <0.5').shape[0]/aida5.shape[0]
+```
+
+```{python}
+aida5.query('cross_best_candidate == cross_labels and y_pred_cross <0.25').shape[0]/aida5.shape[0]
+```
+
+```{python}
+aida5.query('cross_best_candidate == cross_labels and y_pred_cross <0.5')['y_pred_cross'].plot(kind='kde')
+```
+
+```{python}
+aida5.query('cross_best_candidate == cross_labels and y_pred_cross <0.5')['y_pred_cross'].describe()
+```
+
+```{python}
+show_errors(wrongly_identified_as_nil)
+```
+
+```{python}
+show_errors(wrongly_identified_as_nil_bi)
+```
+
+```{python}
+wrongly_identified_as_not_nil = aida5.query(
+    'cross_best_candidate != cross_labels and cross_labels != -1 and y_pred_cross >=0.5')
+```
+
+```{python}
+show_errors(wrongly_identified_as_not_nil)
+```
+
+```{python}
+import textdistance
+```
+
+```{python}
+textdistance.jaccard.similarity('Darren Bragg', 'Bragg')
+```
+
+```{python}
+textdistance.jaccard.normalized_similarity('PT Timor Putra Nasional', 'East Timor')
+```
+
+```{python}
+
+```
+
+```{python}
+whole5[['mention', 'cross_best_candidate_title', 'cross_sim_jaccard', 'bi_best_candidate_title', 'bi_sim_jaccard']]
+```
+
+```{python}
+[c for c in whole5.columns if 'hamming' in c]
+```
+
+```{python}
+whole5['bi_sim_jaccard'] = whole5.apply(
+    lambda x: textdistance.jaccard.normalized_similarity(x.mention, x.bi_best_candidate_title), axis=1)
+```
+
+```{python}
+whole5['cross_sim_jaccard'] = whole5.apply(
+    lambda x: textdistance.jaccard.normalized_similarity(x.mention, x.cross_best_candidate_title), axis=1)
+```
+
+```{python}
+#whole5.to_csv('whole6.csv')
+```
+
+# stats
+
+```{python}
+import pandas as pd
+from matplotlib import pyplot
+```
+
+```{python}
+[c for c in whole5.columns if 'mean' in c.lower()]
+```
+
+```{python}
+# only the mentions we found the correct entity
+# sort and remove na
+cross_stats_s = whole5[whole5['cross_stats_10_correct'].notna()].sort_values('cross_stats_10_correct')
+# plot
+pyplot.scatter(x=range(cross_stats_s.shape[0]), y=cross_stats_s['cross_stats_10_max'], s=0.01, c='green')
+pyplot.scatter(x=range(cross_stats_s.shape[0]), y=cross_stats_s['cross_stats_10_mean'], s=0.01, c='orange')
+pyplot.scatter(x=range(cross_stats_s.shape[0]), y=cross_stats_s['cross_stats_10_correct'], s=0.01, c='blue')
+#pyplot.scatter(x=range(cross_stats_s.shape[0]), y=cross_stats_s['median'], s=0.01, c='red')
+pyplot.legend(
+    labels = ['correct', 'max', 'mean'],
+    labelcolor = ['blue', 'green', 'orange']
+) 
+```
+
+```{python}
+# only the mentions we found the correct entity # unsorted
+# sort and remove na
+cross_stats_u = whole5[whole5['cross_stats_10_correct'].notna()]
+# plot
+pyplot.scatter(x=range(cross_stats_u.shape[0]), y=cross_stats_u['cross_stats_10_max'], s=0.1, c='red')
+pyplot.scatter(x=range(cross_stats_u.shape[0]), y=cross_stats_u['cross_stats_10_mean'], s=0.1, c='yellow')
+pyplot.scatter(x=range(cross_stats_u.shape[0]), y=cross_stats_u['cross_stats_10_correct'], s=0.02, c='blue')
+#pyplot.scatter(x=range(cross_stats_u.shape[0]), y=cross_stats_u['median'], s=0.01, c='orange')
+pyplot.legend(
+    labels = ['correct', 'max', 'mean'],
+    labelcolor = ['green', 'red', 'yellow']
+) 
+```
+
+```{python}
+# the mentions we didn't find the correct entity
+# sort and remove na
+cross_stats_na = whole5[whole5['cross_stats_10_correct'].isna()]
+# plot
+#pyplot.scatter(x=range(cross_stats_na.shape[0]), y=cross_stats_na['cross_stats_10_correct'], s=1, c='blue')
+pyplot.scatter(x=range(cross_stats_na.shape[0]), y=cross_stats_na['cross_stats_10_max'], s=1, c='green')
+pyplot.scatter(x=range(cross_stats_na.shape[0]), y=cross_stats_na['cross_stats_10_mean'], s=1, c='orange')
+pyplot.scatter(x=range(cross_stats_na.shape[0]), y=cross_stats_na['cross_stats_10_median'], s=1, c='red')
+pyplot.scatter(x=range(cross_stats_na.shape[0]), y=cross_stats_na['cross_stats_10_min'], s=1, c='blue')
+pyplot.legend(
+    labels = ['max', 'mean', 'median', 'min'],
+    labelcolor = ['green', 'orange', 'red', 'blue']
+)
+```
+
+```{python}
+# correct found
+whole5[whole5['cross_stats_10_correct'].notna()][
+    ['cross_stats_10_correct', 'cross_stats_10_max',
+     'cross_stats_10_mean', 'cross_stats_10_median']].plot(kind='density')
+```
+
+```{python}
+# correct not found
+whole5[whole5['cross_stats_10_correct'].isna()][
+    ['cross_stats_10_max',
+     'cross_stats_10_mean', 'cross_stats_10_median']].plot(kind='density')
+```
+
+# avg ner
+
+```{python}
+[c for c in whole5.columns if 'ner' in c.lower()]
+```
+
+```{python}
+whole5.loc[[1]]
+```
+
+```{python}
+whole5['label_id']
+```
+
+```{python}
+aida = whole5#[whole5['src'].apply(lambda x: 'AIDA' in x)]
+```
+
+```{python}
+#del whole5
+```
+
+```{python}
+[c for c in aida.columns if 'ner' in c]
+```
+
+```{python}
+aida = aida.drop(columns=[i+'_correct_bi' for i in ['avg_ner_per',
+'avg_ner_loc',
+'avg_ner_org',
+'avg_ner_misc']])
+aida = aida.drop(columns=[i+'_correct_cross' for i in ['avg_ner_per',
+'avg_ner_loc',
+'avg_ner_org',
+'avg_ner_misc']])
+```
+
+```{python}
+avg_ner_types = aida[aida['ner_per'].notna()].query('label_id != 0').groupby('label_id')[['ner_per', 'ner_loc', 'ner_org', 'ner_misc']].mean()
+avg_ner_types = avg_ner_types.rename(columns={
+        'ner_per': 'avg_ner_per',
+        'ner_loc': 'avg_ner_loc',
+        'ner_org': 'avg_ner_org',
+        'ner_misc': 'avg_ner_misc',
+    })
+```
+
+```{python}
+avg_ner_types
+```
+
+```{python}
+aida[['label_id', 'cross_labels', 'y']]
+```
+
+```{python}
+wikipedia_id2local_id[1411702]
+```
+
+```{python}
+import numpy as np
+```
+
+```{python}
+local_ids = np.array(list(map(lambda x: wikipedia_id2local_id[int(x)] if int(x) in wikipedia_id2local_id else None, avg_ner_types.index.tolist())))
+```
+
+```{python}
+avg_ner_types['local_id'] = local_ids
+```
+
+```{python}
+avg_ner_types['local_id'].isna().sum()/ avg_ner_types.shape[0]
+```
+
+```{python}
+aida['cross_best_candidate'].isin(avg_ner_types['local_id']).sum()
+```
+
+```{python}
+aida['cross_best_candidate'].isin(avg_ner_types['local_id']).sum()/aida.shape[0]
+```
+
+```{python}
+aida['y'].value_counts()
+```
+
+```{python}
+aida[aida['cross_best_candidate'].isin(avg_ner_types['local_id'])]['y'].value_counts()
+```
+
+```{python}
+_temp_aida = whole5[whole5['src'].apply(lambda x: 'AIDA' in x)]
+```
+
+```{python}
+_temp_aida[_temp_aida['cross_best_candidate'].isin(avg_ner_types['local_id'])]['y'].value_counts()
+```
+
+```{python}
+aida[aida['ner_per'].notna()][aida['cross_best_candidate'].isin(avg_ner_types['local_id'])]['y'].value_counts()
+```
+
+```{python}
+aida.shape
+```
+
+```{python}
+aida_ner_avg = aida.merge(
+    avg_ner_types.rename(columns={
+        'avg_ner_per': 'avg_ner_per_correct',
+        'avg_ner_loc': 'avg_ner_loc_correct',
+        'avg_ner_org': 'avg_ner_org_correct',
+        'avg_ner_misc': 'avg_ner_misc_correct',
+    }, how='left', left_on='cross_best_candidate', right_on='local_id', suffixes=('', ''))
+```
+
+```{python}
+aida_ner_avg.columns
+```
+
+```{python}
+aida_ner_avg.shape
+```
+
+```{python}
+whole5.shape
+```
+
+```{python}
+train_df = train_df.join(avg_ner_types_correct, on='cross_best_candidate')
+train_df = train_df.join(avg_ner_types, on='cross_best_candidate')
+```
+
+```{python}
+aida_ner_avg.columns
 ```

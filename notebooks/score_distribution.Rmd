@@ -26,6 +26,13 @@ import numpy as np
 ```
 
 ```{python}
+import seaborn as sns
+
+sns.set(style='ticks', palette='Set2')
+sns.despine()
+```
+
+```{python}
 # !ls -ld ../output* 
 ```
 
@@ -147,6 +154,13 @@ len(cross_df.iloc[0]['unsorted_scores'])
 ```
 
 ```{python}
+import math
+
+def sigmoid(x):
+    return 1 / (1 + math.exp(-x))
+```
+
+```{python}
 _sall = list(map(sigmoid, _all))
 ```
 
@@ -156,13 +170,6 @@ sdf = pd.DataFrame(_sall)
 
 ```{python}
 sdf.plot(kind='density')
-```
-
-```{python}
-import math
-
-def sigmoid(x):
-    return 1 / (1 + math.exp(-x))
 ```
 
 ```{python}

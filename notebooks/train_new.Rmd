@@ -29,6 +29,8 @@ from sklearn.metrics import confusion_matrix, classification_report
 import sklearn
 
 import matplotlib.pyplot as plt
+
+import seaborn as sns
 ```
 
 ```{python}
@@ -731,7 +733,7 @@ nil100_columns = [
 ```
 
 ```{python}
-features = nil1_columns_correct
+features = nil10_columns
 ```
 
 ```{python}
@@ -792,10 +794,97 @@ eval_df = pd.DataFrame({
     'y_pred': y_pred,
     'y_pred_rnd': np.round(y_pred)
 })
+df = eval_df
+title='aaa'
+```
+
+```{python}
+df['y_pred'].rename('correct')
+```
+
+```{python}
+# correct
+correct = df.query('y == y_pred_rnd')['y_pred'].rename('correct')
+plt.figure()
+correct.plot(kind='kde', title=title+'correct kde', legend='correct')
+plt.tight_layout(pad=0.5)
+#plt.savefig(os.path.join(outpath, title+'_kde_correct.png'))
+
+# errors
+errors = df.query('y != y_pred_rnd')['y_pred'].rename('errors')
+errors.plot(kind='density', title=title+'errors kde', legend=True)
+plt.tight_layout(pad=0.5)
+#plt.savefig(os.path.join(outpath, title+'_kde_errors.png'))
+
 ```
 
 ```{python}
 eval_plot(eval_df)
+```
+
+```{python}
+from sklearn.neighbors import KernelDensity
+```
+
+```{python}
+# correct
+correct = eval_df.query('y == y_pred_rnd')['y_pred']
+# errors
+errors = eval_df.query('y != y_pred_rnd')['y_pred']
+```
+
+```{python}
+cpoints = correct.plot(kind='kde').get_lines()[0].get_xydata()
+```
+
+```{python}
+epoints = errors.plot(kind='kde').get_lines()[0].get_xydata()
+```
+
+```{python}
+cpoints[456]
+```
+
+```{python}
+plt.plot(cpoints)
+plt.plot(epoints)
+```
+
+```{python}
+LineString(LineString(cpoints).intersection(LineString(epoints))).xy
+```
+
+```{python}
+LineString(epoints)
+```
+
+```{python}
+
+from shapely.geometry import LineString
+```
+
+```{python}
+np.argmin(np.abs(cpoints[:,1] - epoints[:,1]))
+```
+
+```{python}
+res.get_lines()[0].get_xydata().shape
+```
+
+```{python}
+kde = KernelDensity(kernel='gaussian', bandwidth=0.75).fit(correct.reshape(-1, 1))
+```
+
+```{python}
+X_plot = np.linspace(0, 1, 1000)[:, np.newaxis]
+X_plot.reshape(-1)
+```
+
+```{python}
+pd.DataFrame({
+    'y': kde.score_samples(X_plot),
+    'x': X_plot.reshape(-1)
+}).plot(x='x', y='y')
 ```
 
 ```{python}
@@ -940,7 +1029,15 @@ tagger.predict(sentence)
 ```
 
 ```{python}
-df = pd.read_csv('whole3_ner_avg_also_correct.csv', index_col=0)
+import pandas as pd
+```
+
+```{python}
+df = pd.read_csv('whole3_ner_avg_also_correct2.csv', index_col=0)
+```
+
+```{python}
+df = pd.read_csv('whole6.csv', index_col=0)
 ```
 
 ```{python}
@@ -1042,4 +1139,600 @@ dataset.columns
 
 ```{python}
 dataset.query('(y_pred == 1 and (cross_labels == cross_best_candidate or Wikipedia_title == cross_best_candidate_title)) or (cross_labels == -1 and y_pred == 0)')
+```
+
+```{python}
+# ls *.csv
+```
+
+```{python}
+whole2 = pd.read_csv('whole3_ner_avg_also_correct2.csv')
+```
+
+```{python}
+        features=   [
+                'bi_stats_10_max',
+                'bi_stats_10_min',
+                'bi_stats_10_mean',
+                'bi_stats_10_median',
+                'bi_stats_10_stdev',
+                'bi_hamming',
+            ]
+```
+
+```{python}
+df[df['ner_per'].isna()]['src'].value_counts()
+```
+
+```{python}
+df[features].isna().sum()
+```
+
+```{python}
+tdf = pd.read_csv('aida_ner_type_v2.csv', index_col=0)
+```
+
+```{python}
+tdf.rename(columns={
+    'per': 'wiki_per',
+    'loc': 'wiki_loc',
+    'org': 'wiki_org',
+    'misc': 'wiki_misc'
+})[['id', 'wiki_per', 'wiki_loc', 'wiki_org', 'wiki_misc']]
+```
+
+```{python}
+df.merge(tdf, how='left', left_on='cross_best_candidate', right_on='id')[['mention', 'cross_best_candidate', 'title']]
+```
+
+```{python}
+df = df.merge(tdf.rename(columns={
+    'per': 'wiki_per_cross',
+    'loc': 'wiki_loc_cross',
+    'org': 'wiki_org_cross',
+    'misc': 'wiki_misc_cross'
+})[['id',
+    'wiki_per_cross',
+    'wiki_loc_cross',
+    'wiki_org_cross',
+    'wiki_misc_cross']], how='left', left_on='cross_best_candidate', right_on='id').drop(columns='id')
+```
+
+```{python}
+df = df.merge(tdf.rename(columns={
+    'per': 'wiki_per_bi',
+    'loc': 'wiki_loc_bi',
+    'org': 'wiki_org_bi',
+    'misc': 'wiki_misc_bi'
+})[['id',
+    'wiki_per_bi',
+    'wiki_loc_bi',
+    'wiki_org_bi',
+    'wiki_misc_bi']], how='left', left_on='bi_best_candidate', right_on='id').drop(columns='id')
+```
+
+```{python}
+[i for i in list(df.columns) if 'wiki' in i]
+```
+
+```{python}
+df[['wiki_per_cross',
+ 'wiki_loc_cross',
+ 'wiki_org_cross',
+ 'wiki_misc_cross']].sum(axis=1)
+```
+
+```{python}
+df[['wiki_per_bi',
+ 'wiki_loc_bi',
+ 'wiki_org_bi',
+ 'wiki_misc_bi']] = df[['wiki_per_bi',
+ 'wiki_loc_bi',
+ 'wiki_org_bi',
+ 'wiki_misc_bi']].apply(lambda x: x/x.sum(), axis=1, result_type='expand')
+```
+
+```{python}
+df[['wiki_per_bi',
+ 'wiki_loc_bi',
+ 'wiki_org_bi',
+ 'wiki_misc_bi']]
+```
+
+```{python}
+df[['wiki_per_cross',
+ 'wiki_loc_cross',
+ 'wiki_org_cross',
+ 'wiki_misc_cross']]
+```
+
+```{python}
+df[['wiki_per_cross',
+ 'wiki_loc_cross',
+ 'wiki_org_cross',
+ 'wiki_misc_cross']].loc[0]/2
+```
+
+```{python}
+df[['wiki_per_cross',
+ 'wiki_loc_cross',
+ 'wiki_org_cross',
+ 'wiki_misc_cross',
+ 'wiki_per_bi',
+ 'wiki_loc_bi',
+ 'wiki_org_bi',
+ 'wiki_misc_bi']] = df[['wiki_per_cross',
+ 'wiki_loc_cross',
+ 'wiki_org_cross',
+ 'wiki_misc_cross',
+ 'wiki_per_bi',
+ 'wiki_loc_bi',
+ 'wiki_org_bi',
+ 'wiki_misc_bi']].astype(float)
+```
+
+```{python}
+df = df.drop(columns=['wiki_per', 'wiki_loc', 'wiki_org', 'wiki_misc'])
+```
+
+```{python}
+df.rename(columns={
+    'wiki_per': 'wiki_per'
+})
+```
+
+```{python}
+df.to_csv('whole4wikitypes.csv')
+```
+
+```{python}
+aida = df[df['src'].isin([i for i in df['src'].value_counts().index if 'aida' in i.lower()])]
+```
+
+```{python}
+[i for i in df['src'].value_counts().index]
+```
+
+```{python}
+aida['wiki_per_cross'].isna().sum()
+```
+
+```{python}
+df = pd.read_csv('whole_df5_dists_topk.csv', index_col=0)
+```
+
+```{python}
+df.columns
+```
+
+# stats feat selection
+
+```{python}
+import seaborn as sns
+```
+
+```{python}
+# %matplotlib inline
+```
+
+```{python}
+cor = df[[
+    'bi_stats_100_max',
+    'bi_stats_100_mean',
+    'bi_stats_100_median',
+    'bi_stats_100_stdev',
+    'y'
+]].corr()
+```
+
+```{python}
+cor = df[[
+    'bi_stats_10_max',
+    'bi_stats_10_mean',
+    'bi_stats_10_median',
+    'bi_stats_10_stdev',
+    'y'
+]].corr()
+```
+
+```{python}
+cor = df[[
+    'cross_stats_100_max',
+    'cross_stats_100_mean',
+    'cross_stats_100_median',
+    'cross_stats_100_stdev',
+    'y'
+]].corr()
+```
+
+```{python}
+cor = df[[
+    'cross_stats_10_max',
+    'cross_stats_10_mean',
+    'cross_stats_10_median',
+    'cross_stats_10_stdev',
+    'y'
+]].corr()
+```
+
+```{python}
+cor = df[[
+    #'cross_stats_10_second',
+    #'cross_stats_10_mean',
+   #'cross_stats_10_median',
+    'cross_stats_2_stdev',
+    'cross_stats_3_stdev',
+    'cross_stats_4_stdev',
+    'cross_stats_5_stdev',
+    'cross_stats_6_stdev',
+    'cross_stats_7_stdev',
+    'cross_stats_8_stdev',
+    'cross_stats_9_stdev',
+    'cross_stats_10_stdev',
+    'cross_stats_100_stdev',
+    #'cross_stats_10_min',
+    'y'
+]].corr()
+```
+
+```{python}
+import statistics, json
+```
+
+```{python}
+statistics.stdev(json.loads(df['cross_unsorted_scores'].loc[0]))
+```
+
+```{python}
+statistics.stdev(json.loads(df['cross_unsorted_scores'].loc[0])[:3])
+```
+
+```{python}
+list(range(10))[:2]
+```
+
+```{python}
+#for i in range(15, 100, 5):
+for i in range(2, 10):
+    df[f'bi_stats_{i}_stdev'] = df['bi_scores'].apply(lambda x: statistics.stdev(json.loads(x)[:i]))
+```
+
+```{python}
+df['cross_stats_4_mean'] = df['cross_unsorted_scores'].apply(lambda x: statistics.mean(json.loads(x)[:4]))
+```
+
+```{python}
+import re
+```
+
+```{python}
+re.match('.*?([0-9]+).*?', 'cross_stats_100_stdev').group(1)
+```
+
+```{python}
+cor = df[sorted([c for c in df.columns if c.endswith('stdev') and c.startswith('bi')],
+       key=lambda x: int(re.match('.*?([0-9]+).*?', x).group(1))) + ['y']].corr()
+```
+
+```{python}
+df['cross_stats_3_stdev']
+```
+
+```{python}
+-np.array(range(100))
+```
+
+```{python}
+pd.DataFrame({
+    'a': range(100),
+    'b': -np.array(range(100))
+}).corr()
+```
+
+```{python}
+sns.set(style='ticks', palette='Set2')
+sns.despine()
+```
+
+```{python}
+cor['y']
+```
+
+```{python}
+cor.rename(
+    index={i:re.match('.*?([0-9]+).*?', i).group(1) for i in cor.index if re.match('.*?([0-9]+).*?', i)}
+).loc[[re.match('.*?([0-9]+).*?', i).group(1) for i in cor.index if i != 'y'],['y']].rename(columns={
+    'y': 'y_correlation'
+    }).plot(
+    title='stdev bi')
+```
+
+```{python}
+cor.rename(
+    index={i:re.match('.*?([0-9]+).*?', i).group(1) for i in cor.index if re.match('.*?([0-9]+).*?', i)}
+)
+```
+
+```{python}
+{c:c.split('_')[-1] for c in cor.columns if c != 'y'}
+```
+
+```{python}
+sns.heatmap(cor, annot=True)
+```
+
+```{python}
+sns.heatmap(cor.rename(
+    columns={c:c.split('_')[-1] for c in cor.columns if c != 'y'}, 
+    index={c:c.split('_')[-1] for c in cor.columns if c != 'y'}), annot = True)
+```
+
+```{python}
+ista = df['cross_unsorted_scores'].loc[0]
+```
+
+```{python}
+import json
+```
+
+```{python}
+ista = json.loads(ista)
+```
+
+```{python}
+ista = np.array(ista)
+```
+
+```{python}
+np.abs(ista - ista.mean())
+```
+
+```{python}
+test = 'hellp'
+```
+
+```{python}
+import textdistance
+```
+
+```{python}
+dist_list = [
+(    "hamming", textdistance.hamming),
+(    "mlipns", textdistance.mlipns),
+(    "levenshtein", textdistance.levenshtein),
+(    "damerau_levenshtein", textdistance.damerau_levenshtein),
+(    "jaro_winkler", textdistance.jaro_winkler),
+(    "jaro", textdistance.jaro),
+(    "strcmp95", textdistance.strcmp95),
+(    "needleman_wunsch", textdistance.needleman_wunsch),
+(    "gotoh", textdistance.gotoh),
+(    "smith_waterman", textdistance.smith_waterman),
+(    "jaccard", textdistance.jaccard),
+(    "sorensen", textdistance.sorensen),
+(    "sorensen", textdistance.sorensen),
+(    "sorensen_dice", textdistance.sorensen_dice),
+(    "tversky", textdistance.tversky),
+(    "overlap", textdistance.overlap),
+(    "tanimoto", textdistance.tanimoto),
+(    "cosine", textdistance.cosine),
+(    "monge_elkan", textdistance.monge_elkan),
+(    "bag", textdistance.bag),
+(    "lcsseq", textdistance.lcsseq),
+(    "lcsstr", textdistance.lcsstr),
+(    "ratcliff_obershelp", textdistance.ratcliff_obershelp),
+(    "arith_ncd", textdistance.arith_ncd),
+(    "rle_ncd", textdistance.rle_ncd),
+(    "bwtrle_ncd", textdistance.bwtrle_ncd),
+(    "sqrt_ncd", textdistance.sqrt_ncd),
+(    "entropy_ncd", textdistance.entropy_ncd),
+(    "bz2_ncd", textdistance.bz2_ncd),
+(    "lzma_ncd", textdistance.lzma_ncd),
+(    "zlib_ncd", textdistance.zlib_ncd),
+(    "mra", textdistance.mra),
+(    "editex", textdistance.editex),
+(    "prefix", textdistance.prefix),
+(    "postfix", textdistance.postfix),
+(    "length", textdistance.length),
+(    "identity", textdistance.identity),
+(    "matrix", textdistance.matrix),
+]
+```
+
+```{python}
+[i for i,_ in dist_list]
+```
+
+```{python}
+for diststring, dist in dist_list:
+    df[diststring] = df.apply(
+        lambda x: dist.normalized_similarity(x['mention'], x['cross_best_candidate_title']),
+        axis=1
+    )
+```
+
+```{python}
+from bs4 import BeautifulSoup
+import requests
+```
+
+```{python}
+res = requests.get('https://pypi.org/project/textdistance/')
+```
+
+```{python}
+html = BeautifulSoup(res.text)
+```
+
+```{python}
+html.find_all('tr')[2].find_all('td')
+```
+
+```{python}
+[tr.find_all('td')[-1].text for tr in html.find_all('tr') if len(tr.find_all('td')) ==3]
+```
+
+```{python}
+dists = [tr.find_all('td')[-1].text for tr in html.find_all('tr') if len(tr.find_all('td')) ==3]
+```
+
+```{python}
+for d in dists:
+    print(f'"{d}", textdistance.{d},')
+```
+
+```{python}
+cord= df[['cross_dist_'+i for i,_ in dist_list]+['y']].rename(columns={'cross_dist_'+i:i for i,_ in dist_list}).corr()
+```
+
+```{python}
+import seaborn as sns
+```
+
+```{python}
+df[[i for i,_ in dist_list]+['y']].corr()['y']
+```
+
+```{python}
+df.corr()['y']
+```
+
+```{python}
+df[[i for i,_ in dist_list]+['y']].corr().to_csv('images/all_distances_corr_cross.csv')
+```
+
+```{python}
+cordf = pd.read_csv('images/all_distances_corr_cross.csv', index_col=0)
+cordf
+```
+
+```{python}
+any(cordf['y'] < 0)
+```
+
+```{python}
+cordf['y'].sort_values(ascending=False).index[0:11]
+```
+
+```{python}
+cordf_top10 = cordf.loc[['y', 'hamming', 'lcsstr', 'levenshtein', 'damerau_levenshtein',
+       'zlib_ncd', 'editex', 'lcsseq', 'mlipns', 'ratcliff_obershelp',
+       'jaccard'], ['y', 'hamming', 'lcsstr', 'levenshtein', 'damerau_levenshtein',
+       'zlib_ncd', 'editex', 'lcsseq', 'mlipns', 'ratcliff_obershelp',
+       'jaccard']]
+```
+
+```{python}
+cordf_top10
+```
+
+```{python}
+sns.heatmap(cordf_top10)
+```
+
+```{python}
+sns.heatmap(df[[i for i,_ in dist_list]+['y']].corr())
+```
+
+```{python}
+sns.heatmap(cord.loc[['zlib_ncd', 'mlipns', 'ratcliff_obershelp', 'jaccard', 'tversky',
+       'hamming', 'jaro', 'y'],['zlib_ncd', 'mlipns', 'ratcliff_obershelp', 'jaccard', 'tversky',
+       'hamming', 'jaro', 'y']])
+```
+
+```{python}
+cord.loc[['zlib_ncd', 'mlipns', 'ratcliff_obershelp', 'jaccard', 'tversky',
+       'hamming'],['zlib_ncd', 'mlipns', 'ratcliff_obershelp', 'jaccard', 'tversky',
+       'hamming']]
+```
+
+```{python}
+with open('images/top_distances_corr_cross.tex', 'w') as fd:
+    fd.write(cord[['y']].drop(index='y').rename(
+    columns={'y':'y_correlation'}).sort_values(
+    by='y_correlation', key = lambda x:  np.abs(x), ascending=False).to_latex())
+```
+
+```{python}
+cord[['y']].drop(index='y').rename(
+    columns={'y':'y_correlation'}).sort_values(
+    by='y_correlation', key = lambda x:  np.abs(x), ascending=False).to_csv('images/top_distances_corr_cross.csv')
+```
+
+```{python}
+cord['y'].abs().sort_values(ascending=False)
+```
+
+```{python}
+{i:'cross_dist_'+i for i,_ in dist_list}
+```
+
+```{python}
+df = df.rename(columns={i:'cross_dist_'+i for i,_ in dist_list})
+```
+
+```{python}
+df.to_csv('whole_df5_dists_topk.csv')
+```
+
+```{python}
+[i for i in df.columns if 'correct' in i]
+```
+
+```{python}
+aida = df[df['src'].isin([c for c in df['src'].value_counts().index if 'aida' in c.lower()])]
+```
+
+```{python}
+aida[aida['avg_ner_per_correct_cross'].notna()]['y'].value_counts()
+```
+
+```{python}
+df[df['src'].isin([c for c in df['src'].value_counts().index if 'aida' in c.lower()])]['avg_ner_per_correct_cross'].notna().sum()
+```
+
+```{python}
+df[df['src'].isin([c for c in df['src'].value_counts().index if 'aida' in c.lower()])]['y'].value_counts()
+```
+
+# encodings for blink test clustering and retrieval by mention
+
+```{python}
+# ls ../data/BLINK_benchmark_with_NIL
+```
+
+```{python}
+import os;os.listdir('../data/BLINK_benchmark_with_NIL')
+```
+
+```{python}
+encodings_p = ['AIDA-YAGO2_train_encodings.jsonl',
+ 'AIDA-YAGO2_testb_encodings.jsonl',
+ 'AIDA-YAGO2_testa_encodings.jsonl']
+```
+
+```{python}
+aida_p = [
+ 'AIDA-YAGO2_train.jsonl',
+ 'AIDA-YAGO2_testb.jsonl',
+ 'AIDA-YAGO2_testa.jsonl']
+```
+
+```{python}
+df = pd.read_json('../data/BLINK_benchmark_with_NIL/AIDA-YAGO2_train.jsonl', lines=True)
+```
+
+```{python}
+df2 = pd.read_json('encodings_all/AIDA-YAGO2_train_encodings.jsonl', lines=True)
+```
+
+```{python}
+#
+```
+
+```{python}
+import textdistance
+```
+
+```{python}
+
 ```
