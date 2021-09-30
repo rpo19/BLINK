@@ -1343,6 +1343,19 @@ import pandas as pd
 from blink.indexer.faiss_indexer import DenseFlatIndexer
 from sklearn_extra.cluster import KMedoids
 import numpy as np
+
+import pickle
+import statistics
+
+import textdistance
+
+from matplotlib import pyplot as plt
+import seaborn as sns
+```
+
+```{python}
+sns.set(style='ticks', palette='Set2')
+sns.despine()
 ```
 
 ```{python}
@@ -1414,7 +1427,6 @@ index_1.index_data(
 
 ```{python}
 assert index_1.index.ntotal == to_index.shape[0]
-index_1.index.ntotal
 ```
 
 ```{python}
@@ -1680,6 +1692,592 @@ recall@100 &                   0.995023 \\
 \end{tabular}
 
 
+
+
+# with NIL
+
+```{python}
+train_ner = pd.read_json('AIDA-YAGO2_train_ner.jsonl', lines=True)
+```
+
+```{python}
+testa_ner = pd.read_json('AIDA-YAGO2_testa_ner.jsonl', lines=True)
+```
+
+```{python}
+testb_ner = pd.read_json('AIDA-YAGO2_testb_ner.jsonl', lines=True)
+```
+
+```{python}
+onehot_t = train_ner.apply(lambda x: {
+    'ner_per': x['ner'] == 'PER',
+    'ner_loc': x['ner']=='LOC',
+    'ner_org': x['ner']=='ORG',
+    'ner_misc': x['ner']=='MISC'
+}, axis=1, result_type='expand')
+```
+
+```{python}
+train_df[onehot_t.columns] = onehot_t.astype(int)
+```
+
+```{python}
+train_df['mention'] = train_ner['mention']
+```
+
+```{python}
+train_df.columns
+```
+
+```{python}
+# medoid
+to_index = pd.DataFrame(train_df.query('wikipedia_id > 0').groupby('wikipedia_id')['encoding'].apply(
+    lambda x: GetMedoid(x)[0]))
+```
+
+```{python}
+to_index = to_index.join(pd.DataFrame(train_df.query('wikipedia_id > 0').groupby('wikipedia_id')[['ner_per', 'ner_loc',
+       'ner_org', 'ner_misc']].mean()))
+```
+
+```{python}
+to_index = to_index.join(pd.DataFrame(train_df.query('wikipedia_id > 0').groupby('wikipedia_id')['mention'].apply(
+    lambda x: x.value_counts().index[0])))
+```
+
+```{python}
+to_index
+```
+
+```{python}
+to_index = to_index.sample(frac=1) # shuffle
+to_index['index'] = range(to_index.shape[0])
+to_index['wikipedia_id'] = to_index.index
+to_index = to_index.set_index('index')
+to_index
+```
+
+```{python}
+index_1 = DenseFlatIndexer(1024, 50000) # 1024 dimensions, 50000 default as BLINK
+index_1.index.ntotal
+```
+
+```{python}
+#to_index = to_index_wiki
+```
+
+```{python}
+# index in batch of 100 mentions
+for i in range(100, to_index.shape[0], 100):
+    #print(i-100, i)
+    index_1.index_data(
+        np.stack(
+            to_index.iloc[i-100:i]['encoding'].values
+        ).astype('float32'))
+
+# index last batch
+index_1.index_data(
+    np.stack(
+        to_index.iloc[i:to_index.shape[0]]['encoding'].values
+    ).astype('float32'))
+```
+
+```{python}
+assert index_1.index.ntotal == to_index.shape[0]
+index_1.index.ntotal
+```
+
+```{python}
+onehot_testa = testa_ner.apply(lambda x: {
+    'ner_per': x['ner'] == 'PER',
+    'ner_loc': x['ner']=='LOC',
+    'ner_org': x['ner']=='ORG',
+    'ner_misc': x['ner']=='MISC'
+}, axis=1, result_type='expand')
+
+onehot_testb = testb_ner.apply(lambda x: {
+    'ner_per': x['ner'] == 'PER',
+    'ner_loc': x['ner']=='LOC',
+    'ner_org': x['ner']=='ORG',
+    'ner_misc': x['ner']=='MISC'
+}, axis=1, result_type='expand')
+```
+
+```{python}
+testa_df[onehot_testa.columns] = onehot_testa.astype(int)
+testb_df[onehot_testa.columns] = onehot_testb.astype(int)
+```
+
+```{python}
+testa_df['mention'] = testa_ner['mention']
+testb_df['mention'] = testb_ner['mention']
+```
+
+```{python}
+testa_linking_results = index_1.search_knn(np.stack(testa_df['encoding'].values).astype('float32'), 100)
+```
+
+```{python}
+myfun = np.vectorize(lambda x: to_index.iloc[x]['wikipedia_id'])
+```
+
+```{python}
+testa_linking_results_wiki_id = myfun(testa_linking_results[1])
+```
+
+```{python}
+# ls ../models/nil_pred_new/bi
+```
+
+```{python}
+# load nil predictor
+
+#model_name = 'aida_under_bi_max'
+#model_name = 'aida_under_bi_max_stdev4'
+#model_name = 'aida_under_bi_max_jaccard'
+#model_name = 'aida_under_bi_max_jaccard_ner_avg'
+#model_name = 'aida_under_bi_max_ner'
+model_name = 'aida_under_bi_max_ner_wiki'
+#model_name = 'aida_under_bi_max_hamming'
+#model_name = 'aida_under_bi_max_ner_wiki_hamming'
+#model_name = 'aida_under_bi_max_ner_avg_hamming'
+#model_name = 'aida_under_bi_max_stdev4_hamming'
+#model_name = 'aida_under_bi_max_ner_wiki_stdev4'
+#model_name = 'aida_under_bi_max_ner_avg_stdev4'
+
+with open(f'../models/nil_pred_new/bi/{model_name}_model.pickle', 'rb') as fd:
+    nil_clf = pickle.load(fd)
+nil_features = [
+    'max',
+    #'stdev4',
+    #'hamming',
+    #'jaccard',
+    'ner_per',
+    'ner_loc',
+    'ner_org',
+    'ner_misc',
+    #'cand_ner_per',
+    #'cand_ner_loc',
+    #'cand_ner_org',
+    #'cand_ner_misc',
+    'wiki_per',
+    'wiki_loc',
+    'wiki_org',
+    'wiki_misc',
+]
+```
+
+```{python}
+wiki_types = pd.read_csv('aida_ner_type_v2.csv', index_col=0)
+```
+
+```{python}
+#train_df.merge(wiki_types, right_on='id', left_on='label', how='inner')
+```
+
+```{python}
+def myfindf(x):
+    res = train_df.query(f'label == {x}')
+    if res.shape[0] > 0:
+        return res.iloc[0]['wikipedia_id']
+    else:
+        return None
+```
+
+```{python}
+wiki_types['wikipedia_id'] = wiki_types['id'].apply(myfindf)
+```
+
+```{python}
+wiki_types = wiki_types[wiki_types['wikipedia_id'].notna()]
+```
+
+```{python}
+wiki_types = wiki_types.rename(columns={
+    'per': 'wiki_per',
+    'loc': 'wiki_loc',
+    'org': 'wiki_org',
+    'misc': 'wiki_misc'
+})
+```
+
+```{python}
+wiki_types[['wiki_per', 'wiki_loc', 'wiki_org', 'wiki_misc']] = wiki_types[['wiki_per', 'wiki_loc', 'wiki_org', 'wiki_misc']].astype(int)
+```
+
+```{python}
+wiki_types
+```
+
+```{python}
+to_index
+```
+
+```{python}
+to_index_wiki = to_index.merge(wiki_types, on='wikipedia_id', how='left')
+```
+
+```{python}
+to_index_wiki = to_index_wiki[to_index_wiki['wiki_per'].notna()]
+```
+
+```{python}
+to_index.merge(wiki_types, on='wikipedia_id', how='left')['per'].notna().sum()
+```
+
+```{python}
+train_df[wiki_types_train.columns] = wiki_types_train
+```
+
+```{python}
+
+```
+
+```{python}
+## calc features
+# max
+# stdev4
+# hamming
+X_nil = pd.DataFrame({
+    'max': [i[0] for i in testa_linking_results[0]],
+    'stdev4': [statistics.stdev(i[:4].tolist()) for i in testa_linking_results[0]],
+    'mention': [to_index.iloc[i[0]]['mention'] for i in testa_linking_results[1]],
+    'cand_ner_per': [to_index.iloc[i[0]]['ner_per'] for i in testa_linking_results[1]],
+    'cand_ner_loc': [to_index.iloc[i[0]]['ner_loc'] for i in testa_linking_results[1]],
+    'cand_ner_org': [to_index.iloc[i[0]]['ner_org'] for i in testa_linking_results[1]],
+    'cand_ner_misc': [to_index.iloc[i[0]]['ner_misc'] for i in testa_linking_results[1]],
+})
+```
+
+```{python}
+X_nil['mention_to_link'] = testa_df['mention']
+```
+
+```{python}
+X_nil['hamming'] = X_nil.apply(lambda x: textdistance.hamming.normalized_similarity(x['mention_to_link'], x['mention']), axis=1)
+```
+
+```{python}
+X_nil['jaccard'] = X_nil.apply(lambda x: textdistance.jaccard.normalized_similarity(x['mention_to_link'], x['mention']), axis=1)
+```
+
+```{python}
+X_nil[['ner_per', 'ner_loc', 'ner_org', 'ner_misc']] = testa_df[['ner_per', 'ner_loc', 'ner_org', 'ner_misc']]
+```
+
+```{python}
+#X_nil[['wiki_per', 'wiki_loc', 'wiki_org', 'wiki_misc']] = testa_df.merge(wiki_types, on='wikipedia_id', how='left')[['wiki_per', 'wiki_loc', 'wiki_org', 'wiki_misc']].astype('float32')
+```
+
+```{python}
+#X_nil['wiki_per'].isna().sum()
+```
+
+```{python}
+y_nil = np.array([i for _,i in nil_clf.predict_proba(X_nil[nil_features].values)])
+```
+
+```{python}
+y_nil.shape
+```
+
+```{python}
+(y_nil > 0.5).sum()
+```
+
+```{python}
+eval_testa_nil = pd.DataFrame()
+eval_testa_nil['wikipedia_id'] = testa_df['wikipedia_id']
+eval_testa_nil['wikipedia_id_link'] = [i[0] for i in testa_linking_results_wiki_id]
+eval_testa_nil['nil_gold'] = eval_testa_nil['wikipedia_id'].isin(to_index['wikipedia_id']).astype(int)
+eval_testa_nil['nil_p'] = y_nil
+```
+
+```{python}
+save_to_path = 'linking2mentions_test'
+```
+
+```{python}
+eval_testa_nil['nil_p'].plot(kind='kde')
+```
+
+```{python}
+import os
+def eval_with_nil(df, name):
+    overall_correct = df.query('(nil_p >= 0.5 and wikipedia_id == wikipedia_id_link)'
+                    ' or (nil_p < 0.5 and nil_gold == 0)').shape[0]/df.shape[0]
+    nil_when_link_fails = df.query('(nil_p >= 0.5 and wikipedia_id == wikipedia_id_link)'
+                    ' or (nil_p < 0.5 and wikipedia_id != wikipedia_id_link)').shape[0]/df.shape[0]
+    correctly_identified_as_not_nil = df.query('nil_p >= 0.5 and wikipedia_id == wikipedia_id_link').shape[0]/ \
+        df.query('wikipedia_id == wikipedia_id_link').shape[0]
+    correctly_identified_as_nil = df.query('nil_p < 0.5 and nil_gold==0').shape[0]/ \
+        df.query('nil_gold==0').shape[0]
+    
+    eval_df = pd.DataFrame([ overall_correct,
+         nil_when_link_fails,
+         correctly_identified_as_not_nil,
+         correctly_identified_as_nil,
+                           ], index=[
+                'overall_correct',
+        'nil_when_link_fails',
+        'correctly_identified_as_not_nil',
+        'correctly_identified_as_nil',])
+    
+    print(pd.DataFrame(df['nil_gold'].value_counts()).to_markdown())
+    print()
+    print(pd.DataFrame(np.round(df['nil_p']).value_counts()).to_markdown())
+    print()
+    
+    print(eval_df.to_markdown())
+    print()
+    print(eval_df.to_latex())
+    
+    with open(save_to_path+f'/{name}_report.txt', 'w') as fd:
+        print(pd.DataFrame(df['nil_gold'].value_counts()).to_markdown(), file=fd)
+        print("", file=fd)
+        print(pd.DataFrame(np.round(df['nil_p']).value_counts()).to_markdown(), file=fd)
+        print("", file=fd)
+
+        print(eval_df.to_markdown(), file=fd)
+        print("", file=fd)
+        print(eval_df.to_latex(), file=fd)
+    
+    overall_correct = df.query('(nil_p >= 0.75 and wikipedia_id == wikipedia_id_link)'
+                    ' or (nil_p < 0.25 and nil_gold == 0)').shape[0]/df.query(
+                            'nil_p >= 0.75 or nil_p <= 0.25').shape[0]
+    nil_when_link_fails = df.query('(nil_p >= 0.75 and wikipedia_id == wikipedia_id_link)'
+                    ' or (nil_p < 0.25 and wikipedia_id != wikipedia_id_link)').shape[0]/df.query(
+                            'nil_p >= 0.75 or nil_p <= 0.25').shape[0]
+    correctly_identified_as_not_nil = df.query('nil_p >= 0.75 and wikipedia_id == wikipedia_id_link').shape[0]/ \
+        df.query('nil_p >= 0.75').shape[0]
+    try:
+        correctly_identified_as_nil = df.query('nil_p < 0.25 and nil_gold==0').shape[0]/ \
+            df.query('nil_p < 0.25').shape[0]
+    except:
+        correctly_identified_as_nil = 0
+    
+    eval_df = pd.DataFrame([ overall_correct,
+         nil_when_link_fails,
+         correctly_identified_as_not_nil,
+         correctly_identified_as_nil,
+                           ], index=[
+                'overall_correct',
+        'nil_when_link_fails',
+        'correctly_identified_as_not_nil_precision',
+        'correctly_identified_as_nil_precision',])
+    
+    print('-'*10, 'ORACLE', '-'*10)
+    print(eval_df.to_markdown())
+    print()
+    print(eval_df.to_latex())
+    
+    with open(save_to_path+f'/{name}_oracle_report.txt', 'w') as fd:
+        print('-'*10, 'ORACLE', '-'*10, file=fd)
+        print(eval_df.to_markdown(), file=fd)
+        print("", file=fd)
+        print(eval_df.to_latex(), file=fd)
+    
+    plt.figure()
+    pd.DataFrame(pd.DataFrame({
+        'pred':df['nil_p'],
+        'pred_round': np.round(df['nil_p']),
+        'gold': df['nil_gold']
+    })).plot(kind='kde')
+    plt.tight_layout(pad=0.5)
+    plt.savefig(os.path.join(save_to_path, name+'_kde.png'))
+    plt.close()
+    
+    plt.figure()
+    correct = df[df['nil_p'].round() == df['nil_gold']].rename(
+        columns={
+            'nil_p': 'correct'
+        })[['correct']]
+    ax = correct.plot(kind='kde', legend=True)
+    plt.tight_layout(pad=0.5)
+
+    errors = df[df['nil_p'].round() != df['nil_gold']].rename(
+        columns={
+            'nil_p': 'errors'
+        })[['errors']]
+    errors.plot(kind='kde', legend=True, ax=ax)
+    plt.tight_layout(pad=0.5)
+    # plt.savefig(os.path.join(outpath, title+'_kde_errors.png'))
+    plt.savefig(os.path.join(save_to_path, name+'_kde_correct_errors.png'))
+    plt.close()
+
+    plt.close('all')
+```
+
+```{python}
+eval_with_nil(eval_testa_nil, model_name)
+```
+
+```{python}
+plt.figure()
+correct = eval_testa_nil[eval_testa_nil['nil_p'].round() == eval_testa_nil['nil_gold']].rename(
+    columns={
+        'nil_p': 'correct'
+    })[['correct']]
+correct.plot(kind='kde')
+
+errors = eval_testa_nil[eval_testa_nil['nil_p'].round() != eval_testa_nil['nil_gold']].rename(
+    columns={
+        'nil_p': 'errors'
+    })[['errors']]
+errors.plot(kind='kde')
+
+plt.plot()
+```
+
+```{python}
+errors = eval_testa_nil[eval_testa_nil['nil_p'].round() != eval_testa_nil['nil_gold']].rename(
+    columns={
+        'nil_p': 'errors'
+    })[['errors']]
+errors.plot(kind='kde')
+```
+
+### aida_under_bi_max_ner_wiki_stdev4
+|    |   nil_gold |
+|---:|-----------:|
+|  1 |       3633 |
+|  0 |       2284 |
+
+|    |   nil_p |
+|---:|--------:|
+|  0 |    4513 |
+|  1 |    1404 |
+
+|                                 |        0 |
+|:--------------------------------|---------:|
+| overall_correct                 | 0.545378 |
+| nil_when_link_fails             | 0.653034 |
+| correctly_identified_as_not_nil | 0.3876   |
+| correctly_identified_as_nil     | 0.922942 |
+
+\begin{tabular}{lr}
+\toprule
+{} &         0 \\
+\midrule
+overall\_correct                 &  0.545378 \\
+nil\_when\_link\_fails             &  0.653034 \\
+correctly\_identified\_as\_not\_nil &  0.387600 \\
+correctly\_identified\_as\_nil     &  0.922942 \\
+\bottomrule
+\end{tabular}
+
+
+### aida_under_bi_max_ner_avg_stdev4
+
+|    |   nil_gold |
+|---:|-----------:|
+|  1 |       3633 |
+|  0 |       2284 |
+
+|    |   nil_p |
+|---:|--------:|
+|  0 |    4139 |
+|  1 |    1778 |
+
+|                                 |        0 |
+|:--------------------------------|---------:|
+| overall_correct                 | 0.607233 |
+| nil_when_link_fails             | 0.718945 |
+| correctly_identified_as_not_nil | 0.519917 |
+| correctly_identified_as_nil     | 0.915937 |
+
+\begin{tabular}{lr}
+\toprule
+{} &         0 \\
+\midrule
+overall\_correct                 &  0.607233 \\
+nil\_when\_link\_fails             &  0.718945 \\
+correctly\_identified\_as\_not\_nil &  0.519917 \\
+correctly\_identified\_as\_nil     &  0.915937 \\
+\bottomrule
+\end{tabular}
+
+
+### aida_under_bi_max_stdev4_hamming
+|    |   nil_gold |
+|---:|-----------:|
+|  1 |       3633 |
+|  0 |       2284 |
+
+|    |   nil_p |
+|---:|--------:|
+|  0 |    4567 |
+|  1 |    1350 |
+
+|                                 |        0 |
+|:--------------------------------|---------:|
+| overall_correct                 | 0.564813 |
+| nil_when_link_fails             | 0.683116 |
+| correctly_identified_as_not_nil | 0.409075 |
+| correctly_identified_as_nil     | 0.946147 |
+
+\begin{tabular}{lr}
+\toprule
+{} &         0 \\
+\midrule
+overall\_correct                 &  0.564813 \\
+nil\_when\_link\_fails             &  0.683116 \\
+correctly\_identified\_as\_not\_nil &  0.409075 \\
+correctly\_identified\_as\_nil     &  0.946147 \\
+\bottomrule
+\end{tabular}
+
+
+### aida_under_bi_max_hamming
+|    |   nil_gold |
+|---:|-----------:|
+|  1 |       3633 |
+|  0 |       2284 |
+
+|    |   nil_p |
+|---:|--------:|
+|  0 |    3005 |
+|  1 |    2912 |
+
+|                                 |        0 |
+|:--------------------------------|---------:|
+| overall_correct                 | 0.729424 |
+| nil_when_link_fails             | 0.812236 |
+| correctly_identified_as_not_nil | 0.811915 |
+| correctly_identified_as_nil     | 0.863398 |
+
+\begin{tabular}{lr}
+\toprule
+{} &         0 \\
+\midrule
+overall\_correct                 &  0.729424 \\
+nil\_when\_link\_fails             &  0.812236 \\
+correctly\_identified\_as\_not\_nil &  0.811915 \\
+correctly\_identified\_as\_nil     &  0.863398 \\
+\bottomrule
+\end{tabular}
+
+
+
+```{python}
+
+```
+
+```{python}
+
+```
+
+```{python}
+
+```
+
+```{python}
+
+```
+
+```{python}
+
+```
 
 ```{python}
 over5 = pd.DataFrame(train_df.query('wikipedia_id != 0')['wikipedia_id'].value_counts()).query('wikipedia_id > 5').index
