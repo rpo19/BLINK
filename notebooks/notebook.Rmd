@@ -1410,6 +1410,12 @@ index_1.index.ntotal
 ```
 
 ```{python}
+import time
+```
+
+```{python}
+start_time = time.monotonic()
+
 # index in batch of 100 mentions
 for i in range(100, to_index.shape[0], 100):
     #print(i-100, i)
@@ -1417,12 +1423,25 @@ for i in range(100, to_index.shape[0], 100):
         np.stack(
             to_index.iloc[i-100:i]['encoding'].values
         ).astype('float32'))
+    
+    index_1.serialize('index_1_test_save.faiss')
 
 # index last batch
 index_1.index_data(
     np.stack(
         to_index.iloc[i:to_index.shape[0]]['encoding'].values
     ).astype('float32'))
+index_1.serialize('index_1_test_save.faiss')
+
+print('seconds: ', time.monotonic() - start_time)
+```
+
+```{python}
+index_1.index.ntotal
+```
+
+```{python}
+# ls -l index_1_test_save.faiss
 ```
 
 ```{python}
@@ -1430,7 +1449,10 @@ assert index_1.index.ntotal == to_index.shape[0]
 ```
 
 ```{python}
+print('Retrieving', testa_df['encoding'].shape[0])
+start_time = time.monotonic()
 testa_linking_results = index_1.search_knn(np.stack(testa_df['encoding'].values).astype('float32'), 100)
+print('seconds: ', time.monotonic() - start_time)
 ```
 
 ```{python}
@@ -1830,11 +1852,24 @@ testa_linking_results = index_1.search_knn(np.stack(testa_df['encoding'].values)
 ```
 
 ```{python}
+#del testa_linking_results
+#del testa_linking_results_wiki_id
+```
+
+```{python}
+testb_linking_results = index_1.search_knn(np.stack(testb_df['encoding'].values).astype('float32'), 100)
+```
+
+```{python}
 myfun = np.vectorize(lambda x: to_index.iloc[x]['wikipedia_id'])
 ```
 
 ```{python}
 testa_linking_results_wiki_id = myfun(testa_linking_results[1])
+```
+
+```{python}
+testb_linking_results_wiki_id = myfun(testb_linking_results[1])
 ```
 
 ```{python}
@@ -1976,6 +2011,9 @@ train_df[wiki_types_train.columns] = wiki_types_train
 # max
 # stdev4
 # hamming
+
+# test a
+
 X_nil = pd.DataFrame({
     'max': [i[0] for i in testa_linking_results[0]],
     'stdev4': [statistics.stdev(i[:4].tolist()) for i in testa_linking_results[0]],
@@ -1992,7 +2030,36 @@ X_nil = pd.DataFrame({
 ```
 
 ```{python}
+## calc features
+# max
+# stdev4
+# hamming
+
+# test b!
+
+X_nil = pd.DataFrame({
+    'max': [i[0] for i in testb_linking_results[0]],
+    'stdev4': [statistics.stdev(i[:4].tolist()) for i in testb_linking_results[0]],
+    'mention': [to_index.iloc[i[0]]['mention'] for i in testb_linking_results[1]],
+    'cand_ner_per': [to_index.iloc[i[0]]['ner_per'] for i in testb_linking_results[1]],
+    'cand_ner_loc': [to_index.iloc[i[0]]['ner_loc'] for i in testb_linking_results[1]],
+    'cand_ner_org': [to_index.iloc[i[0]]['ner_org'] for i in testb_linking_results[1]],
+    'cand_ner_misc': [to_index.iloc[i[0]]['ner_misc'] for i in testb_linking_results[1]],
+    'wiki_per': [to_index.iloc[i[0]]['wiki_per'] for i in testb_linking_results[1]],
+    'wiki_loc': [to_index.iloc[i[0]]['wiki_loc'] for i in testb_linking_results[1]],
+    'wiki_org': [to_index.iloc[i[0]]['wiki_org'] for i in testb_linking_results[1]],
+    'wiki_misc': [to_index.iloc[i[0]]['wiki_misc'] for i in testb_linking_results[1]],
+})
+```
+
+```{python}
+# test a
 X_nil['mention_to_link'] = testa_df['mention']
+```
+
+```{python}
+# test b
+X_nil['mention_to_link'] = testb_df['mention']
 ```
 
 ```{python}
@@ -2004,7 +2071,17 @@ X_nil['jaccard'] = X_nil.apply(lambda x: textdistance.jaccard.normalized_similar
 ```
 
 ```{python}
+# test a
 X_nil[['ner_per', 'ner_loc', 'ner_org', 'ner_misc']] = testa_df[['ner_per', 'ner_loc', 'ner_org', 'ner_misc']]
+```
+
+```{python}
+#del testa_df
+```
+
+```{python}
+# test b
+X_nil[['ner_per', 'ner_loc', 'ner_org', 'ner_misc']] = testb_df[['ner_per', 'ner_loc', 'ner_org', 'ner_misc']]
 ```
 
 ```{python}
@@ -2028,6 +2105,7 @@ y_nil.shape
 ```
 
 ```{python}
+# test a
 eval_testa_nil = pd.DataFrame()
 eval_testa_nil['wikipedia_id'] = testa_df['wikipedia_id']
 eval_testa_nil['wikipedia_id_link'] = [i[0] for i in testa_linking_results_wiki_id]
@@ -2036,11 +2114,26 @@ eval_testa_nil['nil_p'] = y_nil
 ```
 
 ```{python}
+# test b
+eval_testb_nil = pd.DataFrame()
+eval_testb_nil['wikipedia_id'] = testb_df['wikipedia_id']
+eval_testb_nil['wikipedia_id_link'] = [i[0] for i in testb_linking_results_wiki_id]
+eval_testb_nil['nil_gold'] = eval_testb_nil['wikipedia_id'].isin(to_index['wikipedia_id']).astype(int)
+eval_testb_nil['nil_p'] = y_nil
+```
+
+```{python}
 save_to_path = 'linking2mentions_test'
 ```
 
 ```{python}
+# test a
 eval_testa_nil['nil_p'].plot(kind='kde')
+```
+
+```{python}
+# test b
+eval_testb_nil['nil_p'].plot(kind='kde')
 ```
 
 ```{python}
@@ -2152,6 +2245,12 @@ def eval_with_nil(df, name):
 ```
 
 ```{python}
+# test b
+eval_with_nil(eval_testb_nil, model_name)
+```
+
+```{python}
+# test a
 eval_with_nil(eval_testa_nil, model_name)
 ```
 
