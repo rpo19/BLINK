@@ -279,6 +279,20 @@ tasks = [
             ]
     },
     {
+        'name': 'aida_under_all10_max_stdev4_hamming',
+        'train': ['dataset_and_preds/AIDA-YAGO2_train.csv'],
+        'test': ['dataset_and_preds/AIDA-YAGO2_testa.csv', 'dataset_and_preds/AIDA-YAGO2_testb.csv'],
+        'sampling': 'undersample',
+        'features':  [
+                'cross_stats_10_max',
+                'cross_stats_4_stdev',
+                'bi_stats_10_max',
+                'bi_stats_4_stdev',
+                'cross_hamming',
+                'bi_hamming',
+            ]
+    },
+    {
         'name': 'aida_under_cross10',
         'train': ['dataset_and_preds/AIDA-YAGO2_train.csv'],
         'test': ['dataset_and_preds/AIDA-YAGO2_testa.csv', 'dataset_and_preds/AIDA-YAGO2_testb.csv'],
@@ -735,6 +749,17 @@ tasks = [
             ]
     },
     {
+        'name': 'aida_under_bi_max_stdev4_hamming',
+        'train': ['dataset_and_preds/AIDA-YAGO2_train.csv'],
+        'test': ['dataset_and_preds/AIDA-YAGO2_testa.csv', 'dataset_and_preds/AIDA-YAGO2_testb.csv'],
+        'sampling': 'undersample',
+        'features':  [
+                'bi_stats_10_max',
+                'bi_stats_4_stdev',
+                'bi_hamming',
+            ]
+    },
+    {
         'name': 'aida_under_bi_max_stdev',
         'train': ['dataset_and_preds/AIDA-YAGO2_train.csv'],
         'test': ['dataset_and_preds/AIDA-YAGO2_testa.csv', 'dataset_and_preds/AIDA-YAGO2_testb.csv'],
@@ -807,6 +832,24 @@ tasks = [
             ]
     },
     {
+        'name': 'aida_under_bi_max_ner_avg_stdev4',
+        'train': ['dataset_and_preds/AIDA-YAGO2_train.csv'],
+        'test': ['dataset_and_preds/AIDA-YAGO2_testa.csv', 'dataset_and_preds/AIDA-YAGO2_testb.csv'],
+        'sampling': 'undersample',
+        'features':  [
+                'bi_stats_10_max',
+                'bi_stats_4_stdev',
+                'ner_per',
+                'ner_loc',
+                'ner_org',
+                'ner_misc',
+                'avg_ner_per_bi',
+                'avg_ner_loc_bi',
+                'avg_ner_org_bi',
+                'avg_ner_misc_bi',
+            ]
+    },
+    {
         'name': 'aida_under_bi_max_ner_wiki_stdev4_hamming',
         'train': ['dataset_and_preds/AIDA-YAGO2_train.csv'],
         'test': ['dataset_and_preds/AIDA-YAGO2_testa.csv', 'dataset_and_preds/AIDA-YAGO2_testb.csv'],
@@ -844,6 +887,24 @@ tasks = [
             ]
     },
     {
+        'name': 'aida_under_bi_max_ner_avg_hamming',
+        'train': ['dataset_and_preds/AIDA-YAGO2_train.csv'],
+        'test': ['dataset_and_preds/AIDA-YAGO2_testa.csv', 'dataset_and_preds/AIDA-YAGO2_testb.csv'],
+        'sampling': 'undersample',
+        'features':  [
+                'bi_stats_10_max',
+                'bi_hamming',
+                'ner_per',
+                'ner_loc',
+                'ner_org',
+                'ner_misc',
+                'avg_ner_per_bi',
+                'avg_ner_loc_bi',
+                'avg_ner_org_bi',
+                'avg_ner_misc_bi',
+            ]
+    },
+    {
         'name': 'aida_under_bi_max_ner_wiki_jaccard',
         'train': ['dataset_and_preds/AIDA-YAGO2_train.csv'],
         'test': ['dataset_and_preds/AIDA-YAGO2_testa.csv', 'dataset_and_preds/AIDA-YAGO2_testb.csv'],
@@ -869,6 +930,24 @@ tasks = [
         'features':  [
                 'bi_stats_10_max',
                 'bi_sim_jaccard',
+            ]
+    },
+    {
+        'name': 'aida_under_bi_max_jaccard_ner_avg',
+        'train': ['dataset_and_preds/AIDA-YAGO2_train.csv'],
+        'test': ['dataset_and_preds/AIDA-YAGO2_testa.csv', 'dataset_and_preds/AIDA-YAGO2_testb.csv'],
+        'sampling': 'undersample',
+        'features':  [
+                'bi_stats_10_max',
+                'bi_sim_jaccard',
+                'ner_per',
+                'ner_loc',
+                'ner_org',
+                'ner_misc',
+                'avg_ner_per_bi',
+                'avg_ner_loc_bi',
+                'avg_ner_org_bi',
+                'avg_ner_misc_bi',
             ]
     },
     {

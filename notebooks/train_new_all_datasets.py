@@ -83,20 +83,33 @@ dataset = pd.read_csv('whole6.csv', index_col=0)
 print('loaded...')
 
 tasks = [
-    # {
-    #     'name': 'aida_under_all10_max_stdev4_hamming',
-    #     'train': ['dataset_and_preds/AIDA-YAGO2_train.csv'],
-    #     'test': ['dataset_and_preds/AIDA-YAGO2_testa.csv', 'dataset_and_preds/AIDA-YAGO2_testb.csv'],
-    #     'sampling': 'undersample',
-    #     'features':  [
-    #             'cross_stats_10_max',
-    #             'bi_stats_10_max',
-    #             'cross_stats_4_stdev',
-    #             'bi_stats_4_stdev',
-    #             'cross_hamming',
-    #             'bi_hamming'
-    #         ]
-    # },
+    {
+        'name': 'aida_under_all10_max_stdev4_hamming',
+        'train': ['dataset_and_preds/AIDA-YAGO2_train.csv'],
+        'test': ['dataset_and_preds/AIDA-YAGO2_testa.csv', 'dataset_and_preds/AIDA-YAGO2_testb.csv'],
+        'sampling': 'undersample',
+        'features':  [
+                'cross_stats_10_max',
+                'bi_stats_10_max',
+                'cross_stats_4_stdev',
+                'bi_stats_4_stdev',
+                'cross_hamming',
+                'bi_hamming'
+            ]
+    },
+    {
+        'name': 'aida_under_all10_max_stdev4_hamming_no_bi',
+        'train': ['dataset_and_preds/AIDA-YAGO2_train.csv'],
+        'test': ['dataset_and_preds/AIDA-YAGO2_testa.csv', 'dataset_and_preds/AIDA-YAGO2_testb.csv'],
+        'sampling': 'undersample',
+        'features':  [
+                'cross_stats_10_max',
+                'bi_stats_10_max',
+                'cross_stats_4_stdev',
+                'bi_stats_4_stdev',
+                'cross_hamming',
+            ]
+    },
     {'features': ['cross_stats_10_max',
                'cross_stats_4_stdev',
                'bi_stats_10_max',
