@@ -1746,6 +1746,10 @@ to_index = to_index.join(pd.DataFrame(train_df.query('wikipedia_id > 0').groupby
 ```
 
 ```{python}
+to_index = to_index.join(pd.DataFrame(train_df.query('wikipedia_id > 0').groupby('wikipedia_id')['label'].first()))
+```
+
+```{python}
 to_index
 ```
 
@@ -1814,6 +1818,14 @@ testb_df['mention'] = testb_ner['mention']
 ```
 
 ```{python}
+testa_df.columns
+```
+
+```{python}
+testb_df.columns
+```
+
+```{python}
 testa_linking_results = index_1.search_knn(np.stack(testa_df['encoding'].values).astype('float32'), 100)
 ```
 
@@ -1836,8 +1848,9 @@ testa_linking_results_wiki_id = myfun(testa_linking_results[1])
 #model_name = 'aida_under_bi_max_stdev4'
 #model_name = 'aida_under_bi_max_jaccard'
 #model_name = 'aida_under_bi_max_jaccard_ner_avg'
+model_name = 'aida_under_bi_max_ner_wiki_jaccard'
 #model_name = 'aida_under_bi_max_ner'
-model_name = 'aida_under_bi_max_ner_wiki'
+#model_name = 'aida_under_bi_max_ner_wiki'
 #model_name = 'aida_under_bi_max_hamming'
 #model_name = 'aida_under_bi_max_ner_wiki_hamming'
 #model_name = 'aida_under_bi_max_ner_avg_hamming'
@@ -1851,7 +1864,7 @@ nil_features = [
     'max',
     #'stdev4',
     #'hamming',
-    #'jaccard',
+    'jaccard',
     'ner_per',
     'ner_loc',
     'ner_org',
@@ -1867,8 +1880,22 @@ nil_features = [
 ]
 ```
 
+### types stuff
+
 ```{python}
 wiki_types = pd.read_csv('aida_ner_type_v2.csv', index_col=0)
+```
+
+```{python}
+to_index['index'] = to_index.index
+```
+
+```{python}
+to_index = to_index.set_index('label')
+```
+
+```{python}
+to_index
 ```
 
 ```{python}
@@ -1906,7 +1933,20 @@ wiki_types[['wiki_per', 'wiki_loc', 'wiki_org', 'wiki_misc']] = wiki_types[['wik
 ```
 
 ```{python}
-wiki_types
+wiki_types = wiki_types.set_index('id')
+```
+
+```{python}
+to_index = to_index.join(wiki_types)
+```
+
+```{python}
+to_index = to_index[to_index['wiki_per'].notna()]
+```
+
+```{python}
+to_index['index'] = range(to_index.shape[0])
+to_index = to_index.set_index('index')
 ```
 
 ```{python}
@@ -1929,9 +1969,7 @@ to_index.merge(wiki_types, on='wikipedia_id', how='left')['per'].notna().sum()
 train_df[wiki_types_train.columns] = wiki_types_train
 ```
 
-```{python}
-
-```
+### end types stuff
 
 ```{python}
 ## calc features
@@ -1946,6 +1984,10 @@ X_nil = pd.DataFrame({
     'cand_ner_loc': [to_index.iloc[i[0]]['ner_loc'] for i in testa_linking_results[1]],
     'cand_ner_org': [to_index.iloc[i[0]]['ner_org'] for i in testa_linking_results[1]],
     'cand_ner_misc': [to_index.iloc[i[0]]['ner_misc'] for i in testa_linking_results[1]],
+    'wiki_per': [to_index.iloc[i[0]]['wiki_per'] for i in testa_linking_results[1]],
+    'wiki_loc': [to_index.iloc[i[0]]['wiki_loc'] for i in testa_linking_results[1]],
+    'wiki_org': [to_index.iloc[i[0]]['wiki_org'] for i in testa_linking_results[1]],
+    'wiki_misc': [to_index.iloc[i[0]]['wiki_misc'] for i in testa_linking_results[1]],
 })
 ```
 
@@ -2004,6 +2046,7 @@ eval_testa_nil['nil_p'].plot(kind='kde')
 ```{python}
 import os
 def eval_with_nil(df, name):
+    print(name)
     overall_correct = df.query('(nil_p >= 0.5 and wikipedia_id == wikipedia_id_link)'
                     ' or (nil_p < 0.5 and nil_gold == 0)').shape[0]/df.shape[0]
     nil_when_link_fails = df.query('(nil_p >= 0.5 and wikipedia_id == wikipedia_id_link)'
