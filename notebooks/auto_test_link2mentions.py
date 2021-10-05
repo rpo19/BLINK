@@ -11,6 +11,16 @@ import numpy as np
 from sklearn_extra.cluster import KMedoids
 from blink.indexer.faiss_indexer import DenseFlatIndexer
 import pandas as pd
+import os
+
+
+medoid = os.environ.get('medoid')
+if medoid == 'true':
+    print('medoid')
+    medoid = True
+elif medoid == 'false':
+    print('index all')
+    medoid = False
 
 overall_df = pd.DataFrame()
 overall_df_oracle = pd.DataFrame()
@@ -40,15 +50,20 @@ def eval_with_nil(df, name, wiki, test, save_to_path):
     # 1 precision
     _precision1 = df.query('nil_p >= 0.5 and wikipedia_id == wikipedia_id_link').shape[0] / \
         df.query('nil_p >= 0.5').shape[0]
-    # 0 recall    
+    # 0 recall
     correctly_identified_as_nil = df.query('nil_p < 0.5 and nil_gold==0').shape[0] / \
         df.query('nil_gold==0').shape[0]
     # 0 precision
     _precision0 = df.query('nil_p < 0.5 and nil_gold==0').shape[0] / \
         df.query('nil_p < 0.5').shape[0]
 
+    _0_f1 = 2*(_precision0*correctly_identified_as_nil) / (correctly_identified_as_nil+_precision0)
+    _1_f1 = 2*(_precision1*correctly_identified_as_not_nil) / (_precision1+correctly_identified_as_not_nil)
+
     eval_df = pd.DataFrame([overall_correct,
                             nil_when_link_fails,
+                            _0_f1,
+                            _1_f1,
                             correctly_identified_as_not_nil,
                             _precision1,
                             correctly_identified_as_nil,
@@ -56,10 +71,13 @@ def eval_with_nil(df, name, wiki, test, save_to_path):
                             ], index=[
         'overall_accuracy',
         'overall_accuracy_and_nil_corrects_nel',
+        '0-f1',
+        '1-f1',
         '1-recall',
         '1-precision',
         '0-recall',
-        '0-precision'], columns=[
+        '0-precision',
+        ], columns=[
             f'{name}_test_{test}_index_{wiki}'
         ])
 
@@ -190,13 +208,14 @@ train_df['mention'] = train_ner['mention']
 
 train_df.columns
 
-# medoid
-#to_index = pd.DataFrame(train_df.query('wikipedia_id > 0').groupby('wikipedia_id')['encoding'].apply(
-#    lambda x: GetMedoid(x)[0]))
-
-# index all
-to_index = pd.DataFrame(train_df.query('wikipedia_id > 0')[['wikipedia_id', 'encoding']])
-to_index = to_index.set_index('wikipedia_id')
+if medoid:
+    # medoid
+    to_index = pd.DataFrame(train_df.query('wikipedia_id > 0').groupby('wikipedia_id')['encoding'].apply(
+       lambda x: GetMedoid(x)[0]))
+else:
+    # index all
+    to_index = pd.DataFrame(train_df.query('wikipedia_id > 0')[['wikipedia_id', 'encoding']])
+    to_index = to_index.set_index('wikipedia_id')
 
 to_index = to_index.join(pd.DataFrame(train_df.query('wikipedia_id > 0').groupby('wikipedia_id')[['ner_per', 'ner_loc',
                                                                                                   'ner_org', 'ner_misc']].mean()))
@@ -233,9 +252,16 @@ wiki_types[['wiki_per', 'wiki_loc', 'wiki_org', 'wiki_misc']] = wiki_types[[
 
 wiki_types = wiki_types.set_index('id')
 
-# medoid wiki
-to_index_wiki = pd.DataFrame(train_df.query('wikipedia_id > 0').groupby('wikipedia_id')['encoding'].apply(
-    lambda x: GetMedoid(x)[0]))
+
+if medoid:
+    # medoid wiki
+    to_index_wiki = pd.DataFrame(train_df.query('wikipedia_id > 0').groupby('wikipedia_id')['encoding'].apply(
+        lambda x: GetMedoid(x)[0]))
+
+else:
+    # index all
+    to_index_wiki = pd.DataFrame(train_df.query('wikipedia_id > 0')[['wikipedia_id', 'encoding']])
+    to_index_wiki = to_index_wiki.set_index('wikipedia_id')
 
 to_index_wiki = to_index_wiki.join(pd.DataFrame(train_df.query('wikipedia_id > 0').groupby('wikipedia_id')[['ner_per', 'ner_loc',
                                                                                                             'ner_org', 'ner_misc']].mean()))
@@ -376,6 +402,18 @@ myfun_wiki = np.vectorize(lambda x: to_index_wiki.iloc[x]['wikipedia_id'])
 testa_linking_results_wiki_id_wiki = myfun_wiki(testa_linking_results_wiki[1])
 
 testb_linking_results_wiki_id_wiki = myfun_wiki(testb_linking_results_wiki[1])
+
+
+nel_baseline = testa_df.apply(lambda x: x['wikipedia_id'] in testa_linking_results_wiki_id[x.name], axis=1).sum()
+nel_baseline += testb_df.apply(lambda x: x['wikipedia_id'] in testb_linking_results_wiki_id[x.name], axis=1).sum()
+nel_baseline = nel_baseline / (testa_df.shape[0] + testb_df.shape[0])
+print('NEL baseline:', nel_baseline)
+
+nel_baseline_wikitp = testa_df.apply(lambda x: x['wikipedia_id'] in testa_linking_results_wiki_id_wiki[x.name], axis=1).sum()
+nel_baseline_wikitp += testb_df.apply(lambda x: x['wikipedia_id'] in testb_linking_results_wiki_id_wiki[x.name], axis=1).sum()
+nel_baseline_wikitp = nel_baseline_wikitp / (testa_df.shape[0] + testb_df.shape[0])
+print('NEL baseline wikitp:', nel_baseline_wikitp)
+
 
 print('nel done...')
 
@@ -571,6 +609,8 @@ for model_name, nil_features in all_features_map.items():
 
     try:
 
+        res_test_ab = {}
+
         for test in ['testa', 'testb']:
             testa = test == 'testa'
             if testa:
@@ -579,7 +619,7 @@ for model_name, nil_features in all_features_map.items():
                 test_df = testb_df
 
             if 'wiki_per' in nil_features:
-                # use wiki index 
+                # use wiki index
                 _to_index = to_index_wiki
 
                 if test == 'testa':
@@ -656,17 +696,24 @@ for model_name, nil_features in all_features_map.items():
                 _to_index['wikipedia_id']).astype(int)
             eval_test_nil['nil_p'] = y_nil
 
-            is_wiki = 'wikitp' if 'wiki_per' in nil_features else 'normal'
+            res_test_ab[test] = eval_test_nil
 
-            res_df, res_df_oracle = eval_with_nil(eval_test_nil, model_name, is_wiki, test, save_to_path)
+        is_wiki = 'wikitp' if 'wiki_per' in nil_features else 'normal'
 
-            overall_df = pd.concat([overall_df, res_df])
-            overall_df_oracle = pd.concat([overall_df_oracle, res_df_oracle])
+        eval_test_nil = pd.concat([
+            res_test_ab['testa'],
+            res_test_ab['testb']
+        ])
+
+        res_df, res_df_oracle = eval_with_nil(eval_test_nil, model_name, is_wiki, test, save_to_path)
+
+        overall_df = pd.concat([overall_df, res_df])
+        overall_df_oracle = pd.concat([overall_df_oracle, res_df_oracle])
 
     except:
         overall_df.to_csv(save_to_path+'/overall_df.csv')
         overall_df_oracle.to_csv(save_to_path+'/overall_df_oracle.csv')
         raise
-    
+
     overall_df.to_csv(save_to_path+'/overall_df.csv')
     overall_df_oracle.to_csv(save_to_path+'/overall_df_oracle.csv')
