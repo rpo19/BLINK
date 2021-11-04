@@ -40,6 +40,7 @@ HIGHLIGHTS = [
     "on_cyan",
 ]
 
+bi_higher_is_better = True
 
 def _print_colorful_text(input_sentence, samples):
     init()  # colorful output
@@ -302,6 +303,29 @@ def _run_crossencoder(crossencoder, dataloader, logger, context_len, device="cud
 
     return accuracy, predictions, logits
 
+def _scores_get_stats(scores):
+    global bi_higher_is_better
+    scores = scores.tolist()
+    _stats = {
+        "max": max(scores),
+        "second": sorted(scores, reverse=bi_higher_is_better)[1],
+        "min": min(scores),
+        "mean": statistics.mean(scores),
+        "median": statistics.median(scores),
+        "stdev": statistics.stdev(scores),
+    }
+    return _stats
+
+def _load_pickle_model(path):
+    with open(path, 'rb') as fd:
+        mdl = pickle.load(fd)
+    return mdl
+
+def _load_torch_model(path, n):
+    model = binaryClassification(n)
+    model.load_state_dict(torch.load(path))
+    model.eval()
+    return model
 
 def load_models(args, logger=None):
 
@@ -342,6 +366,19 @@ def load_models(args, logger=None):
         logger=logger,
     )
 
+    nil_prediction_scaler = None
+    nil_prediction_model = None
+
+    if (hasattr(args, 'nil_prediction')
+            and args.nil_prediction
+            and hasattr(args, 'nil_prediction_scaler')
+            and hasattr(args, 'nil_prediction_model')
+            and hasattr(args, 'nil_prediction_features')
+        ):
+        nil_prediction_scaler = _load_pickle_model(args.nil_prediction_scaler)
+        nil_prediction_model = _load_torch_model(args.nil_prediction_model, len(args.nil_prediction_features))
+        nil_prediction_features = args.nil_prediction_features
+
     return (
         biencoder,
         biencoder_params,
@@ -353,8 +390,10 @@ def load_models(args, logger=None):
         id2text,
         wikipedia_id2local_id,
         faiss_indexer,
+        nil_prediction_scaler,
+        nil_prediction_model,
+        nil_prediction_features
     )
-
 
 def run(
     args,
@@ -369,6 +408,9 @@ def run(
     id2text,
     wikipedia_id2local_id,
     faiss_indexer=None,
+    nil_prediction_scaler = None,
+    nil_prediction_model = None,
+    nil_prediction_features = ['max_cross'],
     test_data=None,
     local_id2wikipedia_id=None
 ):
@@ -517,6 +559,8 @@ def run(
                 top_k = args.top_k
                 x = []
                 y = []
+                # if label == -1:
+                # # check NIL prediction
                 for i in range(1, top_k):
                     temp_y = 0.0
                     for label, top in zip(labels, nns):
@@ -573,6 +617,39 @@ def run(
             logger,
             context_len=biencoder_params["max_context_length"],
         )
+        if hasattr(args, 'nil_prediction') and args.nil_prediction and nil_prediction_scaler and nil_prediction_model:
+            global nil_features
+            global nil_preds
+
+            nil_features = np.array(list(
+                map(
+                    lambda x: list(x[0].values()) + list(x[1].values()),
+                    #lambda x: list(x[0].values()),
+                    list(
+                        zip(
+                            list(map(_scores_get_stats, scores)), # bi scores
+                            list(map(_scores_get_stats, unsorted_scores)) # cross scores
+                        )))))
+            nil_features = pd.DataFrame(data=nil_features, columns=['max_bi',
+                       'second_bi',
+                       'min_bi',
+                       'mean_bi',
+                       'median_bi',
+                       'stdev_bi',
+                       'max_cross',
+                       'second_cross',
+                       'min_cross',
+                       'mean_cross',
+                       'median_cross',
+                       'stdev_cross'])
+            nil_features = nil_features[nil_prediction_features]
+
+            nil_features = nil_prediction_scaler.transform(nil_features)
+            #nil_preds = nil_prediction_model.predict(nil_features)
+            nil_features = torch.FloatTensor(nil_features)
+            nil_preds = nil_prediction_model(nil_features)
+            nil_preds = torch.sigmoid(nil_preds)
+            nil_preds = nil_preds.cpu().detach().numpy().reshape(-1,).tolist()
 
         if hasattr(args, 'save_scores_cross') and args.save_scores_cross:
             print('----- Score cross length -----')
@@ -597,7 +674,7 @@ def run(
 
             # print crossencoder prediction
             idx = 0
-            for entity_list, index_list, sample, _scores in zip(nns, index_array, samples, unsorted_scores):
+            for entity_list, index_list, sample, _scores, _nil in zip(nns, index_array, samples, unsorted_scores, nil_preds):
                 e_id = entity_list[index_list[-1]]
                 e_title = id2title[e_id]
                 e_text = id2text[e_id]
@@ -607,6 +684,7 @@ def run(
                 )
                 print("cross_score:", _scores[index_list[-1]])
                 print("all scores:", _scores)
+                print("NIL score:", _nil)
                 idx += 1
             print()
         else:
@@ -657,7 +735,6 @@ def run(
                 predictions,
                 scores,
             )
-
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()

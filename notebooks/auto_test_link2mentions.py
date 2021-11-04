@@ -13,6 +13,8 @@ from blink.indexer.faiss_indexer import DenseFlatIndexer
 import pandas as pd
 import os
 
+from sklearn.metrics import classification_report
+
 
 medoid = os.environ.get('medoid')
 if medoid == 'true':
@@ -44,33 +46,26 @@ def eval_with_nil(df, name, wiki, test, save_to_path):
     # accuracy + nil corrects nel
     nil_when_link_fails = df.query('(nil_p >= 0.5 and wikipedia_id == wikipedia_id_link)'
                                 ' or (nil_p < 0.5 and wikipedia_id != wikipedia_id_link)').shape[0]/df.shape[0]
-    # 1 recall
-    correctly_identified_as_not_nil = df.query('nil_p >= 0.5 and wikipedia_id == wikipedia_id_link').shape[0] / \
-        df.query('wikipedia_id == wikipedia_id_link').shape[0]
-    # 1 precision
-    _precision1 = df.query('nil_p >= 0.5 and wikipedia_id == wikipedia_id_link').shape[0] / \
-        df.query('nil_p >= 0.5').shape[0]
-    # 0 recall
-    correctly_identified_as_nil = df.query('nil_p < 0.5 and nil_gold==0').shape[0] / \
-        df.query('nil_gold==0').shape[0]
-    # 0 precision
-    _precision0 = df.query('nil_p < 0.5 and nil_gold==0').shape[0] / \
-        df.query('nil_p < 0.5').shape[0]
 
-    _0_f1 = 2*(_precision0*correctly_identified_as_nil) / (correctly_identified_as_nil+_precision0)
-    _1_f1 = 2*(_precision1*correctly_identified_as_not_nil) / (_precision1+correctly_identified_as_not_nil)
+    df['y_target'] = df.eval('wikipedia_id == wikipedia_id_link').astype(int)
+
+    report = classification_report(df['y_target'], df['nil_p'].round(), output_dict=True)
+
+    _baseline = df.eval('wikipedia_id == wikipedia_id_link').sum()/ df.shape[0]
 
     eval_df = pd.DataFrame([overall_correct,
                             nil_when_link_fails,
-                            _0_f1,
-                            _1_f1,
-                            correctly_identified_as_not_nil,
-                            _precision1,
-                            correctly_identified_as_nil,
-                            _precision0,
+                            _baseline,
+                            report['0']['f1-score'],
+                            report['1']['f1-score'],
+                            report['1']['recall'],
+                            report['1']['precision'],
+                            report['0']['recall'],
+                            report['0']['precision'],
                             ], index=[
         'overall_accuracy',
         'overall_accuracy_and_nil_corrects_nel',
+        'baseline',
         '0-f1',
         '1-f1',
         '1-recall',
@@ -83,6 +78,12 @@ def eval_with_nil(df, name, wiki, test, save_to_path):
 
     res_df = eval_df.transpose().copy()
 
+    cl_report_df = pd.DataFrame(report).transpose()
+    cl_report_df[['precision', 'recall', 'f1-score']] = (cl_report_df[['precision', 'recall', 'f1-score']]*100).round(decimals=1)
+    cl_report_df['support'] = cl_report_df['support'].astype(int)
+
+
+
     print(pd.DataFrame(df['nil_gold'].value_counts()).to_markdown())
     print()
     print(pd.DataFrame(np.round(df['nil_p']).value_counts()).to_markdown())
@@ -91,6 +92,9 @@ def eval_with_nil(df, name, wiki, test, save_to_path):
     print(eval_df.to_markdown())
     print()
     print(eval_df.to_latex())
+    print()
+    print(cl_report_df.to_latex())
+    print()
 
     with open(save_to_path+f'/{name}_test_{test}_index_{wiki}_report.txt', 'w') as fd:
         print(name, 'on', test, ', wiki:', wiki, file=fd)
@@ -104,6 +108,10 @@ def eval_with_nil(df, name, wiki, test, save_to_path):
         print(eval_df.to_markdown(), file=fd)
         print("", file=fd)
         print(eval_df.to_latex(), file=fd)
+        print("", file=fd)
+
+        print(cl_report_df.to_latex(), file=fd)
+        print("", file=fd)
 
     overall_correct = df.query('(nil_p >= 0.75 and wikipedia_id == wikipedia_id_link)'
                             ' or (nil_p < 0.25 and nil_gold == 0)').shape[0]/df.query(
@@ -404,13 +412,13 @@ testa_linking_results_wiki_id_wiki = myfun_wiki(testa_linking_results_wiki[1])
 testb_linking_results_wiki_id_wiki = myfun_wiki(testb_linking_results_wiki[1])
 
 
-nel_baseline = testa_df.apply(lambda x: x['wikipedia_id'] in testa_linking_results_wiki_id[x.name], axis=1).sum()
-nel_baseline += testb_df.apply(lambda x: x['wikipedia_id'] in testb_linking_results_wiki_id[x.name], axis=1).sum()
+nel_baseline = testa_df.apply(lambda x: x['wikipedia_id'] == testa_linking_results_wiki_id[x.name][0], axis=1).sum()
+nel_baseline += testb_df.apply(lambda x: x['wikipedia_id'] == testb_linking_results_wiki_id[x.name][0], axis=1).sum()
 nel_baseline = nel_baseline / (testa_df.shape[0] + testb_df.shape[0])
 print('NEL baseline:', nel_baseline)
 
-nel_baseline_wikitp = testa_df.apply(lambda x: x['wikipedia_id'] in testa_linking_results_wiki_id_wiki[x.name], axis=1).sum()
-nel_baseline_wikitp += testb_df.apply(lambda x: x['wikipedia_id'] in testb_linking_results_wiki_id_wiki[x.name], axis=1).sum()
+nel_baseline_wikitp = testa_df.apply(lambda x: x['wikipedia_id'] == testa_linking_results_wiki_id_wiki[x.name][0], axis=1).sum()
+nel_baseline_wikitp += testb_df.apply(lambda x: x['wikipedia_id'] == testb_linking_results_wiki_id_wiki[x.name][0], axis=1).sum()
 nel_baseline_wikitp = nel_baseline_wikitp / (testa_df.shape[0] + testb_df.shape[0])
 print('NEL baseline wikitp:', nel_baseline_wikitp)
 

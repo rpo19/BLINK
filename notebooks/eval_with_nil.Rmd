@@ -255,6 +255,121 @@ def nilclf(x):
 ```
 
 ```{python}
+df = pd.read_pickle('whole7.pickle')
+```
+
+```{python}
+test_df = df[df['src'].apply(lambda x: 'testa' in x or 'testb' in x)]
+```
+
+```{python}
+test_df['src'].unique()
+```
+
+```{python}
+testb_df = df[df['src'].apply(lambda x: 'testb' in x)]
+```
+
+```{python}
+train_df = df[df['src'].apply(lambda x: 'train' in x)]
+```
+
+```{python}
+testb_df['src'].unique()
+```
+
+```{python}
+train_df['src'].unique()
+```
+
+```{python}
+train_df['Wikipedia_ID'].unique().shape
+```
+
+```{python}
+train_df = pd.read_json(
+    'encodings_all/AIDA-YAGO2_train_encodings.jsonl', lines=True)
+```
+
+```{python}
+ids = train_df.query('wikipedia_id >0')['wikipedia_id'].unique()
+```
+
+```{python}
+test_df['Wikipedia_ID'].isin(ids).sum()/test_df.shape[0]
+```
+
+```{python}
+test_df_f = test_df[test_df['Wikipedia_ID'].isin(ids)].copy()
+```
+
+```{python}
+def _eval_line(x, scores_col='bi_scores', nns_col='bi_nns'):
+    assert len(x[scores_col]) == len(x[nns_col])
+    scores = x[scores_col].copy()
+    correct = -1
+    if x['bi_labels'] in x[nns_col]:
+        # found correct entity
+        i_correct = x[nns_col].tolist().index(x['bi_labels'])
+        # correct is position of the correct entity according to the estimated score
+        # correct = 0 means the best scored entity is the correct one
+        # correct = -1 means the correct entity is not in the top k
+        correct = np.argsort(x[scores_col])[::-1].tolist().index(i_correct)
+
+    return correct
+```
+
+```{python}
+import json
+```
+
+```{python}
+test_df_f['bi_scores'] = test_df_f['bi_scores'].apply(lambda x: np.array(json.loads(x)))
+```
+
+```{python}
+test_df_f['bi_nns'] = test_df_f['bi_nns'].apply(lambda x: np.array(json.loads(x)))
+```
+
+```{python}
+test_df_f.apply(lambda x: (len(x['bi_scores']), len(x['bi_nns'])), axis=1)
+```
+
+```{python}
+test_df_f['recall@'] = test_df_f.apply(_eval_line, axis=1)
+```
+
+```{python}
+test_df_f.columns.tolist()
+```
+
+```{python}
+test_df_f
+```
+
+```{python}
+bi_df = test_df_f
+```
+
+```{python}
+biencoder_recall1 = bi_df.query('`recall@` == 0').shape[0] / bi_df.shape[0]
+biencoder_recall3 = bi_df.query('`recall@` >= 0 and `recall@` < 3').shape[0] / bi_df.shape[0]
+biencoder_recall5 = bi_df.query('`recall@` >= 0 and `recall@` < 5').shape[0] / bi_df.shape[0]
+
+biencoder_recall10 = bi_df.query('`recall@` >= 0 and `recall@` < 10').shape[0] / bi_df.shape[0]
+biencoder_recall30 = bi_df.query('`recall@` >= 0 and `recall@` < 30').shape[0] / bi_df.shape[0]
+biencoder_recall100 = bi_df.query('`recall@` >= 0 and `recall@` < 100').shape[0] / bi_df.shape[0]
+```
+
+```{python}
+[biencoder_recall1, biencoder_recall3, biencoder_recall5, biencoder_recall10, biencoder_recall30, biencoder_recall100 ]
+```
+
+```{python}
+' & '.join(['{}'.format(round(i*100, 1)) for i in [biencoder_recall1, biencoder_recall3, biencoder_recall5, biencoder_recall10, biencoder_recall30, biencoder_recall100]])
+```
+
+```{python}
 report = pd.DataFrame(columns = [
     'bi_acc',
     'bi_acc_nil',
@@ -390,8 +505,8 @@ report.to_csv('report_20210922_nrl.csv')
 ```
 
 ```{python}
-report_aug = pd.read_csv('report_20210922_nrl.csv', index_col=0)
-report_aug
+report = pd.read_csv('report_20210922_nrl.csv', index_col=0)
+report
 ```
 
 ```{python}
@@ -1862,4 +1977,48 @@ train_df = train_df.join(avg_ner_types, on='cross_best_candidate')
 
 ```{python}
 aida_ner_avg.columns
+```
+
+```{python}
+
+```
+
+```{python}
+ml = list(range(10))*3
+```
+
+```{python}
+def _eval_line(x, scores_col='scores'):
+    assert len(x[scores_col]) == len(x.nns)
+    scores = x[scores_col].copy()
+    correct = -1
+    if x.labels in x.nns:
+        # found correct entity
+        i_correct = x.nns.index(x.labels)
+        # correct is position of the correct entity according to the estimated score
+        # correct = 0 means the best scored entity is the correct one
+        # correct = -1 means the correct entity is not in the top k
+        correct = np.argsort(x[scores_col])[::-1].tolist().index(i_correct)
+
+    return correct
+```
+
+```{python}
+np.argsort(x[scores_col])[::-1].tolist().index(i_correct)
+```
+
+```{python}
+ml
+```
+
+```{python}
+np.argsort(ml)[::-1].tolist()
+```
+
+```{python}
+np.argsort(ml)[::-1].tolist().index(2)
+```
+
+```{python}
+aida5
 ```

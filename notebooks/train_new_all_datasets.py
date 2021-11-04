@@ -79,37 +79,38 @@ if not os.path.isdir(outpath):
 print('loading dataset...')
 # dataset = pd.read_csv('whole4wikitypes.csv', index_col=0)
 # dataset = pd.read_csv('whole_df5_dists_topk.csv', index_col=0)
-dataset = pd.read_csv('whole6.csv', index_col=0)
+dataset = pd.read_pickle('whole7.pickle')
+
 print('loaded...')
 
 tasks = [
-    {
-        'name': 'aida_under_all10_max_stdev4_hamming',
-        'train': ['dataset_and_preds/AIDA-YAGO2_train.csv'],
-        'test': ['dataset_and_preds/AIDA-YAGO2_testa.csv', 'dataset_and_preds/AIDA-YAGO2_testb.csv'],
-        'sampling': 'undersample',
-        'features':  [
-                'cross_stats_10_max',
-                'bi_stats_10_max',
-                'cross_stats_4_stdev',
-                'bi_stats_4_stdev',
-                'cross_hamming',
-                'bi_hamming'
-            ]
-    },
-    {
-        'name': 'aida_under_all10_max_stdev4_hamming_no_bi',
-        'train': ['dataset_and_preds/AIDA-YAGO2_train.csv'],
-        'test': ['dataset_and_preds/AIDA-YAGO2_testa.csv', 'dataset_and_preds/AIDA-YAGO2_testb.csv'],
-        'sampling': 'undersample',
-        'features':  [
-                'cross_stats_10_max',
-                'bi_stats_10_max',
-                'cross_stats_4_stdev',
-                'bi_stats_4_stdev',
-                'cross_hamming',
-            ]
-    },
+    # {
+    #     'name': 'aida_under_all10_max_stdev4_hamming',
+    #     'train': ['dataset_and_preds/AIDA-YAGO2_train.csv'],
+    #     'test': ['dataset_and_preds/AIDA-YAGO2_testa.csv', 'dataset_and_preds/AIDA-YAGO2_testb.csv'],
+    #     'sampling': 'undersample',
+    #     'features':  [
+    #             'cross_stats_10_max',
+    #             'bi_stats_10_max',
+    #             'cross_stats_4_stdev',
+    #             'bi_stats_4_stdev',
+    #             'cross_hamming',
+    #             'bi_hamming'
+    #         ]
+    # },
+    # {
+    #     'name': 'aida_under_all10_max_stdev4_hamming_no_bi',
+    #     'train': ['dataset_and_preds/AIDA-YAGO2_train.csv'],
+    #     'test': ['dataset_and_preds/AIDA-YAGO2_testa.csv', 'dataset_and_preds/AIDA-YAGO2_testb.csv'],
+    #     'sampling': 'undersample',
+    #     'features':  [
+    #             'cross_stats_10_max',
+    #             'bi_stats_10_max',
+    #             'cross_stats_4_stdev',
+    #             'bi_stats_4_stdev',
+    #             'cross_hamming',
+    #         ]
+    # },
     {'features': ['cross_stats_10_max',
                'cross_stats_4_stdev',
                'bi_stats_10_max',
@@ -117,7 +118,7 @@ tasks = [
   'name': 'aida_under_all10_max_stdev4_ner_wiki_tested_on_AIDA-YAGO2_testa',
   'sampling': 'pretrained',
   'test': ['dataset_and_preds/AIDA-YAGO2_testa.csv'],
-  'train': 'train_new_out/aida_under_all10_max_stdev4_model.pickle'},
+  'train': 'train_new_out_ablation_1001/aida_under_all_max_stats10_levenshtein_model.pickle'},
  {'features': ['cross_stats_10_max',
                'cross_stats_4_stdev',
                'bi_stats_10_max',
@@ -125,7 +126,7 @@ tasks = [
   'name': 'aida_under_all10_max_stdev4_ner_wiki_tested_on_AIDA-YAGO2_train',
   'sampling': 'pretrained',
   'test': ['dataset_and_preds/AIDA-YAGO2_train.csv'],
-  'train': 'train_new_out/aida_under_all10_max_stdev4_model.pickle'},
+  'train': 'train_new_out_ablation_1001/aida_under_all_max_stats10_levenshtein_model.pickle'},
  {'features': ['cross_stats_10_max',
                'cross_stats_4_stdev',
                'bi_stats_10_max',
@@ -133,7 +134,7 @@ tasks = [
   'name': 'aida_under_all10_max_stdev4_ner_wiki_tested_on_clueweb_questions',
   'sampling': 'pretrained',
   'test': ['dataset_and_preds/clueweb_questions.csv'],
-  'train': 'train_new_out/aida_under_all10_max_stdev4_model.pickle'},
+  'train': 'train_new_out_ablation_1001/aida_under_all_max_stats10_levenshtein_model.pickle'},
  {'features': ['cross_stats_10_max',
                'cross_stats_4_stdev',
                'bi_stats_10_max',
@@ -141,7 +142,7 @@ tasks = [
   'name': 'aida_under_all10_max_stdev4_ner_wiki_tested_on_wnedwiki_questions',
   'sampling': 'pretrained',
   'test': ['dataset_and_preds/wnedwiki_questions.csv'],
-  'train': 'train_new_out/aida_under_all10_max_stdev4_model.pickle'},
+  'train': 'train_new_out_ablation_1001/aida_under_all_max_stats10_levenshtein_model.pickle'},
  {'features': ['cross_stats_10_max',
                'cross_stats_4_stdev',
                'bi_stats_10_max',
@@ -149,7 +150,7 @@ tasks = [
   'name': 'aida_under_all10_max_stdev4_ner_wiki_tested_on_AIDA-YAGO2_testb',
   'sampling': 'pretrained',
   'test': ['dataset_and_preds/AIDA-YAGO2_testb.csv'],
-  'train': 'train_new_out/aida_under_all10_max_stdev4_model.pickle'},
+  'train': 'train_new_out_ablation_1001/aida_under_all_max_stats10_levenshtein_model.pickle'},
  {'features': ['cross_stats_10_max',
                'cross_stats_4_stdev',
                'bi_stats_10_max',
@@ -157,7 +158,7 @@ tasks = [
   'name': 'aida_under_all10_max_stdev4_ner_wiki_tested_on_msnbc_questions',
   'sampling': 'pretrained',
   'test': ['dataset_and_preds/msnbc_questions.csv'],
-  'train': 'train_new_out/aida_under_all10_max_stdev4_model.pickle'},
+  'train': 'train_new_out_ablation_1001/aida_under_all_max_stats10_levenshtein_model.pickle'},
  {'features': ['cross_stats_10_max',
                'cross_stats_4_stdev',
                'bi_stats_10_max',
@@ -165,7 +166,7 @@ tasks = [
   'name': 'aida_under_all10_max_stdev4_ner_wiki_tested_on_aquaint_questions',
   'sampling': 'pretrained',
   'test': ['dataset_and_preds/aquaint_questions.csv'],
-  'train': 'train_new_out/aida_under_all10_max_stdev4_model.pickle'},
+  'train': 'train_new_out_ablation_1001/aida_under_all_max_stats10_levenshtein_model.pickle'},
  {'features': ['cross_stats_10_max',
                'cross_stats_4_stdev',
                'bi_stats_10_max',
@@ -173,7 +174,7 @@ tasks = [
   'name': 'aida_under_all10_max_stdev4_ner_wiki_tested_on_ace2004_questions',
   'sampling': 'pretrained',
   'test': ['dataset_and_preds/ace2004_questions.csv'],
-  'train': 'train_new_out/aida_under_all10_max_stdev4_model.pickle'},
+  'train': 'train_new_out_ablation_1001/aida_under_all_max_stats10_levenshtein_model.pickle'},
  {'features': ['cross_stats_10_max',
                'cross_stats_4_stdev',
                'bi_stats_10_max',
@@ -188,7 +189,7 @@ tasks = [
            'dataset_and_preds/msnbc_questions.csv',
            'dataset_and_preds/aquaint_questions.csv',
            'dataset_and_preds/ace2004_questions.csv'],
-  'train': 'train_new_out/aida_under_all10_max_stdev4_model.pickle'}]
+  'train': 'train_new_out_ablation_1001/aida_under_all_max_stats10_levenshtein_model.pickle'}]
 
 
 #['max', 'stats', 'dst', 'ner', 'avg_ner', 'avg_ner_correct']
@@ -210,6 +211,18 @@ if only is not None:
 for task in tasks:
     print('-'*30)
     print(task['name'])
+
+    task['features'] = [
+                'cross_stats_10_max',
+                'cross_stats_10_mean',
+                'cross_stats_10_median',
+                'cross_stats_10_stdev',
+                'bi_stats_10_max',
+                'bi_stats_10_mean',
+                'bi_stats_10_median',
+                'bi_stats_10_stdev',
+                'cross_levenshtein'
+            ]
 
 
     train_value_counts = None
@@ -236,7 +249,7 @@ for task in tasks:
         print(df_size_report)
 
         X_test = test_df[task['features']].values
-        y_test = test_df['y'].values
+        y_test = test_df['y_cross'].values
     else:
         train_df = dataset[dataset['src'].isin(task['train'])]
         if isinstance(task['test'], list):
@@ -278,13 +291,13 @@ for task in tasks:
         }, index=['original', 'notna', 'actual']).to_markdown()
         print(df_size_report)
 
-        train_value_counts = pd.DataFrame(train_df['y'].value_counts()).to_markdown()
+        train_value_counts = pd.DataFrame(train_df['y_cross'].value_counts()).to_markdown()
 
         X_train = train_df[task['features']].values
-        y_train = train_df['y'].values
+        y_train = train_df['y_cross'].values
 
         X_test = test_df[task['features']].values
-        y_test = test_df['y'].values
+        y_test = test_df['y_cross'].values
 
         # model
         clf = make_pipeline(
@@ -305,6 +318,14 @@ for task in tasks:
 
     bi_acc = test_df.query('(y_pred_round == 1 and (bi_labels == bi_best_candidate or Wikipedia_title == bi_best_candidate_title)) or (bi_labels == -1 and y_pred_round == 0)').shape[0]
     cross_acc = test_df.query('(y_pred_round == 1 and (cross_labels == cross_best_candidate or Wikipedia_title == cross_best_candidate_title)) or (cross_labels == -1 and y_pred_round == 0)').shape[0]
+
+    bi_acc_correcting_nel = test_df.query(
+        '(y_pred_round == 1 and (bi_labels == bi_best_candidate or Wikipedia_title == bi_best_candidate_title))'
+        ' or (bi_labels != bi_best_candidate and y_pred_round == 0)').shape[0]
+    cross_acc_correcting_nel = test_df.query(
+        '(y_pred_round == 1 and '
+        '(cross_labels == cross_best_candidate or Wikipedia_title == cross_best_candidate_title))'
+        ' or (cross_labels != cross_best_candidate and y_pred_round == 0)').shape[0]
 
     _classification_report = classification_report(y_test, y_pred_round)
 
@@ -335,6 +356,8 @@ for task in tasks:
         'cross_acc': cross_acc / test_df_shape_actual,
         'bi_acc_adjusted': bi_acc / test_df_shape_original,
         'cross_acc_adjusted': cross_acc / test_df_shape_original,
+        'bi_acc_correcting_nel': bi_acc_correcting_nel / test_df_shape_actual,
+        'cross_acc_correcting_nel': cross_acc_correcting_nel / test_df_shape_actual,
         '0-f1': f1_score(y_test, y_pred_round, pos_label=0),
         '1-f1': f1_score(y_test, y_pred_round, pos_label=1),
         'oracle_ratio': 1 - (oracle_df.shape[0] / oracle_original_shape),

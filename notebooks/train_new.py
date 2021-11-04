@@ -80,7 +80,8 @@ print('loading dataset...')
 # dataset = pd.read_csv('whole4wikitypes.csv', index_col=0)
 # dataset = pd.read_csv('whole_df5_dists_topk.csv', index_col=0)
 # dataset = pd.read_csv('whole7.csv', index_col=0)
-dataset = pd.read_pickle('whole7.pickle')
+# dataset = pd.read_pickle('whole7.pickle')
+dataset = pd.read_pickle('whole8.pickle')
 print('loaded...')
 
 tasks = [
