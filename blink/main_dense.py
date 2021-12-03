@@ -7,6 +7,8 @@
 import argparse
 import json
 import sys
+sys.path.append("..")
+sys.path.append(".")
 
 from tqdm import tqdm
 import logging
@@ -170,7 +172,7 @@ def __map_test_entities(test_entities_path, title2id, logger):
     return kb2id
 
 
-def __load_test(test_filename, kb2id, wikipedia_id2local_id, logger):
+def __load_test(test_filename, kb2id, wikipedia_id2local_id, logger, consider_all=False):
     test_samples = []
     with open(test_filename, "r") as fin:
         lines = fin.readlines()
@@ -183,7 +185,11 @@ def __load_test(test_filename, kb2id, wikipedia_id2local_id, logger):
                 if record["label"] in kb2id:
                     record["label_id"] = kb2id[record["label"]]
                 else:
-                    continue
+                    if consider_all:
+                        # NIL
+                        record["label_id"] = -1
+                    else:
+                        continue
 
             # check that each entity id (label_id) is in the entity collection
             elif wikipedia_id2local_id and len(wikipedia_id2local_id) > 0:
@@ -192,9 +198,17 @@ def __load_test(test_filename, kb2id, wikipedia_id2local_id, logger):
                     if key in wikipedia_id2local_id:
                         record["label_id"] = wikipedia_id2local_id[key]
                     else:
-                        continue
+                        if consider_all:
+                            # NIL
+                            record["label_id"] = -1
+                        else:
+                            continue
                 except:
-                    continue
+                    if consider_all:
+                        # NIL
+                        record["label_id"] = -1
+                    else:
+                        continue
 
             # LOWERCASE EVERYTHING !
             record["context_left"] = record["context_left"].lower()
@@ -208,12 +222,12 @@ def __load_test(test_filename, kb2id, wikipedia_id2local_id, logger):
 
 
 def _get_test_samples(
-    test_filename, test_entities_path, title2id, wikipedia_id2local_id, logger
+    test_filename, test_entities_path, title2id, wikipedia_id2local_id, logger, consider_all=False
 ):
     kb2id = None
     if test_entities_path:
         kb2id = __map_test_entities(test_entities_path, title2id, logger)
-    test_samples = __load_test(test_filename, kb2id, wikipedia_id2local_id, logger)
+    test_samples = __load_test(test_filename, kb2id, wikipedia_id2local_id, logger, consider_all=consider_all)
     return test_samples
 
 
@@ -234,17 +248,20 @@ def _process_biencoder_dataloader(samples, tokenizer, biencoder_params):
     return dataloader
 
 
-def _run_biencoder(biencoder, dataloader, candidate_encoding, top_k=100, indexer=None):
+def _run_biencoder(biencoder, dataloader, candidate_encoding, top_k=100, indexer=None, save_encodings=False):
     biencoder.model.eval()
     labels = []
     nns = []
     all_scores = []
+    encodings = []
     for batch in tqdm(dataloader):
         context_input, _, label_ids = batch
         with torch.no_grad():
             if indexer is not None:
                 context_encoding = biencoder.encode_context(context_input).numpy()
                 context_encoding = np.ascontiguousarray(context_encoding)
+                if save_encodings:
+                    encodings.extend([e.tolist() for e in context_encoding])
                 scores, indicies = indexer.search_knn(context_encoding, top_k)
             else:
                 scores = biencoder.score_candidate(
@@ -257,7 +274,7 @@ def _run_biencoder(biencoder, dataloader, candidate_encoding, top_k=100, indexer
         labels.extend(label_ids.data.numpy())
         nns.extend(indicies)
         all_scores.extend(scores)
-    return labels, nns, all_scores
+    return labels, nns, all_scores, encodings
 
 
 def _process_crossencoder_dataloader(context_input, label_input, crossencoder_params):
@@ -318,9 +335,9 @@ def load_models(args, logger=None):
         wikipedia_id2local_id,
         faiss_indexer,
     ) = _load_candidates(
-        args.entity_catalogue, 
-        args.entity_encoding, 
-        faiss_index=getattr(args, 'faiss_index', None), 
+        args.entity_catalogue,
+        args.entity_encoding,
+        faiss_index=getattr(args, 'faiss_index', None),
         index_path=getattr(args, 'index_path' , None),
         logger=logger,
     )
@@ -353,6 +370,7 @@ def run(
     wikipedia_id2local_id,
     faiss_indexer=None,
     test_data=None,
+    local_id2wikipedia_id=None
 ):
 
     if not test_data and not args.test_mentions and not args.interactive:
@@ -403,15 +421,28 @@ def run(
                     title2id,
                     wikipedia_id2local_id,
                     logger,
+                    consider_all= True if hasattr(args, 'consider_all') and args.consider_all else False
                 )
 
             stopping_condition = True
+
+        if len(samples) == 0:
+            return (
+                -1,
+                -1,
+                -1,
+                -1,
+                len(samples),
+                [],
+                [],
+            )
 
         # don't look at labels
         keep_all = (
             args.interactive
             or samples[0]["label"] == "unknown"
             or samples[0]["label_id"] < 0
+            or (hasattr(args, 'keep_all') and args.keep_all)
         )
 
         # prepare the data for biencoder
@@ -425,9 +456,32 @@ def run(
         if logger:
             logger.info("run biencoder")
         top_k = args.top_k
-        labels, nns, scores = _run_biencoder(
-            biencoder, dataloader, candidate_encoding, top_k, faiss_indexer
+        labels, nns, scores, encodings = _run_biencoder(
+            biencoder, dataloader, candidate_encoding, top_k, faiss_indexer, bool(args.save_encodings) if hasattr(args, 'save_encodings') else False
         )
+
+        if hasattr(args, 'save_encodings') and args.save_encodings:
+            with open(args.save_encodings, 'w') as fd:
+                for _enc, _lab in zip(encodings, labels):
+                    assert len(_lab) == 1
+                    _lab = int(_lab[0])
+                    current = {
+                        "encoding": _enc,
+                        "label": _lab,
+                        "wikipedia_id": 0 if local_id2wikipedia_id is None or _lab not in local_id2wikipedia_id else local_id2wikipedia_id[_lab],
+                        "title": id2title[_lab] if _lab in id2title else "**NOTFOUND**"
+                    }
+                    json.dump(current, fd)
+                    fd.write('\n')
+
+        if hasattr(args, 'save_scores_bi') and args.save_scores_bi:
+            scores_bi = {
+                "labels": [l.tolist() for l in labels],
+                "scores": [l.tolist() for l in scores],
+                "nns": [l.tolist() for l in nns]
+            }
+            with open(args.save_scores_bi, 'w') as fd:
+                json.dump(scores_bi, fd)
 
         if args.interactive:
 
@@ -437,7 +491,7 @@ def run(
 
             # print biencoder prediction
             idx = 0
-            for entity_list, sample in zip(nns, samples):
+            for entity_list, sample, _score in zip(nns, samples, scores):
                 e_id = entity_list[0]
                 e_title = id2title[e_id]
                 e_text = id2text[e_id]
@@ -445,6 +499,8 @@ def run(
                 _print_colorful_prediction(
                     idx, sample, e_id, e_title, e_text, e_url, args.show_url
                 )
+                print("bi_Score:", _score[0])
+                print("all scores:", _score[1:])
                 idx += 1
             print()
 
@@ -518,6 +574,21 @@ def run(
             context_len=biencoder_params["max_context_length"],
         )
 
+        if hasattr(args, 'save_scores_cross') and args.save_scores_cross:
+            print('----- Score cross length -----')
+            print('labels', len(labels))
+            print('unsorted_scores', len(unsorted_scores))
+            print('index_array', len(index_array))
+            print('nns', len(nns))
+            scores_cross = {
+                "labels": [l.tolist() for l in labels],
+                "unsorted_scores": [l.tolist() for l in unsorted_scores],
+                "index_array": index_array.tolist(),
+                "nns": [l.tolist() for l in nns]
+            }
+            with open(args.save_scores_cross, 'w') as fd:
+                json.dump(scores_cross, fd)
+
         if args.interactive:
 
             print("\naccurate (crossencoder) predictions:")
@@ -526,7 +597,7 @@ def run(
 
             # print crossencoder prediction
             idx = 0
-            for entity_list, index_list, sample in zip(nns, index_array, samples):
+            for entity_list, index_list, sample, _scores in zip(nns, index_array, samples, unsorted_scores):
                 e_id = entity_list[index_list[-1]]
                 e_title = id2title[e_id]
                 e_text = id2text[e_id]
@@ -534,6 +605,8 @@ def run(
                 _print_colorful_prediction(
                     idx, sample, e_id, e_title, e_text, e_url, args.show_url
                 )
+                print("cross_score:", _scores[index_list[-1]])
+                print("all scores:", _scores)
                 idx += 1
             print()
         else:
@@ -685,9 +758,30 @@ if __name__ == "__main__":
         "--index_path", type=str, default=None, help="path to load indexer",
     )
 
+    parser.add_argument(
+        '--save_encodings', type=str, default=None, help="File where to save encodings",
+    )
+
+    parser.add_argument(
+        '--keep_all', dest="keep_all", action="store_true", help="Keep all even if correct entity is not in the top k",
+    )
+
+    parser.add_argument(
+        '--consider_all', dest="consider_all", action="store_true", help="Consider all even if target entity is not in the entity collection",
+    )
+
     args = parser.parse_args()
 
     logger = utils.get_logger(args.output_path)
 
     models = load_models(args, logger)
-    run(args, logger, *models)
+
+    local_id2wikipedia_id = None
+
+    wikipedia_id2local_id = models[8]
+    if hasattr(args, 'save_encodings') and args.save_encodings:
+        local_id2wikipedia_id = {}
+        for k,v in wikipedia_id2local_id.items():
+            local_id2wikipedia_id[v] = k
+
+    run(args, logger, *models, local_id2wikipedia_id=local_id2wikipedia_id)
