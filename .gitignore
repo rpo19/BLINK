@@ -263,3 +263,5 @@ dmypy.json
 .pyre/
 
 # End of https://www.gitignore.io/api/c++,java,linux,macos,python
+
+output*
