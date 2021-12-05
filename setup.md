@@ -83,13 +83,31 @@ python scripts/get_types_from_wikidata.py
 ```
 Since Wikidata stops answering if called repeatedly, only one call per second is performed. Therefore this step requires few hours.
 
-### Reproduce feature selection
+### Feature selection
 Use the notebook `notebooks/feature_selection.ipynb` for the feature selection.
 
-### Train and test NIL prediction models
-Using the scripts. For the Feature ablation study.
+### Feature ablation study
+The feature ablation study is run on the AIDA dataset only.
+
+Run it with:
+```
+python scripts/feature_ablation_study.py
+```
+At the end look inside the folder `output/feature_ablation_study`: you should find:
+- the trained NIL prediction models named `*_model.pickle`;
+- the performance report for each model named `*_report.txt`;
+- the ROC curve for each model named `*_roc.png`;
+- the density plot of targets and predictions for each model named `*_kde.png`;
+- the density plot of correct and wrong predictions for each model named `*_kde_correct_errors.png`.
+Finally there should be a summary of all the models' results together named `feature_ablation_summary.csv`. 
 
 ### Evaluate on ALL the datasets
+Run
+```
+python scripts/evaluate_all_datasets_cross.py # cross encoder
+python scripts/evaluate_all_datasets_bi.py # bi encoder
+```
+The results should be respectively inside `output/evaluate_all_datasets/cross/` and `output/evaluate_all_datasets/bi/`. They are similar to the results of the feature ablation study except that the summary is named `evaluation_summary.csv`. Note that these scripts require the models previously trained in the features ablation study.
 
 ### KBP Simulation
 

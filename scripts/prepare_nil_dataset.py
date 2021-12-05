@@ -135,6 +135,7 @@ else:
 
 whole = pd.DataFrame()  # the entire dataset
 for d_data, d_score in datasets:
+    df_src = d_data
     d_score = os.path.join(scores_path, d_score)
     d_data = os.path.join(datasets_path, d_data)
 
@@ -162,7 +163,7 @@ for d_data, d_score in datasets:
     d_source[['bi_'+c for c in bi_df.columns]] = bi_df
     d_source[['cross_'+c for c in cross_df.columns]] = cross_df
 
-    d_source['src'] = d_data
+    d_source['src'] = df_src
     d_source['src_i'] = d_source.index
 
     # calculate all the stats we need
