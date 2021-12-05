@@ -83,6 +83,8 @@ python scripts/get_types_from_wikidata.py
 ```
 Since Wikidata stops answering if called repeatedly, only one call per second is performed. Therefore this step requires few hours.
 
+Probably you won't be able to correctly obtain all the types at the first run. Re-run it until there are no more missing types.
+
 ### Feature selection
 Use the notebook `notebooks/feature_selection.ipynb` for the feature selection.
 
@@ -124,8 +126,22 @@ python scripts/get_encodings_fast.py  './data/BLINK_benchmark/AIDA-YAGO2_testb_n
 ### KBP Simulation (with NIL prediction)
 Run the script `scripts/kbp_simulation.py` as follows:
 ```
-python scripts/kbp_simulation.py
+medoid=true python scripts/kbp_simulation.py
+medoid=false python scripts/kbp_simulation.py
 ```
-It will run the KBP simulation "without NIL prediction" and then "with NIL prediction". 
+The first time it uses the clusters' medoid for indexing; the second one it uses all the points.
+It will run the KBP simulation "without NIL prediction" and then "with NIL prediction".
 
-### KBP Simulation with NIL prediction
+The results are available inside `output/kbp_simulation/medoid` and `output/kbp_simulation/all`. The results regarding
+only the novel entities representation (that do not include the NIL prediction)
+are named `kbp_nel_no_nil_summary*.txt` in the format of latex tables.
+
+The rest of the results are similar to the ones of the feature ablation study
+except that the summaries are is named `kbp_simulation_summary.csv` and
+`kbp_simulation_oracle_summary.csv`. Even here several NIL prediction models
+(among the previously trained during the feature ablation study) are tested
+(effectively this is another feature ablation study for the NIL prediction but
+in a kbp context) in a kbp context.
+
+The "oracle" results are calculated only on the most confident samples; in this
+setup, it is assumed the most uncertain decisions are left to a human (hitl).
