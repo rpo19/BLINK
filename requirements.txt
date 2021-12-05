@@ -21,3 +21,5 @@ jupyter
 textdistance
 beautifulsoup4
 SPARQLWrapper
+seaborn
+matplotlib

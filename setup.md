@@ -83,8 +83,8 @@ python scripts/get_types_from_wikidata.py
 ```
 Since Wikidata stops answering if called repeatedly, only one call per second is performed. Therefore this step requires few hours.
 
-### Run feature selection notebook
-Improve the notebook.
+### Reproduce feature selection
+Use the notebook `notebooks/feature_selection.ipynb` for the feature selection.
 
 ### Train and test NIL prediction models
 Using the scripts. For the Feature ablation study.
