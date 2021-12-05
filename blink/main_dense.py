@@ -30,6 +30,9 @@ from blink.crossencoder.train_cross import modify, evaluate
 from blink.crossencoder.data_process import prepare_crossencoder_data
 from blink.indexer.faiss_indexer import DenseFlatIndexer, DenseHNSWFlatIndexer
 
+import os
+import pickle
+
 
 HIGHLIGHTS = [
     "on_red",
@@ -143,6 +146,23 @@ def _load_candidates(
             id2title[local_idx] = entity["title"]
             id2text[local_idx] = entity["text"]
             local_idx += 1
+
+    if args.save_id2title:
+        # saving id2title
+        id2title_path = './data/id2title.pickle'
+        logger.info('Saving id2title at {}'.format(id2title_path))
+        if not os.path.isfile(id2title_path):
+            with open(id2title_path, 'wb') as fd:
+                pickle.dump(id2title, fd)
+
+    if args.save_wikipedia_id2local_id:
+        # saving id2title
+        wikipedia_id2local_id_path = './data/wikipedia_id2local_id.pickle'
+        logger.info('Saving wikipedia_id2local_id at {}'.format(wikipedia_id2local_id_path))
+        if not os.path.isfile(wikipedia_id2local_id_path):
+            with open(wikipedia_id2local_id_path, 'wb') as fd:
+                pickle.dump(wikipedia_id2local_id, fd)
+
     return (
         candidate_encoding,
         title2id,
@@ -769,6 +789,15 @@ if __name__ == "__main__":
     parser.add_argument(
         '--consider_all', dest="consider_all", action="store_true", help="Consider all even if target entity is not in the entity collection",
     )
+
+    parser.add_argument(
+        '--save-id2title', dest="save_id2title", action="store_true", help="Save id2title to ../data/id2title.pickle", default=False,
+    )
+
+    parser.add_argument(
+        '--save-wikipedia-id2local-id', dest="save_wikipedia_id2local_id", action="store_true", help="Save wikipedia_id2local_id to ../data/wikipedia_id2local_id.pickle", default=False,
+    )
+
 
     args = parser.parse_args()
 

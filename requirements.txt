@@ -19,3 +19,5 @@ pandas
 numpy
 jupyter
 textdistance
+beautifulsoup4
+SPARQLWrapper

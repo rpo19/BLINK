@@ -50,7 +50,7 @@ PARAMETERS = {
     "entity_encoding": "models/all_entities_large.t7",
     "crossencoder_model": "models/crossencoder_wiki_large.bin",
     "crossencoder_config": "models/crossencoder_wiki_large.json",
-    "output_path": "output",
+    "output_path": "data/scores",
     "fast": False,
     "top_k": 100
 }
