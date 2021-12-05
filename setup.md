@@ -109,9 +109,23 @@ python scripts/evaluate_all_datasets_bi.py # bi encoder
 ```
 The results should be respectively inside `output/evaluate_all_datasets/cross/` and `output/evaluate_all_datasets/bi/`. They are similar to the results of the feature ablation study except that the summary is named `evaluation_summary.csv`. Note that these scripts require the models previously trained in the features ablation study.
 
-### KBP Simulation
-
 ### Human-in-the-loop Simulation
 Use the notebook `notebooks/hitl_simulation.ipynb` to reproduce the Human-in-the-loop simulation.
+
+### Get the encodings
+The'll be used in the KBP simulations.
+Run
+```
+python scripts/get_encodings_fast.py  './data/BLINK_benchmark/AIDA-YAGO2_train_ner.jsonl' './output/AIDA-YAGO2_train_encodings.jsonl'
+python scripts/get_encodings_fast.py  './data/BLINK_benchmark/AIDA-YAGO2_testa_ner.jsonl' './output/AIDA-YAGO2_testa_encodings.jsonl'
+python scripts/get_encodings_fast.py  './data/BLINK_benchmark/AIDA-YAGO2_testb_ner.jsonl' './output/AIDA-YAGO2_testb_encodings.jsonl'
+```
+
+### KBP Simulation (with NIL prediction)
+Run the script `scripts/kbp_simulation.py` as follows:
+```
+python scripts/kbp_simulation.py
+```
+It will run the KBP simulation "without NIL prediction" and then "with NIL prediction". 
 
 ### KBP Simulation with NIL prediction

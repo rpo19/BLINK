@@ -24,4 +24,5 @@ SPARQLWrapper
 seaborn
 matplotlib
 sklearn
+scikit-learn-extra
 tabulate

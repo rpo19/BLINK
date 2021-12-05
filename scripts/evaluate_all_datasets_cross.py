@@ -189,8 +189,6 @@ tasks = [
   'train': 'output/feature_ablation_study/aida_under_all_max_stats10_levenshtein_model.pickle'}]
 
 
-#['max', 'stats', 'dst', 'ner', 'avg_ner', 'avg_ner_correct']
-
 # assert no duplicates
 vc = pd.DataFrame([task['name'] for task in tasks]).value_counts()
 if not (vc <= 1).all():

@@ -80,32 +80,6 @@ dataset = pd.read_pickle('./data/nil_dataset.pickle')
 print('loaded...')
 
 tasks = [
-    # {
-    #     'name': 'aida_under_all10',
-    #     'train': ['AIDA-YAGO2_train_ner'],
-    #     'test': ['AIDA-YAGO2_testa_ner', 'AIDA-YAGO2_testb_ner'],
-    #     'sampling': 'undersample',
-    #     'features':  [
-    #             'cross_stats_10_max',
-    #             'cross_stats_10_mean',
-    #             'cross_stats_10_median',
-    #             'cross_stats_10_stdev',
-    #             'bi_stats_10_max',
-    #             'bi_stats_10_mean',
-    #             'bi_stats_10_median',
-    #             'bi_stats_10_stdev',
-    #             'cross_levenshtein',
-    #             'bi_levenshtein',
-    #             'ner_per',
-    #             'ner_loc',
-    #             'ner_org',
-    #             'ner_misc',
-    #             'avg_ner_per_cross',
-    #             'avg_ner_loc_cross',
-    #             'avg_ner_org_cross',
-    #             'avg_ner_misc_cross',
-    #         ]
-    # },
     {
         'name': 'aida_under_cross_max',
         'train': ['AIDA-YAGO2_train_ner'],
@@ -160,6 +134,17 @@ tasks = [
             ]
     },
     {
+        'name': 'aida_under_cross_max_jaccard',
+        'train': ['AIDA-YAGO2_train_ner'],
+        'test': ['AIDA-YAGO2_testa_ner', 'AIDA-YAGO2_testb_ner'],
+        'sampling': 'undersample',
+        'features':  [
+                'cross_stats_10_max',
+                'cross_jaccard'
+                # no bi levenshtein
+            ]
+    },
+    {
         'name': 'aida_under_all_max_stdev4',
         'train': ['AIDA-YAGO2_train_ner'],
         'test': ['AIDA-YAGO2_testa_ner', 'AIDA-YAGO2_testb_ner'],
@@ -197,24 +182,6 @@ tasks = [
                 'bi_stats_10_mean',
                 'bi_stats_10_median',
                 'bi_stats_10_stdev',
-            ]
-    },
-    {
-        'name': 'aida_under_all_max_ner_avg',
-        'train': ['AIDA-YAGO2_train_ner'],
-        'test': ['AIDA-YAGO2_testa_ner', 'AIDA-YAGO2_testb_ner'],
-        'sampling': 'undersample',
-        'features':  [
-                'cross_stats_10_max',
-                'bi_stats_10_max',
-                'ner_per',
-                'ner_loc',
-                'ner_org',
-                'ner_misc',
-                'avg_ner_per_cross',
-                'avg_ner_loc_cross',
-                'avg_ner_org_cross',
-                'avg_ner_misc_cross',
             ]
     },
     {
@@ -632,25 +599,6 @@ tasks = [
         'y': 'y_bi',
     },
     {
-        'name': 'aida_under_bi_max_ner_avg',
-        'train': ['AIDA-YAGO2_train_ner'],
-        'test': ['AIDA-YAGO2_testa_ner', 'AIDA-YAGO2_testb_ner'],
-        'sampling': 'undersample',
-        'features':  [
-                'bi_stats_10_max',
-                'ner_per',
-                'ner_loc',
-                'ner_org',
-                'ner_misc',
-                'avg_ner_per_bi',
-                'avg_ner_loc_bi',
-                'avg_ner_org_bi',
-                'avg_ner_misc_bi',
-                # no cross levenshtein
-            ],
-        'y': 'y_bi',
-    },
-    {
         'name': 'aida_under_bi_max_ner_wiki',
         'train': ['AIDA-YAGO2_train_ner'],
         'test': ['AIDA-YAGO2_testa_ner', 'AIDA-YAGO2_testb_ner'],
@@ -939,8 +887,6 @@ tasks = [
         'y': 'y_bi',
     },
 ]
-
-#['max', 'stats', 'dst', 'ner', 'avg_ner', 'avg_ner_correct']
 
 # assert no duplicates
 vc = pd.DataFrame([task['name'] for task in tasks]).value_counts()
