@@ -111,6 +111,7 @@ The results should be respectively inside `output/evaluate_all_datasets/cross/` 
 
 ### KBP Simulation
 
-### HITL Simulation
+### Human-in-the-loop Simulation
+Use the notebook `notebooks/hitl_simulation.ipynb` to reproduce the Human-in-the-loop simulation.
 
 ### KBP Simulation with NIL prediction
