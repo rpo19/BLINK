@@ -2,7 +2,7 @@
 This repository is a fork of
 [https://github.com/facebookresearch/BLINK](https://github.com/facebookresearch/BLINK)
 and is part of my master thesis work (the thesis is available
-[here](https://gitlab.com/rpo254/master-thesis)).
+[here](https://gitlab.com/rpo254/master-thesis/-/blob/main/main.pdf)).
 
 BLINK has been adapted to the context of Incremental Knowledge Base Population
 by:
