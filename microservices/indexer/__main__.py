@@ -22,6 +22,14 @@ class Input(BaseModel):
 
 indexes = []
 rw_index = None
+
+title2id = {}
+id2title = {}
+id2text = {}
+wikipedia_id2local_id = {}
+local_id2wikipedia_id = {}
+id2url = {}
+
 app = FastAPI()
 
 @app.post('/api/indexer/search')
@@ -29,19 +37,26 @@ async def search(input_: Input):
     encodings = input_.encodings
     top_k = input_.top_k
     encodings = [vector_decode(e) for e in encodings]
-    all_candidates = []
+    all_candidates_4_sample_n = [[]] * len(encodings)
     for index in indexes:
         indexer = index['indexer']
         scores, candidates = indexer.search_knn(encodings, top_k)
         for _scores, _cands in zip(scores, candidates):
-            all_candidates.append({
-                'raw_scores': _scores.tolist(),
-                'candidates': _cands.tolist(),
-                'indexer': index['name'],
-                'scores': _scores.tolist() # is hnsw compute dot-prod # entity encs are required
-            })
-    return all_candidates
+            # for each samples
+            n = 0
+            for _score, _cand in zip(_scores, _cands):
+                all_candidates_4_sample_n[n].append({
+                        'raw_score': _score,
+                        'id': _cand,
+                        'indexer': index['name'],
+                        'score': _score
+                    })
+    return all_candidates_4_sample_n
 
+@app.post('/api/indexer/add')
+async def add():
+    # TODO implement add new entity to rw_index
+    pass
 
 def load_models(args):
     assert args.index is not None, 'Error! Index is required.'
@@ -64,6 +79,37 @@ def load_models(args):
         if rorw == 'rw':
             assert rw_index is None, 'Error! Only one rw index is accepted.'
             rw_index = len(indexes) - 1 # last added
+
+    # load all the 5903527 entities
+    print('Loading entities')
+    local_idx = 0
+    with open(entity_catalogue, "r") as fin:
+        lines = fin.readlines()
+        for line in lines:
+            entity = json.loads(line)
+
+            if "idx" in entity:
+                split = entity["idx"].split("curid=")
+                if len(split) > 1:
+                    wikipedia_id = int(split[-1].strip())
+                else:
+                    wikipedia_id = entity["idx"].strip()
+
+                assert wikipedia_id not in wikipedia_id2local_id
+                wikipedia_id2local_id[wikipedia_id] = local_idx
+
+            title2id[entity["title"]] = local_idx
+            id2title[local_idx] = entity["title"]
+            id2text[local_idx] = entity["text"]
+            local_idx += 1
+
+    for k,v in wikipedia_id2local_id.items():
+        local_id2wikipedia_id[v] = k
+
+    id2url = {
+        v: "https://en.wikipedia.org/wiki?curid=%s" % k
+        for k, v in wikipedia_id2local_id.items()
+    }
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
