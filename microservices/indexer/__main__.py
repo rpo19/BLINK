@@ -7,6 +7,7 @@ import base64
 from typing import List
 from blink.indexer.faiss_indexer import DenseFlatIndexer, DenseHNSWFlatIndexer
 import json
+import redis
 
 def vector_encode(v):
     s = base64.b64encode(v).decode()
@@ -24,12 +25,18 @@ class Input(BaseModel):
 indexes = []
 rw_index = None
 
-title2id = {}
-id2title = {}
-id2text = {}
-wikipedia_id2local_id = {}
-local_id2wikipedia_id = {}
-id2url = {}
+# db 0 --> id2title
+id2title = None
+# db 1 --> id2text
+id2text = None
+# db 2 --> local_id2wikipedia_id
+local_id2wikipedia_id = None
+# db 3 --> id2encoding
+id2encoding = None
+
+def id2url(id):
+    wiki_id = local_id2wikipedia_id.get(id)
+    return "https://en.wikipedia.org/wiki?curid={}".format(wiki_id)
 
 app = FastAPI()
 
@@ -42,15 +49,23 @@ async def search(input_: Input):
     for index in indexes:
         indexer = index['indexer']
         scores, candidates = indexer.search_knn(encodings, top_k)
-        for _scores, _cands in zip(scores, candidates):
+        for _scores, _cands, _enc in zip(scores, candidates, encodings):
             # for each samples
             n = 0
             for _score, _cand in zip(_scores, _cands):
+                raw_score = float(_score)
+                _cand = int(_cand)
+                # compute dot product if hnsfw
+                if isinstance(indexer, DenseHNSWFlatIndexer):
+                    entity_enc = id2encoding.get(_cand)
+                    _score = np.dot(_enc, entity_enc)
                 all_candidates_4_sample_n[n].append({
-                        'raw_score': float(_score),
-                        'id': int(_cand),
+                        'raw_score': raw_score,
+                        'id': _cand,
+                        'title': id2title.get(_cand),
+                        'url': id2url(_cand),
                         'indexer': index['name'],
-                        'score': float(_score)
+                        'score': _score
                     })
     return all_candidates_4_sample_n
 
@@ -81,38 +96,6 @@ def load_models(args):
             assert rw_index is None, 'Error! Only one rw index is accepted.'
             rw_index = len(indexes) - 1 # last added
 
-    # load all the 5903527 entities
-    # TODO move entitis in a db
-    print('Loading entities')
-    local_idx = 0
-    with open(args.entity_catalogue, "r") as fin:
-        lines = fin.readlines()
-        for line in lines:
-            entity = json.loads(line)
-
-            if "idx" in entity:
-                split = entity["idx"].split("curid=")
-                if len(split) > 1:
-                    wikipedia_id = int(split[-1].strip())
-                else:
-                    wikipedia_id = entity["idx"].strip()
-
-                assert wikipedia_id not in wikipedia_id2local_id
-                wikipedia_id2local_id[wikipedia_id] = local_idx
-
-            title2id[entity["title"]] = local_idx
-            id2title[local_idx] = entity["title"]
-            id2text[local_idx] = entity["text"]
-            local_idx += 1
-
-    for k,v in wikipedia_id2local_id.items():
-        local_id2wikipedia_id[v] = k
-
-    id2url = {
-        v: "https://en.wikipedia.org/wiki?curid=%s" % k
-        for k, v in wikipedia_id2local_id.items()
-    }
-
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     # indexer
@@ -126,12 +109,10 @@ if __name__ == '__main__':
         "--port", type=int, default="30300", help="port to listen at",
     )
     parser.add_argument(
-        "--entity_catalogue",
-        dest="entity_catalogue",
-        type=str,
-        # default="models/tac_entity.jsonl",  # TAC-KBP
-        default="models/entity.jsonl",  # ALL WIKIPEDIA!
-        help="Path to the entity catalogue.",
+        "--redis-host", type=str, default="127.0.0.1", help="redis host",
+    )
+    parser.add_argument(
+        "--redis-port", type=int, default="6379", help="redis port",
     )
 
     args = parser.parse_args()
@@ -139,5 +120,16 @@ if __name__ == '__main__':
     print('Loading indexes...')
     load_models(args)
     print('Loading complete.')
+
+    # db 0 --> id2title
+    id2title = redis.Redis(host=args.redis_host, port=args.redis_port, db=0)
+    # db 1 --> id2text
+    id2text = redis.Redis(host=args.redis_host, port=args.redis_port, db=1)
+    # db 2 --> local_id2wikipedia_id
+    local_id2wikipedia_id = redis.Redis(host=args.redis_host, port=args.redis_port, db=2)
+    # db 3 --> id2encoding
+    id2encoding = redis.Redis(host=args.redis_host, port=args.redis_port, db=3)
+
+
 
     uvicorn.run(app, host = args.host, port = args.port)
