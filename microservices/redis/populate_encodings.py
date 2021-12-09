@@ -1,5 +1,8 @@
 import argparse
 import redis
+import numpy as np
+import torch
+import base64
 
 def vector_encode(v):
     s = base64.b64encode(v).decode()
@@ -25,10 +28,10 @@ def populate(args, entity_encodings):
 
 
 def load_models(args):
-    return torch.load(entity_encoding)
+    return torch.load(args.entity_encoding)
 
 if __name__ == '__main__':
-parser = argparse.ArgumentParser()
+    parser = argparse.ArgumentParser()
     # indexer
     parser.add_argument(
         "--redis-host", type=str, default="127.0.0.1", help="redis host",
