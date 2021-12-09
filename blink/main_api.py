@@ -1,4 +1,5 @@
 # based on https://github.com/EntilZha/BLINK from EntilZha
+import argparse
 import sys
 # blink is in ..
 sys.path.append(".")
@@ -438,10 +439,28 @@ def link_samples(samples, models, nil_bi_models=None, nil_models=None, logger=No
     idx = 0
     linked_entities = []
     for entity_list, sample, _nil_p, _scores in zip(nns, samples, nil_bi_p, scores):
+
+        candidates = []
+        for e_id, _score in zip(entity_list, _scores):
+            e_title = id2title[e_id]
+            e_text = id2text[e_id]
+            e_url = id2url[e_id]
+            candidates.append({
+                "entity": {
+                    "e_id": int(e_id),
+                    "e_title": e_title,
+                    "e_url": e_url,
+                    "e_text": e_text
+                },
+                "score": float(_score)
+            })
+
+
         e_id = entity_list[0]
         e_title = id2title[e_id]
         e_text = id2text[e_id]
         e_url = id2url[e_id]
+
         linked_entities.append(
             {
                 "idx": idx,
@@ -450,12 +469,9 @@ def link_samples(samples, models, nil_bi_models=None, nil_models=None, logger=No
                 "entity_title": e_title,
                 "entity_text": e_text,
                 "url": e_url,
-                "crossencoder": False,
+                "fast": True,
                 "_nil_p": _nil_p,
-                "candidates": {
-                    "entities": entity_list.tolist(),
-                    "scores": _scores.tolist()
-                }
+                "candidates": candidates
             }
         )
         idx += 1
@@ -561,7 +577,7 @@ def link_samples(samples, models, nil_bi_models=None, nil_models=None, logger=No
                     "entity_text": best_e_text,
                     "score": float(scores_list[0]),
                     "url": best_e_url,
-                    "crossencoder": True,
+                    "fast": False,
                     "_nil_p": _nil_p,
                     "candidates": candidates
                 }
@@ -597,66 +613,165 @@ def load_nil_models(args, logger=None):
     with open(args.nil_bi_model, 'rb') as fd:
         nil_bi_model = pickle.load(fd)
 
-    nil_bi_features = args.nil_bi_features
+    nil_bi_features = args.nil_bi_features.split(',')
 
     if logger:
         logger.info('Loading nil bi model')
     with open(args.nil_model, 'rb') as fd:
         nil_model = pickle.load(fd)
 
-    nil_features = args.nil_features
+    nil_features = args.nil_features.split(',')
 
     return ((nil_bi_model, nil_bi_features), (nil_model, nil_features))
 
 
-# +
-# args
-args = Dict()
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser()
 
-args.fast = False # do not use cross encoder (not yet possible in kbp)
+    parser.add_argument(
+        "--interactive", "-i", action="store_true", help="Interactive mode."
+    )
 
-args.interactive = True
-args.top_k = 10
+    # test_data
+    parser.add_argument(
+        "--test_mentions", dest="test_mentions", type=str, help="Test Dataset."
+    )
+    parser.add_argument(
+        "--test_entities", dest="test_entities", type=str, help="Test Entities."
+    )
 
-args.biencoder_config = "./models/biencoder_wiki_large.json"
-args.biencoder_model = "./models/biencoder_wiki_large.bin"
+    # biencoder
+    parser.add_argument(
+        "--biencoder_model",
+        dest="biencoder_model",
+        type=str,
+        default="models/biencoder_wiki_large.bin",
+        help="Path to the biencoder model.",
+    )
+    parser.add_argument(
+        "--biencoder_config",
+        dest="biencoder_config",
+        type=str,
+        default="models/biencoder_wiki_large.json",
+        help="Path to the biencoder configuration.",
+    )
+    parser.add_argument(
+        "--entity_catalogue",
+        dest="entity_catalogue",
+        type=str,
+        # default="models/tac_entity.jsonl",  # TAC-KBP
+        default="models/entity.jsonl",  # ALL WIKIPEDIA!
+        help="Path to the entity catalogue.",
+    )
+    parser.add_argument(
+        "--entity_encoding",
+        dest="entity_encoding",
+        type=str,
+        # default="models/tac_candidate_encode_large.t7",  # TAC-KBP
+        default="models/all_entities_large.t7",  # ALL WIKIPEDIA!
+        help="Path to the entity catalogue.",
+    )
 
-args.crossencoder_config = "./models/crossencoder_wiki_large.json"
-args.crossencoder_model = "./models/crossencoder_wiki_large.bin"
+    # crossencoder
+    parser.add_argument(
+        "--crossencoder_model",
+        dest="crossencoder_model",
+        type=str,
+        default="models/crossencoder_wiki_large.bin",
+        help="Path to the crossencoder model.",
+    )
+    parser.add_argument(
+        "--crossencoder_config",
+        dest="crossencoder_config",
+        type=str,
+        default="models/crossencoder_wiki_large.json",
+        help="Path to the crossencoder configuration.",
+    )
 
-args.entity_catalogue = "./models/entity.jsonl"
-args.entity_encoding = "./models/all_entities_large.t7"
+    parser.add_argument(
+        "--top_k",
+        dest="top_k",
+        type=int,
+        default=10,
+        help="Number of candidates retrieved by biencoder.",
+    )
 
-args.faiss_index = "hnsw"
-args.index_path = "./models/faiss_hnsw_index.pkl"
+    # output folder
+    parser.add_argument(
+        "--output_path",
+        dest="output_path",
+        type=str,
+        default="output",
+        help="Path to the output.",
+    )
 
-#args.faiss_index = "flat"
-#args.index_path = "./models/faiss_flat_index.pkl"
+    parser.add_argument(
+        "--fast", dest="fast", action="store_true", help="only biencoder mode"
+    )
 
-args.host = sys.argv[1] if len(sys.argv) >= 2 else "127.0.0.1"
-args.port = sys.argv[2] if len(sys.argv) >= 3 else 30300
+    parser.add_argument(
+        "--show_url",
+        dest="show_url",
+        action="store_true",
+        help="whether to show entity url in interactive mode",
+    )
 
-logger = utils.get_logger(None)
-# -
+    parser.add_argument(
+        "--faiss_index", type=str, default=None, help="whether to use faiss index",
+    )
 
-# limit to bi only since cross encoder is not ready for kbp
-# types would be better but BLINK KB has no types
-args.nil_bi_model = './output/feature_ablation_study/aida_under_bi_max_jaccard_model.pickle'
-args.nil_bi_features = ['max', 'jaccard']
+    parser.add_argument(
+        "--index_path", type=str, default=None, help="path to load indexer",
+    )
 
-#
-args.nil_model = './output/feature_ablation_study/aida_under_cross_max_jaccard_model.pickle'
-args.nil_features = ['max', 'jaccard']
-# Load NER model
-ner_model = NER.get_model()
+    parser.add_argument(
+        "--host", type=str, default="127.0.0.1", help="host to listen at",
+    )
 
-models = load_models(args, logger)
+    parser.add_argument(
+        "--port", type=int, default="30300", help="port to listen at",
+    )
 
-nil_bi_models, nil_models = load_nil_models(args, logger)
-nil_bi_models = None # disable
+    parser.add_argument(
+        "--nil-bi-model", type=str, default=None, help="path to nil bi model",
+    )
 
-# patch for running fastapi in jupyter
-#nest_asyncio.apply()
+    parser.add_argument(
+        "--nil-bi-features", type=str, default=None, help="features of the nil bi model (comma separated)",
+    )
 
-app = create_app()
-uvicorn.run(app, host=args.host, port=args.port)
+    parser.add_argument(
+        "--nil-model", type=str, default=None, help="path to nil model",
+    )
+
+    parser.add_argument(
+        "--nil-features", type=str, default=None, help="features of the nil model (comma separated)",
+    )
+
+
+    args = parser.parse_args()
+
+    logger = utils.get_logger(args.output_path)
+
+    models = load_models(args, logger)
+
+    local_id2wikipedia_id = None
+
+    wikipedia_id2local_id = models[8]
+    if hasattr(args, 'save_encodings') and args.save_encodings:
+        local_id2wikipedia_id = {}
+        for k,v in wikipedia_id2local_id.items():
+            local_id2wikipedia_id[v] = k
+
+    ner_model = NER.get_model()
+
+    models = load_models(args, logger)
+
+    nil_bi_models, nil_models = load_nil_models(args, logger)
+    nil_bi_models = None # disable
+
+    # patch for running fastapi in jupyter
+    #nest_asyncio.apply()
+
+    app = create_app()
+    uvicorn.run(app, host=args.host, port=args.port)
