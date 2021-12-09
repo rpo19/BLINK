@@ -19,8 +19,8 @@ def populate(args, entity_encodings):
     for i, tensor in enumerate(entity_encodings):
         string_encoded = vector_encode(tensor.numpy())
         r.set(i, string_encoded)
-
-        print('\r{}/{}'.format(i, max_shape), end = '')
+        if i % 1000 == 0:
+            print('\r{}/{}'.format(i, max_shape), end = '')
     print()
 
 

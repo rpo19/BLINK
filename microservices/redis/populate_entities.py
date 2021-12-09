@@ -40,22 +40,41 @@ def load_models(args):
     }
 
 def populate():
+    print('id2title...')
     # db 0 --> id2title
     r = redis.Redis(host='localhost', port=6379, db=0)
+    max_shape = len(id2title)
+    i = 0
     for k, v in id2title.items():
         r.set(k, v)
+        i += 1
+        if i % 1000 == 0:
+            print('\r{}/{}'.format(i, max_shape))
+    print()
     r.close()
 
     # db 1 --> id2text
+    max_shape = len(id2text)
+    i = 0
     r = redis.Redis(host='localhost', port=6379, db=1)
     for k, v in id2text.items():
         r.set(k, v)
+        i += 1
+        if i % 1000 == 0:
+            print('\r{}/{}'.format(i, max_shape))
+    print()
     r.close()
 
     # db 2 --> local_id2wikipedia_id
+    max_shape = len(local_id2wikipedia_id)
+    i = 0
     r = redis.Redis(host='localhost', port=6379, db=2)
     for k, v in local_id2wikipedia_id.items():
         r.set(k, v)
+        i += 1
+        if i % 1000 == 0:
+            print('\r{}/{}'.format(i, max_shape))
+    print()
     r.close()
 
     # ...
