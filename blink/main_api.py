@@ -270,6 +270,7 @@ def _run_biencoder(biencoder, dataloader, candidate_encoding, top_k=100, indexer
     labels = []
     nns = []
     all_scores = []
+    all_encodings = []
     for batch in tqdm(dataloader):
         context_input, _, label_ids = batch
         with torch.no_grad():
@@ -277,7 +278,15 @@ def _run_biencoder(biencoder, dataloader, candidate_encoding, top_k=100, indexer
                 context_encoding = biencoder.encode_context(context_input).numpy()
                 context_encoding = np.ascontiguousarray(context_encoding)
                 scores, indicies = indexer.search_knn(context_encoding, top_k)
+                if isinstance(indexer, DenseHNSWFlatIndexer):
+                    # compute dot products
+                    # use indicies to find ids of candidates
+                    # then get their encodings with candidate_encoding
+                    # then calculate dot-prod with context_enc
+                    # reorder ?
+                    pass
             else:
+                raise Exception('Indexer should be used.')
                 scores = biencoder.score_candidate(
                     context_input, None, cand_encs=candidate_encoding  # .to(device)
                 )
@@ -288,7 +297,8 @@ def _run_biencoder(biencoder, dataloader, candidate_encoding, top_k=100, indexer
         labels.extend(label_ids.data.numpy())
         nns.extend(indicies)
         all_scores.extend(scores)
-    return labels, nns, all_scores
+        all_encodings.extend([e.tolist() for e in context_encoding])
+    return labels, nns, all_scores, all_encodings
 
 
 def _process_crossencoder_dataloader(context_input, label_input, crossencoder_params):
@@ -404,7 +414,7 @@ def link_samples(samples, models, nil_bi_models=None, nil_models=None, logger=No
         # run biencoder
         logger.info("run biencoder")
     top_k = args.top_k
-    labels, nns, scores = _run_biencoder(
+    labels, nns, scores, encodings = _run_biencoder(
         biencoder,
         dataloader,
         candidate_encoding,
@@ -438,7 +448,7 @@ def link_samples(samples, models, nil_bi_models=None, nil_models=None, logger=No
     # print biencoder prediction
     idx = 0
     linked_entities = []
-    for entity_list, sample, _nil_p, _scores in zip(nns, samples, nil_bi_p, scores):
+    for entity_list, sample, _nil_p, _scores, _encoding in zip(nns, samples, nil_bi_p, scores, encodings):
 
         candidates = []
         for e_id, _score in zip(entity_list, _scores):
@@ -471,7 +481,8 @@ def link_samples(samples, models, nil_bi_models=None, nil_models=None, logger=No
                 "url": e_url,
                 "fast": True,
                 "_nil_p": _nil_p,
-                "candidates": candidates
+                "candidates": candidates,
+                "encoding": _encoding
             }
         )
         idx += 1
@@ -538,8 +549,8 @@ def link_samples(samples, models, nil_bi_models=None, nil_models=None, logger=No
         scores = []
         predictions = []
         linked_entities = []
-        for entity_list, index_list, scores_list, sample, _nil_p in zip(
-            nns, index_array, unsorted_scores, samples, nil_p
+        for entity_list, index_list, scores_list, sample, _nil_p, _encoding in zip(
+            nns, index_array, unsorted_scores, samples, nil_p, encodings
         ):
 
             best_e_id = entity_list[index_list[-1]]
@@ -579,7 +590,8 @@ def link_samples(samples, models, nil_bi_models=None, nil_models=None, logger=No
                     "url": best_e_url,
                     "fast": False,
                     "_nil_p": _nil_p,
-                    "candidates": candidates
+                    "candidates": candidates,
+                    "encoding": _encoding
                 }
             )
             idx += 1
