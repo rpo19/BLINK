@@ -1,4 +1,6 @@
 import redis
+import json
+import argparse
 
 
 title2id = {}
@@ -9,7 +11,6 @@ local_id2wikipedia_id = {}
 id2url = {}
 
 def load_models(args):
-    print('Loading entities')
     local_idx = 0
     with open(args.entity_catalogue, "r") as fin:
         lines = fin.readlines()
@@ -49,7 +50,7 @@ def populate():
         r.set(k, v)
         i += 1
         if i % 1000 == 0:
-            print('\r{}/{}'.format(i, max_shape))
+            print('\r{}/{}'.format(i, max_shape), end = '')
     print()
     r.close()
 
@@ -61,7 +62,7 @@ def populate():
         r.set(k, v)
         i += 1
         if i % 1000 == 0:
-            print('\r{}/{}'.format(i, max_shape))
+            print('\r{}/{}'.format(i, max_shape), end = '')
     print()
     r.close()
 
@@ -73,7 +74,7 @@ def populate():
         r.set(k, v)
         i += 1
         if i % 1000 == 0:
-            print('\r{}/{}'.format(i, max_shape))
+            print('\r{}/{}'.format(i, max_shape), end = '')
     print()
     r.close()
 
@@ -82,7 +83,7 @@ def populate():
 
 
 if __name__ == '__main__':
-parser = argparse.ArgumentParser()
+    parser = argparse.ArgumentParser()
     # indexer
     parser.add_argument(
         "--redis-host", type=str, default="127.0.0.1", help="redis host",
@@ -99,8 +100,10 @@ parser = argparse.ArgumentParser()
         help="Path to the entity catalogue.",
     )
 
+    args = parser.parse_args()
+
     print('Loading entities...')
-    load_models()
+    load_models(args)
 
     print('Populating redis...')
     populate()
