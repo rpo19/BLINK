@@ -36,7 +36,7 @@ id2encoding = None
 
 def id2url(id):
     wiki_id = local_id2wikipedia_id.get(id)
-    return "https://en.wikipedia.org/wiki?curid={}".format(wiki_id)
+    return "https://en.wikipedia.org/wiki?curid={}".format(wiki_id.decode())
 
 app = FastAPI()
 
@@ -58,15 +58,19 @@ async def search(input_: Input):
                 # compute dot product if hnsfw
                 if isinstance(indexer, DenseHNSWFlatIndexer):
                     entity_enc = id2encoding.get(_cand)
+                    entity_enc = vector_decode(entity_enc)
                     _score = np.dot(_enc, entity_enc)
                 all_candidates_4_sample_n[n].append({
                         'raw_score': raw_score,
                         'id': _cand,
-                        'title': id2title.get(_cand),
+                        'title': id2title.get(_cand).decode(),
                         'url': id2url(_cand),
                         'indexer': index['name'],
-                        'score': _score
+                        'score': float(_score)
                     })
+    # sort
+    for _sample in all_candidates_4_sample_n:
+        _sample.sort(key=lambda x: x['score'], reverse=True)
     return all_candidates_4_sample_n
 
 @app.post('/api/indexer/add')
