@@ -6,6 +6,7 @@ import numpy as np
 import base64
 from typing import List
 from blink.indexer.faiss_indexer import DenseFlatIndexer, DenseHNSWFlatIndexer
+import json
 
 def vector_encode(v):
     s = base64.b64encode(v).decode()
@@ -46,10 +47,10 @@ async def search(input_: Input):
             n = 0
             for _score, _cand in zip(_scores, _cands):
                 all_candidates_4_sample_n[n].append({
-                        'raw_score': _score,
-                        'id': _cand,
+                        'raw_score': float(_score),
+                        'id': int(_cand),
                         'indexer': index['name'],
-                        'score': _score
+                        'score': float(_score)
                     })
     return all_candidates_4_sample_n
 
@@ -81,9 +82,10 @@ def load_models(args):
             rw_index = len(indexes) - 1 # last added
 
     # load all the 5903527 entities
+    # TODO move entitis in a db
     print('Loading entities')
     local_idx = 0
-    with open(entity_catalogue, "r") as fin:
+    with open(args.entity_catalogue, "r") as fin:
         lines = fin.readlines()
         for line in lines:
             entity = json.loads(line)
@@ -122,6 +124,14 @@ if __name__ == '__main__':
     )
     parser.add_argument(
         "--port", type=int, default="30300", help="port to listen at",
+    )
+    parser.add_argument(
+        "--entity_catalogue",
+        dest="entity_catalogue",
+        type=str,
+        # default="models/tac_entity.jsonl",  # TAC-KBP
+        default="models/entity.jsonl",  # ALL WIKIPEDIA!
+        help="Path to the entity catalogue.",
     )
 
     args = parser.parse_args()
