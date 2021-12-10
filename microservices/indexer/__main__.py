@@ -7,7 +7,7 @@ import base64
 from typing import List
 from blink.indexer.faiss_indexer import DenseFlatIndexer, DenseHNSWFlatIndexer
 import json
-import redis
+import psycopg
 
 def vector_encode(v):
     s = base64.b64encode(v).decode()
@@ -25,18 +25,8 @@ class Input(BaseModel):
 indexes = []
 rw_index = None
 
-# db 0 --> id2title
-id2title = None
-# db 1 --> id2text
-id2text = None
-# db 2 --> local_id2wikipedia_id
-local_id2wikipedia_id = None
-# db 3 --> id2encoding
-id2encoding = None
-
-def id2url(id):
-    wiki_id = local_id2wikipedia_id.get(id)
-    return "https://en.wikipedia.org/wiki?curid={}".format(wiki_id.decode())
+def id2url(wikipedia_id):
+    return "https://en.wikipedia.org/wiki?curid={}".format(wikipedia_id)
 
 app = FastAPI()
 
@@ -57,15 +47,39 @@ async def search(input_: Input):
                 _cand = int(_cand)
                 # compute dot product if hnsfw
                 if isinstance(indexer, DenseHNSWFlatIndexer):
-                    entity_enc = id2encoding.get(_cand)
-                    entity_enc = vector_decode(entity_enc)
-                    _score = np.dot(_enc, entity_enc)
+                    # query with embedding
+                    with dbconnection.cursor() as cur:
+                        cur.execute("""
+                        SELECT
+                            title, wikipedia_id, embedding
+                        WHERE
+                            id = %s AND
+                            indexer = %s;
+                        """, (_cand, index['indexid']))
+                        
+                        title, wikipedia_id, embedding = cur.fetchone()
+
+                    embedding = vector_decode(embedding)
+                    _score = np.dot(_enc, embedding)
+                else:
+                    # simpler query
+                    with dbconnection.cursor() as cur:
+                        cur.execute("""
+                        SELECT
+                            title, wikipedia_id
+                        WHERE
+                            id = %s AND
+                            indexer = %s;
+                        """, (_cand, index['indexid']))
+                        
+                        title, wikipedia_id = cur.fetchone()
+
                 all_candidates_4_sample_n[n].append({
                         'raw_score': raw_score,
                         'id': _cand,
-                        'title': id2title.get(_cand).decode(),
-                        'url': id2url(_cand),
-                        'indexer': index['name'],
+                        'title': title,
+                        'url': id2url(wikipedia_id),
+                        'indexer': index['indexid'],
                         'score': float(_score)
                     })
     # sort
@@ -81,7 +95,7 @@ async def add():
 def load_models(args):
     assert args.index is not None, 'Error! Index is required.'
     for index in args.index.split(','):
-        index_type, index_path, name, rorw = index.split(':')
+        index_type, index_path, indexid, rorw = index.split(':')
         print('Loading {} index from {}, mode: {}...'.format(index_type, index_path, rorw))
         if index_type == "flat":
             indexer = DenseFlatIndexer(1)
@@ -92,7 +106,7 @@ def load_models(args):
         indexer.deserialize_from(index_path)
         indexes.append({
             'indexer': indexer,
-            'name': name,
+            'indexid': int(indexid),
             'path': index_path
             })
 
@@ -104,7 +118,7 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     # indexer
     parser.add_argument(
-        "--index", type=str, default=None, help="comma separate list of paths to load indexes [type:path:name:ro/rw] (e.g: hnsw:index.pkl:wiki:ro,flat:index2.pkl:local:rw)",
+        "--index", type=str, default=None, help="comma separate list of paths to load indexes [type:path:indexid:ro/rw] (e.g: hnsw:index.pkl:0:ro,flat:index2.pkl:1:rw)",
     )
     parser.add_argument(
         "--host", type=str, default="127.0.0.1", help="host to listen at",
@@ -113,10 +127,7 @@ if __name__ == '__main__':
         "--port", type=int, default="30300", help="port to listen at",
     )
     parser.add_argument(
-        "--redis-host", type=str, default="127.0.0.1", help="redis host",
-    )
-    parser.add_argument(
-        "--redis-port", type=int, default="6379", help="redis port",
+        "--postgres", type=str, default=None, help="postgres url (e.g. postgres://user:password@localhost:5432/database)",
     )
 
     args = parser.parse_args()
@@ -125,15 +136,8 @@ if __name__ == '__main__':
     load_models(args)
     print('Loading complete.')
 
-    # db 0 --> id2title
-    id2title = redis.Redis(host=args.redis_host, port=args.redis_port, db=0)
-    # db 1 --> id2text
-    id2text = redis.Redis(host=args.redis_host, port=args.redis_port, db=1)
-    # db 2 --> local_id2wikipedia_id
-    local_id2wikipedia_id = redis.Redis(host=args.redis_host, port=args.redis_port, db=2)
-    # db 3 --> id2encoding
-    id2encoding = redis.Redis(host=args.redis_host, port=args.redis_port, db=3)
-
-
+    assert args.postgres is not None, 'Error. postgres url is required.'
+    dbconnection = psycopg.connect(args.postgres)
 
     uvicorn.run(app, host = args.host, port = args.port)
+    dbconnection.close()
