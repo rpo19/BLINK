@@ -87,9 +87,9 @@ def populate(entity_encodings, engine, table_name):
     del entity_encodings
 
     print('Saving to postgres...')
-    # debug
-    df = df.iloc[0:100]
-    df.to_sql(table_name, engine)
+    print('Shape', df.shape)
+    df.to_sql(table_name, engine, if_exists='append', method='multi', index=False)
+    print('Done.')
 
 
 
