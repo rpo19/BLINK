@@ -96,8 +96,8 @@ def populate(entity_encodings, connection, table_name):
     print('Saving to postgres...')
     print('Shape', df.shape)
 
-    with connection.cursor() as cur:
-        with cursor.copy("COPY %s (id, indexer, wikipedia_id, title, descr, embedding) FROM STDIN", (table_name)) as copy:
+    with connection.cursor() as cursor:
+        with cursor.copy("COPY {} (id, indexer, wikipedia_id, title, descr, embedding) FROM STDIN".format(table_name)) as copy:
             max_i = df.shape[0]
             for i, record in df.iterrows():
                 copy.write_row(tuple(record.values))
