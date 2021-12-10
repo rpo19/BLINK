@@ -58,6 +58,12 @@ def load_models(args):
 def populate(entity_encodings, engine, table_name):
     assert entity_encodings[0].numpy().dtype == 'float32'
 
+    global wikipedia_id2local_id
+    global id2url
+    global title2id
+    global id2title
+    global local_id2wikipedia_id
+    global id2text
     del wikipedia_id2local_id
     del id2url
     del title2id
@@ -95,7 +101,7 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     # indexer
     parser.add_argument(
-        "--postgres", type=str, default="", help="postgresql url",
+        "--postgres", type=str, default="", help="postgresql url (e.g. postgresql://username:password@localhost:5432/mydatabase)",
     )
     parser.add_argument(
         "--entity_catalogue",
