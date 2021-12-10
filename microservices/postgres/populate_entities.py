@@ -5,7 +5,10 @@ import torch
 import base64
 from sqlalchemy import create_engine
 import pandas as pd
+import sys
 
+max_title_len = 100
+chunksize = 500
 
 title2id = {}
 id2title = {}
@@ -86,9 +89,12 @@ def populate(entity_encodings, engine, table_name):
     df['embedding'] = pd.Series(map(lambda tensor: vector_encode(tensor.numpy()), entity_encodings), dtype=str)
     del entity_encodings
 
+    print('Truncating titles to {} characters strings'.format(max_title_len))
+    df['title'] = df['title'].apply(lambda x: x[0:max_title_len])
+
     print('Saving to postgres...')
     print('Shape', df.shape)
-    df.to_sql(table_name, engine, if_exists='append', method='multi', index=False)
+    df.to_sql(table_name, engine, if_exists='append', method='multi', index=False, chunksize=chunksize)
     print('Done.')
 
 
