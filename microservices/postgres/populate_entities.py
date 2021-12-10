@@ -7,6 +7,7 @@ import pandas as pd
 import sys
 import psycopg
 import io
+from tqdm import tqdm
 
 max_title_len = 100
 chunksize = 500
@@ -99,10 +100,8 @@ def populate(entity_encodings, connection, table_name):
     with connection.cursor() as cursor:
         with cursor.copy("COPY {} (id, indexer, wikipedia_id, title, descr, embedding) FROM STDIN".format(table_name)) as copy:
             max_i = df.shape[0]
-            for i, record in df.iterrows():
+            for i, record in tqdm(df.iterrows(), total=df.shape[0]):
                 copy.write_row(tuple(record.values))
-                print(f'\r{i}/{max_i}', end = '')
-    print()
     connection.commit()
 
     #df.to_sql(table_name, engine, if_exists='append', method='multi', index=False, chunksize=chunksize)
