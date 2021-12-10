@@ -4,6 +4,7 @@ CREATE TABLE IF NOT EXISTS entities (
     wikipedia_id INT NOT NULL,
     title varchar(100) NOT NULL,
     descr TEXT,
+    embedding TEXT,
     PRIMARY KEY (id, indexer)
 );
 
