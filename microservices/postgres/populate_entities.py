@@ -3,9 +3,10 @@ import argparse
 import numpy as np
 import torch
 import base64
-from sqlalchemy import create_engine
 import pandas as pd
 import sys
+import psycopg
+import io
 
 max_title_len = 100
 chunksize = 500
@@ -58,7 +59,7 @@ def load_models(args):
 
     return torch.load(args.entity_encoding)
 
-def populate(entity_encodings, engine, table_name):
+def populate(entity_encodings, connection, table_name):
     assert entity_encodings[0].numpy().dtype == 'float32'
 
     global wikipedia_id2local_id
@@ -94,7 +95,17 @@ def populate(entity_encodings, engine, table_name):
 
     print('Saving to postgres...')
     print('Shape', df.shape)
-    df.to_sql(table_name, engine, if_exists='append', method='multi', index=False, chunksize=chunksize)
+
+    with connection.cursor() as cur:
+        with cursor.copy("COPY %s (id, indexer, wikipedia_id, title, descr, embedding) FROM STDIN", (table_name)) as copy:
+            max_i = df.shape[0]
+            for i, record in df.iterrows():
+                copy.write_row(tuple(record.values))
+                print(f'\r{i}/{max_i}', end = '')
+    print()
+    connection.commit()
+
+    #df.to_sql(table_name, engine, if_exists='append', method='multi', index=False, chunksize=chunksize)
     print('Done.')
 
 
@@ -138,11 +149,13 @@ if __name__ == '__main__':
     assert args.table_name is not None, 'Error: table-name is required!'
 
 
-    engine = create_engine(args.postgres)
+    connection = psycopg.connect(args.postgres)
 
     print('Loading entities...')
     entity_encodings = load_models(args)
 
     print('Populating postgres...')
-    populate(entity_encodings, engine, args.table_name)
+    populate(entity_encodings, connection, args.table_name)
+
+    connection.close()
 
