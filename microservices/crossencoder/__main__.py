@@ -36,7 +36,7 @@ class Id2Text(object):
         with self.dbconnection.cursor() as cur:
             cur.execute("""
             SELECT
-                text
+                descr
             FROM
                 entities
             WHERE
