@@ -35,13 +35,15 @@ async def search(input_: Input):
     encodings = input_.encodings
     top_k = input_.top_k
     encodings = [vector_decode(e) for e in encodings]
-    all_candidates_4_sample_n = [[]] * len(encodings)
+    all_candidates_4_sample_n = []
+    for i in range(len(encodings)):
+        all_candidates_4_sample_n.append([])
     for index in indexes:
         indexer = index['indexer']
         scores, candidates = indexer.search_knn(encodings, top_k)
+        n = 0
         for _scores, _cands, _enc in zip(scores, candidates, encodings):
             # for each samples
-            n = 0
             for _score, _cand in zip(_scores, _cands):
                 raw_score = float(_score)
                 _cand = int(_cand)
@@ -86,6 +88,7 @@ async def search(input_: Input):
                         'indexer': index['indexid'],
                         'score': float(_score)
                     })
+            n += 1
     # sort
     for _sample in all_candidates_4_sample_n:
         _sample.sort(key=lambda x: x['score'], reverse=True)
