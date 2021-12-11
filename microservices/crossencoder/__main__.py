@@ -4,7 +4,7 @@ from pydantic import BaseModel
 import uvicorn
 from blink.main_dense import load_crossencoder, prepare_crossencoder_data, _process_crossencoder_dataloader, _run_crossencoder
 from blink.crossencoder.train_cross import modify
-from typing import List
+from typing import List, Optional
 import json
 import psycopg
 
@@ -62,11 +62,11 @@ class Mention(BaseModel):
 
 class Candidate(BaseModel):
     id: int
-    title: str
-    url: str
+    title: Optional[str]
+    url: Optional[str]
     indexer: int
-    score: float
-    bi_score: float
+    score: Optional[float]
+    bi_score: Optional[float]
 
 class Item(BaseModel):
     samples: List[Mention]
@@ -87,7 +87,8 @@ async def run(item: Item):
         for _cand in cands:
             nn.append((_cand.id, _cand.indexer))
             # save bi score
-            _cand.bi_score = _cand.score
+            if _cand.score:
+                _cand.bi_score = _cand.score
             # reset score
             _cand.score = -100.0
         nns.append(nn)
