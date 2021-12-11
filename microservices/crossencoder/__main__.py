@@ -116,7 +116,7 @@ async def run(item: Item):
         for _cand, _nn, _score in zip(_candidates, _nns, _scores):
             assert _cand.id == _nn[0]
             assert _cand.indexer == _nn[1]
-            _cand.score = _score
+            _cand.score = float(_score)
 
         _candidates.sort(key=lambda x: x.score, reverse=True)
 
