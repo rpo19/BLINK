@@ -52,11 +52,13 @@ async def search(input_: Input):
                         cur.execute("""
                         SELECT
                             title, wikipedia_id, embedding
+                        FROM
+                            entities
                         WHERE
                             id = %s AND
                             indexer = %s;
                         """, (_cand, index['indexid']))
-                        
+
                         title, wikipedia_id, embedding = cur.fetchone()
 
                     embedding = vector_decode(embedding)
@@ -67,11 +69,13 @@ async def search(input_: Input):
                         cur.execute("""
                         SELECT
                             title, wikipedia_id
+                        FROM
+                            entities
                         WHERE
                             id = %s AND
                             indexer = %s;
                         """, (_cand, index['indexid']))
-                        
+
                         title, wikipedia_id = cur.fetchone()
 
                 all_candidates_4_sample_n[n].append({
