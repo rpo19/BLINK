@@ -128,7 +128,7 @@ if __name__ == '__main__':
         "--host", type=str, default="127.0.0.1", help="host to listen at",
     )
     parser.add_argument(
-        "--port", type=int, default="30300", help="port to listen at",
+        "--port", type=int, default="30301", help="port to listen at",
     )
     parser.add_argument(
         "--postgres", type=str, default=None, help="postgres url (e.g. postgres://user:password@localhost:5432/database)",
@@ -136,12 +136,12 @@ if __name__ == '__main__':
 
     args = parser.parse_args()
 
+    assert args.postgres is not None, 'Error. postgres url is required.'
+    dbconnection = psycopg.connect(args.postgres)
+
     print('Loading indexes...')
     load_models(args)
     print('Loading complete.')
-
-    assert args.postgres is not None, 'Error. postgres url is required.'
-    dbconnection = psycopg.connect(args.postgres)
 
     uvicorn.run(app, host = args.host, port = args.port)
     dbconnection.close()
