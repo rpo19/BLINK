@@ -66,6 +66,7 @@ class Candidate(BaseModel):
     url: str
     indexer: int
     score: float
+    bi_score: float
 
 class Item(BaseModel):
     samples: List[Mention]
@@ -85,6 +86,10 @@ async def run(item: Item):
         nn = []
         for _cand in cands:
             nn.append((_cand.id, _cand.indexer))
+            # save bi score
+            _cand.bi_score = _cand.score
+            # reset score
+            _cand.score = -100.0
         nns.append(nn)
 
     labels = [-1] * len(samples)
