@@ -25,6 +25,8 @@ class Id2Title(object):
                 indexer = %s;
             """, (int(arg[0]), int(arg[1])))
             title = cur.fetchone()
+        if title:
+            title = title[0]
         return title
 
 class Id2Text(object):
@@ -43,8 +45,10 @@ class Id2Text(object):
                 id = %s AND
                 indexer = %s;
             """, (int(arg[0]), int(arg[1])))
-            text = cur.fetchone()
-        return text
+            descr = cur.fetchone()
+        if descr:
+            descr = descr[0]
+        return descr
 
 class Mention(BaseModel):
     label:str
