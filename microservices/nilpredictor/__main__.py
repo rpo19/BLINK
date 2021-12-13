@@ -35,7 +35,7 @@ class Features(BaseModel):
 
 app = FastAPI()
 
-@app.post('/api/blink/crossencoder')
+@app.post('/api/nilprediction')
 async def run(input: List[Features]):
 
     nil_X = pd.DataFrame()
