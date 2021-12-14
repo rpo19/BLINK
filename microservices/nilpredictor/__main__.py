@@ -41,11 +41,11 @@ async def run(input: List[Features]):
     nil_X = pd.DataFrame()
 
     for i, features in enumerate(input):
-        nil_X.iloc[i, 'max_bi'] = features.max_bi
-        nil_X.iloc[i, 'max_cross'] = features.max_cross
+        nil_X.loc[i, 'max_bi'] = features.max_bi
+        nil_X.loc[i, 'max_cross'] = features.max_cross
 
         # process features
-        nil_X.iloc[i, 'jaccard'], _ = process_text_similarities(
+        nil_X.loc[i, 'jaccard'], _ = process_text_similarities(
             mention=features.mention, title=features.title, jaccard=features.jaccard, levenshtein=features.levenshtein)
 
         # process types TODO
