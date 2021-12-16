@@ -6,16 +6,8 @@ import bs4
 import os
 import json
 import sys
-from multiprocessing import Pool
 from tqdm import tqdm
-
-file_path = 'wiki_00'
-
-df = pd.read_json(file_path, lines=True)
-
-t1 = df['text'].values[0]
-
-print(unquote(unescape(t1)))
+from tqdm.contrib.concurrent import process_map
 
 def find_nth(haystack, needle, n):
     start = haystack.find(needle)
@@ -34,7 +26,9 @@ def _helper(x):
         
 def get_mention_context(tag, max_tokens=32):
     mention = tag.text
-    href = unquote(tag.get('href'))
+    href = tag.get('href')
+    if href:
+        href = unquote(href)
     context_left = ''.join(map(_helper, list(tag.previous_siblings)[::-1]))
     context_right = ''.join(map(_helper, tag.next_siblings))
     # truncate at max_tokens
@@ -50,22 +44,27 @@ def get_mention_context(tag, max_tokens=32):
 
 def process_text(text):
     text = unescape(text)
-    soup = BeautifulSoup(text)
+    soup = BeautifulSoup(text, 'lxml')
     tags = soup.find_all('a')
     res = list(map(get_mention_context, tags))
     return res
 
 def process_file(file_path):
-    df = pd.read_json(file_path, lines=True)
+    control_file = file_path + '.done'
+    if not os.path.isfile(control_file):
+        df = pd.read_json(file_path, lines=True)
 
-    with open(os.path.join(file_path, '.jsonl'), 'w') as fd:
-        for i, row in df.iterrows():
-            for line in process_text(row['text']):
-                jsline = json.dumps(line)
-                print(jsline, file=fd)
+        with open(file_path + '.jsonl', 'w') as fd:
+            for i, row in df.iterrows():
+                for line in process_text(row['text']):
+                    jsline = json.dumps(line)
+                    print(jsline, file=fd)
+
+        open(control_file, 'w').close()
 
 if __name__ == '__main__':
     file_list = sys.stdin.read().splitlines()
 
-    with Pool(20) as p:
-        tqdm(p.imap_unordered(process_file, file_list, chunksize=10), total=len(file_list))
+    res = process_map(process_file, file_list, chunksize=10, max_workers=20)
+
+    print('done.')
