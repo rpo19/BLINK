@@ -32,12 +32,12 @@ def get_mention_context(tag, max_tokens=32):
     context_left = ''.join(map(_helper, list(tag.previous_siblings)[::-1]))
     context_right = ''.join(map(_helper, tag.next_siblings))
     # truncate at max_tokens
-    right_limit = find_nth(context_right, ' ', 32)
+    right_limit = find_nth(context_right, ' ', max_tokens)
     if right_limit > 0:
         context_right = context_right[:right_limit]
     # revert left and search left to right. then revert back
     reverse_context_left = context_left[::-1]
-    left_limit = find_nth(reverse_context_left, ' ', 32)
+    left_limit = find_nth(reverse_context_left, ' ', max_tokens)
     if left_limit > 0:
         context_left = reverse_context_left[:left_limit][::-1]
     return {'href': href, 'mention': mention, 'context_left': context_left, 'context_right': context_right}
