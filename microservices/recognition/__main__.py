@@ -1,38 +1,23 @@
 import argparse
 from fastapi import FastAPI
+from pydantic import BaseModel
 import uvicorn
 import blink.ner as NER
-from typing import List
+from typing import Union, List
+from blink.main_dense import _annotate
+
+class Item(BaseModel):
+    text: Union[List[str], str]
 
 app = FastAPI()
 
 @app.post('/api/ner')
-async def encode_mention(texts: List[str]):
+async def encode_mention(item: Item):
+    if isinstance(item.text, str):
+        texts = [item.text]
+    else:
+        texts = item.text
     samples = _annotate(ner_model, texts)
-    return samples
-
-def _annotate(ner_model, input_sentences):
-    ner_output_data = ner_model.predict(input_sentences)
-
-    sentences = ner_output_data["sentences"]
-    mentions = ner_output_data["mentions"]
-    samples = []
-    for mention in mentions:
-        record = {}
-        record["label"] = "unknown"
-        record["label_id"] = -1
-        # LOWERCASE EVERYTHING !
-        record["context_left"] = sentences[mention["sent_idx"]][
-            : mention["start_pos"]
-        ].lower()
-        record["context_right"] = sentences[mention["sent_idx"]][
-            mention["end_pos"] :
-        ].lower()
-        record["mention"] = mention["text"].lower()
-        record["start_pos"] = int(mention["start_pos"])
-        record["end_pos"] = int(mention["end_pos"])
-        record["sent_idx"] = mention["sent_idx"]
-        samples.append(record)
     return samples
 
 if __name__ == '__main__':
