@@ -4,10 +4,11 @@ from pydantic import BaseModel
 import uvicorn
 import numpy as np
 import base64
-from typing import List
+from typing import List, Optional
 from blink.indexer.faiss_indexer import DenseFlatIndexer, DenseHNSWFlatIndexer
 import json
 import psycopg
+import os
 
 def vector_encode(v):
     s = base64.b64encode(v).decode()
@@ -94,24 +95,68 @@ async def search(input_: Input):
         _sample.sort(key=lambda x: x['score'], reverse=True)
     return all_candidates_4_sample_n
 
+class Item(BaseModel):
+    encoding: str
+    wikipedia_id: Optional[int]
+    title: str
+    descr: Optional[str]
+
 @app.post('/api/indexer/add')
-async def add():
-    # TODO implement add new entity to rw_index
-    pass
+async def add(items: List[Item]):
+
+    # input: embeddings --> faiss
+    # --> postgres
+    # wikipedia_id ?
+    # title
+    # descr ?
+    # embedding
+
+    indexer = indexes[rw_index]['indexer']
+    indexid = indexes[rw_index]['indexid']
+    indexpath = indexes[rw_index]['path']
+
+    # add to index
+    embeddings = [vector_decode(e) for e.encoding in items]
+    embeddings = np.stack(embeddings).astype('float32')
+    indexer.index_data(embeddings)
+    ids = list(range(indexer.index.ntotal - embeddings.shape[0], indexer.index.ntotal))
+    # save index
+    print(f'Saving index {indexid} to disk...')
+    indexer.serialize(indexpath)
+
+    # add to postgres
+    with dbconnection.cursor() as cursor:
+        with cursor.copy("COPY entities (id, indexer, wikipedia_id, title, descr, embedding) FROM STDIN") as copy:
+            max_i = df.shape[0]
+            for id, item in zip(ids, items):
+                copy.write_row((id, indexid, -1, item.title, item.descr, item.encoding))
+    dbconnection.commit()
+
+    return {
+        'ids': ids,
+        'indexer': indexid
+    }
 
 def load_models(args):
     assert args.index is not None, 'Error! Index is required.'
     for index in args.index.split(','):
         index_type, index_path, indexid, rorw = index.split(':')
         print('Loading {} index from {}, mode: {}...'.format(index_type, index_path, rorw))
-        if index_type == "flat":
-            indexer = DenseFlatIndexer(1)
-        elif index_type == "hnsw":
-            indexer = DenseHNSWFlatIndexer(1)
-        else:
-            raise ValueError("Error! Unsupported indexer type! Choose from flat,hnsw.")
         if os.path.isfile(index_path):
+            if index_type == "flat":
+                indexer = DenseFlatIndexer(1)
+            elif index_type == "hnsw":
+                indexer = DenseHNSWFlatIndexer(1)
+            else:
+                raise ValueError("Error! Unsupported indexer type! Choose from flat,hnsw.")
             indexer.deserialize_from(index_path)
+        else:
+            if index_type == "flat":
+                indexer = DenseFlatIndexer(1024)
+            elif index_type == "hnsw":
+                indexer = DenseHNSWFlatIndexer(1024)
+            else:
+                raise ValueError("Error! Unsupported indexer type! Choose from flat,hnsw.")
         indexes.append({
             'indexer': indexer,
             'indexid': int(indexid),
