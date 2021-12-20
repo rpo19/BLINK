@@ -8,7 +8,7 @@ from fastDamerauLevenshtein import damerauLevenshtein
 from scipy.spatial.distance import cdist
 import numpy as np
 import base64
-from Packages.TimeEvolving import Cluster
+from Packages.TimeEvolving import Cluster, compare_ecoding
 
 def vector_encode(v):
     s = base64.b64encode(v).decode()
@@ -37,14 +37,14 @@ app = FastAPI()
 
 @app.post('/api/nilcluster')
 async def cluster_mention(item: Item):
+    total_clusters = []
     current_mentions = item.mentions
-    current_encodings = [vecor_decode(e) for e in item.embeddings]
+    current_encodings = [vector_decode(e) for e in item.embeddings]
     
     if len(current_mentions) == 1:
         cluster_numbers = np.zeros(1, dtype=np.int8)
     else:
         X = np.array(current_mentions).reshape(-1, 1)
-        print(current_mentions)
         m_matrix = cdist(X, X, metric=dam_lev_metric)
         
         # clusterizator1 = DBSCAN(metric=dam_lev_metric, eps=1, min_samples=0, n_jobs=-1)
@@ -56,10 +56,11 @@ async def cluster_mention(item: Item):
 
     #Creo e vado a riempire un dizionario con chiave il numero del cluster e le menzioni all'interno del cluster, le entita corrispondenti
     #e l'encoding corrispondente ad: {0 : {entities: 'Milano', 'Milano', mentions: 'Milan', 'Milano', encodings:[[343][443]}}
-    cee_dict = {k: {'mentions': [], 'encodings': [], 'sotto_clusters': None} for k in
+    cee_dict = {k: {'mentions_id': [], 'mentions': [], 'encodings': [], 'sotto_clusters': None} for k in
                 set(cluster_numbers)}
     
     for i, cluster in enumerate(cluster_numbers):
+        cee_dict[cluster]['mentions_id'].append(i)
         cee_dict[cluster]['mentions'].append(current_mentions[i])
         cee_dict[cluster]['encodings'].append(current_encodings[i])
 
@@ -93,13 +94,12 @@ async def cluster_mention(item: Item):
             #in sottocluster i-esimo (key) quindi ad esempio sottocluster  0 aggiungo come valore l'entita' menzione e encoding
             #corrispondente ( un po' come il lavoro fatto prima ma ora per ogni sottocluster)
             sotto_cluster[key].add_element(mention=el['mentions'][i], entity='entity',
-                                           encodings=el['encodings'][i])
+                                           encodings=el['encodings'][i], mentions_id=el['mentions_id'][i])
         #append alla liste sottocluster_list questo dizionario(1 dizionario per ogni cluster in cui all'interno abbiamo
         #il numero di sottocluster con le sue menzioni-entita'-encoding)
         sottocluster_list.append(sotto_cluster)
     
     sottocluster_list = [clusters_dict[key] for clusters_dict in sottocluster_list for key in clusters_dict]
-    
     
     current_clusters = total_clusters + sottocluster_list
     #"FORSE" calcolo il centroide in ogni sottocluster
@@ -134,7 +134,7 @@ async def cluster_mention(item: Item):
             br_cluster_number = br_clusterizator.fit_predict(m_sub_matrix)
             br_cluster_dict = {k: Cluster() for k in set(br_cluster_number)}
             for i, cluster in enumerate(br_cluster_number):
-                br_cluster_dict[cluster].add_element(cl.mentions[i], cl.entities[i], cl.encodings_list[i])
+                br_cluster_dict[cluster].add_element(cl.mentions[i], cl.entities[i], cl.encodings_list[i], cl.mentions_id[i])
             broken_cluster = broken_cluster + list(br_cluster_dict.values())
             to_remove_cluster.append(cl_index)
     for i in sorted(to_remove_cluster, reverse=True):
