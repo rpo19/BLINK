@@ -1,5 +1,5 @@
 import argparse
-from fastapi import FastAPI
+from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
 import uvicorn
 import numpy as np
@@ -27,7 +27,10 @@ indexes = []
 rw_index = None
 
 def id2url(wikipedia_id):
-    return "https://en.wikipedia.org/wiki?curid={}".format(wikipedia_id)
+    if wikipedia_id > 0:
+        return "https://en.wikipedia.org/wiki?curid={}".format(wikipedia_id)
+    else:
+        return ""
 
 app = FastAPI()
 
@@ -35,7 +38,7 @@ app = FastAPI()
 async def search(input_: Input):
     encodings = input_.encodings
     top_k = input_.top_k
-    encodings = [vector_decode(e) for e in encodings]
+    encodings = np.array([vector_decode(e) for e in encodings])
     all_candidates_4_sample_n = []
     for i in range(len(encodings)):
         all_candidates_4_sample_n.append([])
@@ -48,6 +51,9 @@ async def search(input_: Input):
             for _score, _cand in zip(_scores, _cands):
                 raw_score = float(_score)
                 _cand = int(_cand)
+                if _cand == -1:
+                    # -1 means no other candidates found
+                    break
                 # compute dot product if hnsfw
                 if isinstance(indexer, DenseHNSWFlatIndexer):
                     # query with embedding
@@ -103,6 +109,8 @@ class Item(BaseModel):
 
 @app.post('/api/indexer/add')
 async def add(items: List[Item]):
+    if rw_index is None:
+        raise HTTPException(status_code=404, detail="No rw index!")
 
     # input: embeddings --> faiss
     # --> postgres
@@ -116,7 +124,7 @@ async def add(items: List[Item]):
     indexpath = indexes[rw_index]['path']
 
     # add to index
-    embeddings = [vector_decode(e) for e.encoding in items]
+    embeddings = [vector_decode(e.encoding) for e in items]
     embeddings = np.stack(embeddings).astype('float32')
     indexer.index_data(embeddings)
     ids = list(range(indexer.index.ntotal - embeddings.shape[0], indexer.index.ntotal))
@@ -127,9 +135,9 @@ async def add(items: List[Item]):
     # add to postgres
     with dbconnection.cursor() as cursor:
         with cursor.copy("COPY entities (id, indexer, wikipedia_id, title, descr, embedding) FROM STDIN") as copy:
-            max_i = df.shape[0]
             for id, item in zip(ids, items):
-                copy.write_row((id, indexid, -1, item.title, item.descr, item.encoding))
+                wikipedia_id = -1 if item.wikipedia_id is None else item.wikipedia_id
+                copy.write_row((id, indexid, wikipedia_id, item.title, item.descr, item.encoding))
     dbconnection.commit()
 
     return {
@@ -163,6 +171,7 @@ def load_models(args):
             'path': index_path
             })
 
+        global rw_index
         if rorw == 'rw':
             assert rw_index is None, 'Error! Only one rw index is accepted.'
             rw_index = len(indexes) - 1 # last added
