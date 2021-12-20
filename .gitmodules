@@ -1,0 +1,3 @@
+[submodule "EntityClustering"]
+	path = EntityClustering
+	url = git@github.com:rpo19/EntityClustering.git

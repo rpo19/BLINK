@@ -110,7 +110,8 @@ def load_models(args):
             indexer = DenseHNSWFlatIndexer(1)
         else:
             raise ValueError("Error! Unsupported indexer type! Choose from flat,hnsw.")
-        indexer.deserialize_from(index_path)
+        if os.path.isfile(index_path):
+            indexer.deserialize_from(index_path)
         indexes.append({
             'indexer': indexer,
             'indexid': int(indexid),
