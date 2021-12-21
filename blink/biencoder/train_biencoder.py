@@ -61,7 +61,7 @@ def evaluate(
         batch = tuple(t.to(device) for t in batch)
         if len(batch) == 4:
             context_input, candidate_input, _, _ = batch
-        elif len(beatch) == 3:
+        elif len(batch) == 3:
             context_input, candidate_input, _ = batch
         else:
             raise Exception('not expected.')
