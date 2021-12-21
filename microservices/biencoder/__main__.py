@@ -29,6 +29,10 @@ class Mention(BaseModel):
     end_pos: int
     sent_idx:int
 
+class Entity(BaseModel):
+    title: str
+    descr: str
+
 app = FastAPI()
 
 @app.post('/api/blink/biencoder/mention')
@@ -38,6 +42,29 @@ async def encode_mention(samples: List[Mention]):
         samples, biencoder.tokenizer, biencoder_params
     )
     encodings = _run_biencoder_mention(biencoder, dataloader)
+    assert encodings[0].dtype == 'float32'
+    #assert np.array_equal(encodings[0], vector_decode(vector_encode(encodings[0]), np.float32))
+    ## dtype float32
+    encodings = [vector_encode(e) for e in encodings]
+    return {'samples': samples, 'encodings': encodings}
+
+@app.post('/api/blink/biencoder/entity')
+async def encode_entity(samples: List[Entity]):
+    # entity_desc_list: list of tuples (title, text)
+    entity_desc_list = [(s.title, s.descr) for s in samples]
+    candidate_pool = get_candidate_pool_tensor(
+        entity_desc_list,
+        biencoder.tokenizer,
+        biencoder_params["max_cand_length"],
+        None
+    )
+    sampler = SequentialSampler(candidate_pool)
+    dataloader = DataLoader(
+        candidate_pool, sampler=sampler, batch_size=8
+    )
+
+    encodings = _run_biencoder_entity(biencoder, dataloader)
+
     assert encodings[0].dtype == 'float32'
     #assert np.array_equal(encodings[0], vector_decode(vector_encode(encodings[0]), np.float32))
     ## dtype float32
@@ -54,6 +81,18 @@ def _run_biencoder_mention(biencoder, dataloader):
             context_encoding = np.ascontiguousarray(context_encoding)
         encodings.extend(context_encoding)
     return encodings
+
+def _run_biencoder_entity(biencoder, dataloader):
+    biencoder.model.eval()
+    cand_encode_list = []
+    for batch in tqdm(data_loader):
+        cands = batch
+        cands = cands.to(device)
+        with torch.no_grad():
+            cand_encode = reranker.encode_candidate(cands).numpy()
+            cand_encode = np.ascontiguousarray(cand_encode)
+        cand_encode_list.extend(cand_encode)
+    return cand_encode_list
 
 def load_models(args):
     # load biencoder model
