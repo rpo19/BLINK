@@ -59,7 +59,13 @@ def evaluate(
 
     for step, batch in enumerate(iter_):
         batch = tuple(t.to(device) for t in batch)
-        context_input, candidate_input, _, _ = batch
+        if len(batch) == 4:
+            context_input, candidate_input, _, _ = batch
+        elif len(beatch) == 3:
+            context_input, candidate_input, _ = batch
+        else:
+            raise Exception('not expected.')
+
         with torch.no_grad():
             eval_loss, logits = reranker(context_input, candidate_input)
 
