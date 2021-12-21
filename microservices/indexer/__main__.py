@@ -160,9 +160,9 @@ def load_models(args):
             indexer.deserialize_from(index_path)
         else:
             if index_type == "flat":
-                indexer = DenseFlatIndexer(1024)
+                indexer = DenseFlatIndexer(args.vector_size)
             elif index_type == "hnsw":
-                indexer = DenseHNSWFlatIndexer(1024)
+                indexer = DenseHNSWFlatIndexer(args.vector_size)
             else:
                 raise ValueError("Error! Unsupported indexer type! Choose from flat,hnsw.")
         indexes.append({
@@ -190,6 +190,9 @@ if __name__ == '__main__':
     )
     parser.add_argument(
         "--postgres", type=str, default=None, help="postgres url (e.g. postgres://user:password@localhost:5432/database)",
+    )
+    parser.add_argument(
+        "--vector-size", type=int, default="1024", help="The size of the vectors", dest="vector_size",
     )
 
     args = parser.parse_args()
