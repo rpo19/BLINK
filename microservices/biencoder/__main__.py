@@ -3,12 +3,15 @@ from fastapi import FastAPI
 from pydantic import BaseModel
 import uvicorn
 from blink.main_dense import load_biencoder, _process_biencoder_dataloader
+from blink.biencoder.eval_biencoder import get_candidate_pool_tensor
 from typing import List
 import json
 from tqdm import tqdm
 import torch
 import numpy as np
 import base64
+import logging
+from torch.utils.data import DataLoader, SequentialSampler
 
 def vector_encode(v):
     s = base64.b64encode(v).decode()
@@ -56,7 +59,7 @@ async def encode_entity(samples: List[Entity]):
         entity_desc_list,
         biencoder.tokenizer,
         biencoder_params["max_cand_length"],
-        None
+        logger
     )
     sampler = SequentialSampler(candidate_pool)
     dataloader = DataLoader(
@@ -85,11 +88,11 @@ def _run_biencoder_mention(biencoder, dataloader):
 def _run_biencoder_entity(biencoder, dataloader):
     biencoder.model.eval()
     cand_encode_list = []
-    for batch in tqdm(data_loader):
+    for batch in tqdm(dataloader):
         cands = batch
-        cands = cands.to(device)
+        #cands = cands.to(device)
         with torch.no_grad():
-            cand_encode = reranker.encode_candidate(cands).numpy()
+            cand_encode = biencoder.encode_candidate(cands).numpy()
             cand_encode = np.ascontiguousarray(cand_encode)
         cand_encode_list.extend(cand_encode)
     return cand_encode_list
@@ -127,6 +130,8 @@ if __name__ == '__main__':
     )
 
     args = parser.parse_args()
+
+    logger = logging.getLogger('biencoder_micros')
 
     print('Loading biencoder...')
     biencoder, biencoder_params = load_models(args)
