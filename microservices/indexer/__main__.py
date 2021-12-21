@@ -27,8 +27,9 @@ indexes = []
 rw_index = None
 
 def id2url(wikipedia_id):
+    global language
     if wikipedia_id > 0:
-        return "https://en.wikipedia.org/wiki?curid={}".format(wikipedia_id)
+        return "https://{}.wikipedia.org/wiki?curid={}".format(language, wikipedia_id)
     else:
         return ""
 
@@ -194,11 +195,16 @@ if __name__ == '__main__':
     parser.add_argument(
         "--vector-size", type=int, default="1024", help="The size of the vectors", dest="vector_size",
     )
+    parser.add_argument(
+        "--language", type=str, default="en", help="Wikipedia language (en,it,...).",
+    )
 
     args = parser.parse_args()
 
     assert args.postgres is not None, 'Error. postgres url is required.'
     dbconnection = psycopg.connect(args.postgres)
+
+    language = args.language
 
     print('Loading indexes...')
     load_models(args)
