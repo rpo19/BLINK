@@ -12,19 +12,22 @@ app = FastAPI()
 
 @app.post('/api/ner')
 async def encode_mention(item: Item):
-    if isinstance(item.text, str):
-        texts = [item.text]
-    else:
-        texts = item.text
-    samples = _annotate(nlp, texts)
-    return samples
-
-def _annotate(nlp, input_sentences):
     samples = []
-    for sentence in input_sentences:
-        doc = nlp(sentence)
+    sentences = []
 
-        for i, ent in enumerate(doc.ents):
+    if isinstance(item.text, str):
+        input_sentences = nlp(item.text).sents
+        process_sent = lambda x: (x, x.text)
+    else:
+        input_sentences = item.text
+        process_sent = lambda x: (nlp(x), x)
+
+    for i, sentence in enumerate(input_sentences):
+        doc, sentence = process_sent(sentence)
+
+        sentences.append(sentence)
+
+        for ent in doc.ents:
             sample = {
                 'label': 'unknown',
                 'label_id': -1,
@@ -38,7 +41,11 @@ def _annotate(nlp, input_sentences):
             }
 
             samples.append(sample)
-    return samples
+
+    return {
+        'ents': samples,
+        'sentences': sentences
+    }
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
@@ -57,6 +64,7 @@ if __name__ == '__main__':
     print('Loading spacy model...')
     # Load spacy model
     nlp = spacy.load(args.model, exclude=['tok2vec', 'morphologizer', 'tagger', 'parser', 'attribute_ruler', 'lemmatizer'])
+    nlp.enable_pipe('senter')
     print('Loading complete.')
 
     uvicorn.run(app, host = args.host, port = args.port)
