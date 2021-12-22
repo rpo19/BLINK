@@ -55,38 +55,43 @@ async def search(input_: Input):
                 if _cand == -1:
                     # -1 means no other candidates found
                     break
-                # compute dot product if hnsfw
-                if isinstance(indexer, DenseHNSWFlatIndexer):
+                # # compute dot product always (and normalized dot product)
+                # if isinstance(indexer, DenseHNSWFlatIndexer):
                     # query with embedding
-                    with dbconnection.cursor() as cur:
-                        cur.execute("""
-                        SELECT
-                            title, wikipedia_id, embedding
-                        FROM
-                            entities
-                        WHERE
-                            id = %s AND
-                            indexer = %s;
-                        """, (_cand, index['indexid']))
+                with dbconnection.cursor() as cur:
+                    cur.execute("""
+                    SELECT
+                        title, wikipedia_id, embedding
+                    FROM
+                        entities
+                    WHERE
+                        id = %s AND
+                        indexer = %s;
+                    """, (_cand, index['indexid']))
 
-                        title, wikipedia_id, embedding = cur.fetchone()
+                    title, wikipedia_id, embedding = cur.fetchone()
 
-                    embedding = vector_decode(embedding)
-                    _score = np.dot(_enc, embedding)
-                else:
-                    # simpler query
-                    with dbconnection.cursor() as cur:
-                        cur.execute("""
-                        SELECT
-                            title, wikipedia_id
-                        FROM
-                            entities
-                        WHERE
-                            id = %s AND
-                            indexer = %s;
-                        """, (_cand, index['indexid']))
+                embedding = vector_decode(embedding)
+                _score = np.inner(_enc, embedding)
+                # normalized dot product
+                _enc_norm = np.linalg.norm(_enc)
+                _embedding_norm = np.linalg.norm(embedding)
+                _norm_factor = max(_enc_norm, _embedding_norm)**2
+                _norm_score = _score / _norm_factor
+                # else:
+                #     # simpler query
+                #     with dbconnection.cursor() as cur:
+                #         cur.execute("""
+                #         SELECT
+                #             title, wikipedia_id
+                #         FROM
+                #             entities
+                #         WHERE
+                #             id = %s AND
+                #             indexer = %s;
+                #         """, (_cand, index['indexid']))
 
-                        title, wikipedia_id = cur.fetchone()
+                #         title, wikipedia_id = cur.fetchone()
 
                 all_candidates_4_sample_n[n].append({
                         'raw_score': raw_score,
@@ -94,7 +99,8 @@ async def search(input_: Input):
                         'title': title,
                         'url': id2url(wikipedia_id),
                         'indexer': index['indexid'],
-                        'score': float(_score)
+                        'score': float(_score),
+                        'norm_score': float(_norm_score)
                     })
             n += 1
     # sort
