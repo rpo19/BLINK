@@ -80,6 +80,7 @@ def _run_biencoder_mention(biencoder, dataloader):
     for batch in tqdm(dataloader):
         context_input, _, _ = batch
         with torch.no_grad():
+            context_input = context_input.to(biencoder.device)
             context_encoding = biencoder.encode_context(context_input).numpy()
             context_encoding = np.ascontiguousarray(context_encoding)
         encodings.extend(context_encoding)
