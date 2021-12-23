@@ -3,8 +3,10 @@ import psycopg
 from blink.indexer.faiss_indexer import DenseFlatIndexer, DenseHNSWFlatIndexer
 import os
 import pandas as pd
-from tqdm import tdqm
+from tqdm import tqdm
 import requests
+import numpy as np
+import base64
 
 def vector_encode(v):
     s = base64.b64encode(v).decode()
@@ -59,7 +61,7 @@ def populate(args, data):
     print('Done.')
 
 def load_dataset(path):
-    ext = os.path.splitext(path)
+    _, ext = os.path.splitext(path)
     if ext == '.jsonl':
         df = pd.read_json(path, lines=True)
     elif ext == '.pickle':
@@ -75,19 +77,19 @@ def pandas_batch(df, batchsize):
 def biencoder_get_encodings(args, df):
     encodings = []
     print('Getting encoding from biencoder...')
-    total = int(df.shape[0] / batchsize)
+    total = int(df.shape[0] / args.batchsize)
     for i, batch in tqdm(enumerate(pandas_batch(df, args.batchsize)), total=total):
         body = batch.apply(lambda x: {'title': x[args.title_key], 'descr': x[args.descr_key]}, axis=1).tolist()
         response = requests.post(args.biencoder, json=body)
         if not response.ok:
             raise Exception('Error from biencoder at batch {}'.format(i))
-        encodings.extends(response.json()['encodings'])
+        encodings.extend(response.json()['encodings'])
     return encodings
 
 def main(args):
     # load datasets
     datasets = args.input.split(',')
-    df_list = list(map(load_datasets, datasets))
+    df_list = list(map(load_dataset, datasets))
     data = pd.concat(df_list)
     del df_list
     ## remove duplicates
