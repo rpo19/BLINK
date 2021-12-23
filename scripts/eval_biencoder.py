@@ -129,7 +129,7 @@ if __name__ == '__main__':
         "--context-right-key", type=str, default='context_right', help='Context right key.', dest="context_right_key"
     )
     parser.add_argument(
-        "--indexer-id-key", type=str, default='wikipedia_id', help='Id key from indexer.', dest="args.indexer_wiki_id"
+        "--indexer-id-key", type=str, default='wikipedia_id', help='Id key from indexer.', dest="indexer_wiki_id"
     )
     parser.add_argument(
         "--recall-levels", type=str, default='1,3,5,10,20,50,100', help='Recall@k levels. (first is 1)', dest="recall_levels"
