@@ -90,7 +90,7 @@ def _run_biencoder_entity(biencoder, dataloader):
     cand_encode_list = []
     for batch in tqdm(dataloader):
         cands = batch
-        #cands = cands.to(device)
+        cands = cands.to(biencoder.device)
         with torch.no_grad():
             cand_encode = biencoder.encode_candidate(cands).numpy()
             cand_encode = np.ascontiguousarray(cand_encode)
@@ -135,6 +135,7 @@ if __name__ == '__main__':
 
     print('Loading biencoder...')
     biencoder, biencoder_params = load_models(args)
+    print('Device:', biencoder.device)
     print('Loading complete.')
 
     uvicorn.run(app, host = args.host, port = args.port)
