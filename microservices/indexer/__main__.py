@@ -84,6 +84,7 @@ async def search(input_: Input):
                 all_candidates_4_sample_n[n].append({
                         'raw_score': raw_score,
                         'id': _cand,
+                        'wikipedia_id': wikipedia_id,
                         'title': title,
                         'url': id2url(wikipedia_id),
                         'indexer': index['indexid'],
