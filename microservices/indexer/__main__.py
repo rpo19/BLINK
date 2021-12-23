@@ -41,7 +41,7 @@ async def search(input_: Input):
     top_k = input_.top_k
     encodings = np.array([vector_decode(e) for e in encodings])
     all_candidates_4_sample_n = []
-    for i in range(len(encodings)):_cands
+    for i in range(len(encodings)):
         all_candidates_4_sample_n.append([])
     for index in indexes:
         indexer = index['indexer']
