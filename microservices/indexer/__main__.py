@@ -41,13 +41,27 @@ async def search(input_: Input):
     top_k = input_.top_k
     encodings = np.array([vector_decode(e) for e in encodings])
     all_candidates_4_sample_n = []
-    for i in range(len(encodings)):
+    for i in range(len(encodings)):_cands
         all_candidates_4_sample_n.append([])
     for index in indexes:
         indexer = index['indexer']
         scores, candidates = indexer.search_knn(encodings, top_k)
         n = 0
+        candidate_ids = set([id for cs in candidates for id in cs])
+        with dbconnection.cursor() as cur:
+            cur.execute("""
+                SELECT
+                    id, title, wikipedia_id, embedding
+                FROM
+                    entities
+                WHERE
+                    id in ({}) AND
+                    indexer = %s;
+                """.format(','.join([str(int(id)) for id in candidate_ids])), (index['indexid'],))
+            id2info = cur.fetchall()
+        id2info = dict(zip(map(lambda x:x[0], id2info), map(lambda x:x[1:], id2info)))
         for _scores, _cands, _enc in zip(scores, candidates, encodings):
+
             # for each samples
             for _score, _cand in zip(_scores, _cands):
                 raw_score = float(_score)
@@ -56,20 +70,8 @@ async def search(input_: Input):
                     # -1 means no other candidates found
                     break
                 # # compute dot product always (and normalized dot product)
-                # if isinstance(indexer, DenseHNSWFlatIndexer):
-                    # query with embedding
-                with dbconnection.cursor() as cur:
-                    cur.execute("""
-                    SELECT
-                        title, wikipedia_id, embedding
-                    FROM
-                        entities
-                    WHERE
-                        id = %s AND
-                        indexer = %s;
-                    """, (_cand, index['indexid']))
 
-                    title, wikipedia_id, embedding = cur.fetchone()
+                title, wikipedia_id, embedding = id2info[_cand]
 
                 embedding = vector_decode(embedding)
                 _score = np.inner(_enc, embedding)
@@ -78,20 +80,6 @@ async def search(input_: Input):
                 _embedding_norm = np.linalg.norm(embedding)
                 _norm_factor = max(_enc_norm, _embedding_norm)**2
                 _norm_score = _score / _norm_factor
-                # else:
-                #     # simpler query
-                #     with dbconnection.cursor() as cur:
-                #         cur.execute("""
-                #         SELECT
-                #             title, wikipedia_id
-                #         FROM
-                #             entities
-                #         WHERE
-                #             id = %s AND
-                #             indexer = %s;
-                #         """, (_cand, index['indexid']))
-
-                #         title, wikipedia_id = cur.fetchone()
 
                 all_candidates_4_sample_n[n].append({
                         'raw_score': raw_score,
