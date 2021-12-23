@@ -5,6 +5,11 @@ import pandas as pd
 import numpy as np
 from tqdm import tqdm
 import json
+import os
+
+def pandas_batch(df, batchsize):
+    for i in range(0, df.shape[0], batchsize):
+        yield df.iloc[i:i+batchsize]
 
 def load_dataset(path):
     _, ext = os.path.splitext(path)
@@ -50,6 +55,7 @@ def indexer_search(args, df):
         if not response.ok:
             raise Exception('Error from indexer at batch {}'.format(i))
         top_cands.extend(response.json())
+    return top_cands
 
 def get_found_at(args, df, top_candidates):
     all_found_at = []
@@ -59,7 +65,7 @@ def get_found_at(args, df, top_candidates):
         correct_id = row[args.id_key]
         _found_at = -1
         for i,c in enumerate(cands):
-            if c['id'] == correct_id:
+            if c[args.indexer_wiki_id] == correct_id:
                 _found_at = i
                 break
         all_found_at.append(_found_at)
@@ -70,16 +76,9 @@ def calc_recall(args, all_found_at):
     levels = np.array([int(l)-1 for l in args.recall_levels.split(',')])
     recall_at = np.zeros(len(levels), dtype=int)
     for _found_at in all_found_at:
-        recall_at += (_found_at <= levels).astype(int)
+        recall_at += np.logical_and(_found_at >= 0, _found_at <= levels).astype(int)
     recall_at = recall_at / len(all_found_at)
-
-    levels = ['recall@{}'.format(i+1) for i in levels]
-    recall_dict = dict(zip(levels, recall_at))
-
-    print('----- Results -----')
-    pprint(recall_dict)
-    with open(args.output, 'w') as fd:
-        json.dump(recall_dict, fd)
+    return recall_at
 
 def main(args):
     data = load_dataset(args.input)
@@ -88,8 +87,18 @@ def main(args):
 
     top_candidates = indexer_search(args, data)
 
-    all_found_at = get_found_at(args, df, top_candidates)
+    all_found_at = get_found_at(args, data, top_candidates)
 
+    recall_at = calc_recall(args, all_found_at)
+
+    levels = ['recall@{}'.format(i) for i in args.recall_levels.split(',')]
+    recall_at = [float(r) for r in recall_at]
+    recall_dict = dict(zip(levels, recall_at))
+
+    print('----- Results -----')
+    pprint(recall_dict)
+    with open(args.output, 'w') as fd:
+        json.dump(recall_dict, fd)
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
@@ -101,7 +110,7 @@ if __name__ == '__main__':
         "--biencoder", type=str, default='http://localhost:30300/api/blink/biencoder/mention', help='biencoder url.'
     )
     parser.add_argument(
-        "--indexer", type=str, default='http://localhost:30301/api/indexer/search', help='biencoder url.'
+        "--indexer", type=str, default='http://localhost:30301/api/indexer/search', help='indexer url.'
     )
     parser.add_argument(
         "--input", type=str, default=None, help='Input dataset path.'
@@ -118,6 +127,9 @@ if __name__ == '__main__':
     )
     parser.add_argument(
         "--context-right-key", type=str, default='context_right', help='Context right key.', dest="context_right_key"
+    )
+    parser.add_argument(
+        "--indexer-id-key", type=str, default='wikipedia_id', help='Id key from indexer.', dest="args.indexer_wiki_id"
     )
     parser.add_argument(
         "--recall-levels", type=str, default='1,3,5,10,20,50,100', help='Recall@k levels. (first is 1)', dest="recall_levels"
