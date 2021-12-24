@@ -87,6 +87,15 @@ def main(args):
 
     top_candidates = indexer_search(args, data)
 
+    # top candidates is an array n x top_k
+    if args.save:
+        print('Saving top candidates to file {}...'.format(args.save))
+        # save in jsonl
+        with open(args.save, 'w') as fd:
+            for item in tqdm(top_candidates):
+                fd.write(json.dumps(item))
+                fd.write('\n')
+
     all_found_at = get_found_at(args, data, top_candidates)
 
     recall_at = calc_recall(args, all_found_at)
@@ -139,6 +148,9 @@ if __name__ == '__main__':
     )
     parser.add_argument(
         "--top-k", type=int, default=100, help="top k", dest='top_k'
+    )
+    parser.add_argument(
+        "--save", type=str, default=None, help='Path to tave the top candidates with their scores.'
     )
 
     args = parser.parse_args()
