@@ -11,6 +11,9 @@ import textdistance
 # input: features
 # output: NIL score
 
+jaccardObj = textdistance.Jaccard(qval=None)
+levenshteinObj = textdistance.Levenshtein(qval=None)
+
 class Candidate(BaseModel):
     id: int
     indexer: int
@@ -88,12 +91,12 @@ def process_text_similarities(mention=None, title=None, jaccard=None, levenshtei
         if not (title is None and mention is None):
             mention_ = mention.lower()
             title_ = title.lower()
-            jaccard = textdistance.Jaccard(qval=None).normalized_similarity(mention_, title_)
+            jaccard = jaccardObj.normalized_similarity(mention_, title_)
     if levenshtein is None:
         if not (title is None and mention is None):
             mention_ = mention.lower()
             title_ = title.lower()
-            jaccard = textdistance.Jaccard(qval=None).normalized_similarity(mention_, title_)
+            levenshtein = levenshteinObj.normalized_similarity(mention_, title_)
 
     return jaccard, levenshtein
 
