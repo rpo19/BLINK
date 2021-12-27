@@ -41,16 +41,35 @@ async def run(input: List[Features]):
     nil_X = pd.DataFrame()
 
     for i, features in enumerate(input):
-        nil_X.loc[i, 'max_bi'] = features.max_bi
-        nil_X.loc[i, 'max_cross'] = features.max_cross
+
+        data = []
+        index = []
+
+        if features.max_bi:
+            data.append(features.max_bi)
+            index.append('max_bi')
+
+        if features.max_cross:
+            data.append(features.max_coss)
+            index.append('max_cross')
 
         # process features
-        nil_X.loc[i, 'jaccard'], _ = process_text_similarities(
+        _jacc, _leve = process_text_similarities(
             mention=features.mention, title=features.title, jaccard=features.jaccard, levenshtein=features.levenshtein)
+
+        if _jacc:
+            data.append(_jacc)
+            index.append('jaccard')
+
+        if _leve:
+            data.append(_leve)
+            index.append('levenshtein')
 
         # process types TODO
 
         # process stats TODO
+
+        nil_X = nil_X.append(pd.Series(data=data, index=index, name=i))
 
     # run the model
 
