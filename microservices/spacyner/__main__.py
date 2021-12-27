@@ -37,7 +37,7 @@ async def encode_mention(item: Item):
                 'mention': ent.text,
                 'start_pos': ent.start_char,
                 'end_pos': ent.end_char,
-                'sent_ids': i,
+                'sent_idx': i,
                 'ner_type': ent.label_
             }
 
