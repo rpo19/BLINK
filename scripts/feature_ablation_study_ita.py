@@ -82,7 +82,7 @@ tasks = [
         'test': 'data/ita/nil/test.pickle',
         'sampling': 'undersample',
         'features':  [
-                'score',
+                'candidate_score',
             ]
     },
     {
@@ -91,7 +91,7 @@ tasks = [
         'test': 'data/ita/nil/test.pickle',
         'sampling': 'undersample',
         'features':  [
-                'score',
+                'candidate_score',
                 'levenshtein'
             ]
     },
@@ -101,7 +101,7 @@ tasks = [
         'test': 'data/ita/nil/test.pickle',
         'sampling': 'undersample',
         'features':  [
-                'score',
+                'candidate_score',
                 'jaccard'
             ]
     },
@@ -111,19 +111,9 @@ tasks = [
         'test': 'data/ita/nil/test.pickle',
         'sampling': 'undersample',
         'features':  [
-                'score',
+                'candidate_score',
                 'levenshtein',
                 'jaccard'
-            ]
-    },
-    {
-        'name': 'aida_under_all_max',
-        'train': ['AIDA-YAGO2_train_ner'],
-        'test': ['AIDA-YAGO2_testa_ner', 'AIDA-YAGO2_testb_ner'],
-        'sampling': 'undersample',
-        'features':  [
-                'cross_stats_10_max',
-                'bi_stats_10_max',
             ]
     },
 ]
@@ -156,7 +146,7 @@ for task in tasks:
         print('skipping yeah....')
         continue
 
-    y_whom = 'y_cross'
+    y_whom = 'y'
     if 'y' in task:
         y_whom = task['y']
 
@@ -225,19 +215,9 @@ for task in tasks:
     test_df['y_pred_round'] = y_pred_round
     test_df['y_pred'] = y_pred
 
-    bi_baseline = test_df.query('bi_labels == bi_best_candidate or Wikipedia_title == bi_best_candidate_title').shape[0]
-    cross_baseline = test_df.query('cross_labels == cross_best_candidate or Wikipedia_title == cross_best_candidate_title').shape[0]
+    baseline = test_df.query('y == 1').shape[0]
 
-    bi_acc = test_df.query('(y_pred_round == 1 and (bi_labels == bi_best_candidate or Wikipedia_title == bi_best_candidate_title)) or (bi_labels == -1 and y_pred_round == 0)').shape[0]
-    cross_acc = test_df.query('(y_pred_round == 1 and (cross_labels == cross_best_candidate or Wikipedia_title == cross_best_candidate_title)) or (cross_labels == -1 and y_pred_round == 0)').shape[0]
-
-    bi_acc_correcting_nel = test_df.query(
-        '(y_pred_round == 1 and (bi_labels == bi_best_candidate or Wikipedia_title == bi_best_candidate_title))'
-        ' or (bi_labels != bi_best_candidate and y_pred_round == 0)').shape[0]
-    cross_acc_correcting_nel = test_df.query(
-        '(y_pred_round == 1 and '
-        '(cross_labels == cross_best_candidate or Wikipedia_title == cross_best_candidate_title))'
-        ' or (cross_labels != cross_best_candidate and y_pred_round == 0)').shape[0]
+    acc = test_df.query('y_pred_round == 1 and y == 1').shape[0]
 
     _classification_report = classification_report(y_test, y_pred_round)
 
@@ -257,8 +237,7 @@ for task in tasks:
 
     test_df_oracle = test_df.query(f'y_pred <= {tl} or y_pred >= {th}')
 
-    bi_acc_oracle = test_df_oracle.query('(y_pred_round == 1 and (bi_labels == bi_best_candidate or Wikipedia_title == bi_best_candidate_title)) or (bi_labels == -1 and y_pred_round == 0)').shape[0]
-    cross_acc_oracle = test_df_oracle.query('(y_pred_round == 1 and (cross_labels == cross_best_candidate or Wikipedia_title == cross_best_candidate_title)) or (cross_labels == -1 and y_pred_round == 0)').shape[0]
+    acc_oracle = test_df_oracle.query('y_pred_round == 1 and y == 1').shape[0]
 
     _f1_0 = f1_score(y_test, y_pred_round, pos_label=0)
     _f1_1 = f1_score(y_test, y_pred_round, pos_label=1)
@@ -272,20 +251,14 @@ for task in tasks:
 
     csv_report = csv_report.append({
         'name': task['name'],
-        'bi_baseline': bi_baseline / test_df_shape_actual,
-        'cross_baseline': cross_baseline / test_df_shape_actual,
-        'bi_acc': bi_acc / test_df_shape_actual,
-        'cross_acc': cross_acc / test_df_shape_actual,
-        'bi_acc_adjusted': bi_acc / test_df_shape_original,
-        'cross_acc_adjusted': cross_acc / test_df_shape_original,
-        'bi_acc_correcting_nel': bi_acc_correcting_nel / test_df_shape_actual,
-        'cross_acc_correcting_nel': cross_acc_correcting_nel / test_df_shape_actual,
+        'baseline': baseline / test_df_shape_actual,
+        'acc': acc / test_df_shape_actual,
+        'acc_adjusted': acc / test_df_shape_original,
         '0-f1': _f1_0,
         '1-f1': _f1_1,
         'macro-avg-f1': _macro_avg_f1,
         'oracle_ratio': 1 - (oracle_df.shape[0] / oracle_original_shape),
-        'bi_acc_oracle': bi_acc_oracle / test_df_oracle.shape[0],
-        'cross_acc_oracle': cross_acc_oracle / test_df_oracle.shape[0],
+        'acc_oracle': acc_oracle / test_df_oracle.shape[0],
         '0-f1-oracle': _f1_0_oracle,
         '1-f1-oracle': _f1_1_oracle,
         'macro-avg-f1-oracle': _macro_avg_f1_oracle,
@@ -294,19 +267,15 @@ for task in tasks:
     print(_classification_report)
 
     print('-- Performances over test set:', task['test'], '--')
-    print('Bi baseline:', bi_baseline / test_df_shape_actual)
-    print('Cross baseline:', cross_baseline / test_df_shape_actual)
-    print('Bi acc:', bi_acc / test_df_shape_actual)
-    print('Cross acc:', cross_acc / test_df_shape_actual)
-    print('Bi acc adjusted:', bi_acc / test_df_shape_original)
-    print('Cross acc adjusted:', cross_acc / test_df_shape_original)
+    print('baseline:', baseline / test_df_shape_actual)
+    print('acc:', acc / test_df_shape_actual)
+    print('acc adjusted:', acc / test_df_shape_original)
 
     print(f'-- Oracle HITL evaluation when y_pred in [{tl}, {th}]')
     print('Ratio to human validator:', 1 - (oracle_df.shape[0] / oracle_original_shape))
     print(_classification_report_oracle)
 
-    print('Bi acc oracle:', bi_acc_oracle / test_df_oracle.shape[0])
-    print('Cross acc oracle:', cross_acc_oracle / test_df_oracle.shape[0])
+    print('acc oracle:', acc_oracle / test_df_oracle.shape[0])
 
 
     with open(os.path.join(outpath, task['name']+'_report.txt'), 'w') as fd:
@@ -315,18 +284,14 @@ for task in tasks:
         print(_classification_report, file=fd)
 
         print('-- Performances over test set:', task['test'], '--', file=fd)
-        print('Bi baseline:', bi_baseline / test_df_shape_actual, file=fd)
-        print('Cross baseline:', cross_baseline / test_df_shape_actual, file=fd)
-        print('Bi acc:', bi_acc / test_df_shape_actual, file=fd)
-        print('Cross acc:', cross_acc / test_df_shape_actual, file=fd)
-        print('Bi acc adjusted:', bi_acc / test_df_shape_original, file=fd)
-        print('Cross acc adjusted:', cross_acc / test_df_shape_original, file=fd)
+        print('baseline:', baseline / test_df_shape_actual, file=fd)
+        print('acc:', acc / test_df_shape_actual, file=fd)
+        print('acc adjusted:', acc / test_df_shape_original, file=fd)
 
         print(f'-- Oracle HITL evaluation when y_pred in [{tl}, {th}]', file=fd)
         print('Ratio to human validator:', oracle_df.shape[0] / oracle_original_shape, file=fd)
         print(_classification_report_oracle, file=fd)
-        print('Bi acc oracle:', bi_acc_oracle / test_df_oracle.shape[0], file=fd)
-        print('Cross acc oracle:', cross_acc_oracle / test_df_oracle.shape[0], file=fd)
+        print('acc oracle:', acc_oracle / test_df_oracle.shape[0], file=fd)
 
 
 
