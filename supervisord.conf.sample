@@ -1,0 +1,53 @@
+[supervisord]
+logfile = /tmp/supervisord.log
+logfile_maxbytes = 5MB
+logfile_backups=10
+loglevel = info
+pidfile = /tmp/supervisord.pid
+nodaemon = true
+minfds = 1024
+minprocs = 200
+umask = 022
+user = user
+identifier = supervisor
+directory = /path/to/your/cwd
+nocleanup = true
+childlogdir = /tmp
+strip_ansi = false
+environment = PYTHONPATH="/path/to/BLINK"
+
+[unix_http_server]
+file = /tmp/supervisor.sock
+chmod = 0777
+chown= user:user
+username = user
+password = secret
+
+[rpcinterface:supervisor]
+supervisor.rpcinterface_factory = supervisor.rpcinterface:make_main_rpcinterface
+
+[supervisorctl]
+serverurl = unix:///tmp/supervisor.sock
+username = user
+password = secret
+prompt = kbp
+
+[program:biencoder]
+command=python -m microservices.biencoder --host 127.0.0.1 --port 30300 --biencoder_model models/ita/wiki/biencoder/epoch_3/pytorch_model.bin --biencoder_config models/ita/wiki/biencoder/epoch_3/config.json
+
+[program:indexer]
+command=python -m microservices.indexer --host 127.0.0.1 --port 30301 --index hnsw:models/hnsw-ita-50k-index.pkl:6:rw --postgres 'postgres://postgres:Shie9cai9aerahchasio7yiigaekae8aeTiup1quaetheeghaicheizad3miesha@localhost:25432/postgres' --vector-size 768 --language it
+
+; actually crossencoder does not work for kbp
+;[program:crossencoder]
+;command=python -m microservices.crossencoder --host 127.0.0.1 --port 30302 --crossencoder_model models/crossencoder_wiki_large.bin --crossencoder_config models/crossencoder_wiki_large.json --postgres 'postgres://postgres:Shie9cai9aerahchasio7yiigaekae8aeTiup1quaetheeghaicheizad3miesha@localhost:25432/postgres'
+
+[program:nilpredictor]
+command=python -m microservices.nilpredictor --host 127.0.0.1 --port 30303 --nil-bi-model output/feature_ablation_study_ita/max_leve_model.pickle --nil-bi-features 'max_bi,levenshtein'
+
+[program:spacyner]
+command=python -m microservices.spacyner --host 127.0.0.1 --port 30304 --model it_core_news_sm
+
+[program:entityclustering]
+environment=PYTHONPATH=/path/to/EntityClustering
+command=python -m microservices.nilcluster --host 127.0.0.1 --port 30305

@@ -29,3 +29,4 @@ tabulate
 addict
 uvicorn
 fastapi
+supervisor
