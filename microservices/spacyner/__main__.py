@@ -4,6 +4,7 @@ from pydantic import BaseModel
 import uvicorn
 from typing import Union, List
 import spacy
+import sys
 
 class Item(BaseModel):
     text: Union[List[str], str]
@@ -63,7 +64,14 @@ if __name__ == '__main__':
 
     print('Loading spacy model...')
     # Load spacy model
-    nlp = spacy.load(args.model, exclude=['tok2vec', 'morphologizer', 'tagger', 'parser', 'attribute_ruler', 'lemmatizer'])
+    try:
+        nlp = spacy.load(args.model, exclude=['tok2vec', 'morphologizer', 'tagger', 'parser', 'attribute_ruler', 'lemmatizer'])
+    except Exception as e:
+        print('ERROR.')
+        print(e)
+        if "Can't find model" in str(e):
+            print('Maybe you did not download the model. To download it run ```python -m spacy download $MODEL```.')
+        sys.exit(1)
     nlp.enable_pipe('senter')
     print('Loading complete.')
 
