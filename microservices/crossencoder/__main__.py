@@ -67,6 +67,7 @@ class Candidate(BaseModel):
     indexer: int
     score: Optional[float]
     bi_score: Optional[float]
+    is_cross: Optional[bool]
 
 class Item(BaseModel):
     samples: List[Mention]
@@ -123,6 +124,7 @@ async def run(item: Item):
             assert _cand.id == _nn[0]
             assert _cand.indexer == _nn[1]
             _cand.score = float(_score)
+            _cand.is_cross = True
 
         _candidates.sort(key=lambda x: x.score, reverse=True)
 
