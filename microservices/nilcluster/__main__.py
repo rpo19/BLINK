@@ -2,7 +2,7 @@ import argparse
 from fastapi import FastAPI
 from pydantic import BaseModel
 import uvicorn
-from typing import List
+from typing import List, Optional
 from sklearn.cluster import DBSCAN, AgglomerativeClustering
 from fastDamerauLevenshtein import damerauLevenshtein
 from scipy.spatial.distance import cdist
@@ -31,7 +31,8 @@ def dam_lev_metric(x, y):
 
 class Item(BaseModel):
     mentions: List[str]
-    embeddings: List[str]
+    embeddings: Optional[List[str]]
+    encodings: Optional[List[str]]
 
 app = FastAPI()
 
@@ -39,6 +40,10 @@ app = FastAPI()
 async def cluster_mention(item: Item):
     total_clusters = []
     current_mentions = item.mentions
+    if not item.embeddings:
+        item.embeddings = item.encodings
+    elif not item.encodings and not item.embeddings:
+        raise Exception('Either "embeddings" or "encodings" field is required.')
     current_encodings = [vector_decode(e) for e in item.embeddings]
     
     if len(current_mentions) == 1:
