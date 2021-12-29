@@ -26,7 +26,18 @@ async def encode_mention(item: Item):
     for i, sentence in enumerate(input_sentences):
         doc, sentence = process_sent(sentence)
 
-        sentences.append(sentence)
+        if hasattr(doc, 'start_char') and hasattr(doc, 'end_char'):
+            sentences.append({
+                    'start_pos': doc.start_char,
+                    'text': sentence,
+                    'end_pos': doc.end_char
+                })
+        else:
+            sentences.append({
+                    'start_pos': 0,
+                    'text': sentence,
+                    'end_pos': len(sentence)
+                })
 
         for ent in doc.ents:
             sample = {
@@ -65,7 +76,7 @@ if __name__ == '__main__':
     print('Loading spacy model...')
     # Load spacy model
     try:
-        nlp = spacy.load(args.model, exclude=['tok2vec', 'morphologizer', 'tagger', 'parser', 'attribute_ruler', 'lemmatizer'])
+        nlp = spacy.load(args.model, exclude=['tok2vec', 'morphologizer', 'tagger', 'parser', 'attribute_ruler', 'lemmatizer', 'ner'])
     except Exception as e:
         print('ERROR.')
         print(e)
@@ -73,6 +84,7 @@ if __name__ == '__main__':
             print('Maybe you did not download the model. To download it run ```python -m spacy download $MODEL```.')
         sys.exit(1)
     nlp.enable_pipe('senter')
+    
     print('Loading complete.')
 
     uvicorn.run(app, host = args.host, port = args.port)
