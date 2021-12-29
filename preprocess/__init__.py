@@ -122,9 +122,9 @@ def add_space(match, text, new_span):
     # check here because previous preprocessing could have been applied
     actual = text[new_span[0]:new_span[1]].strip()
     if actual == '(':
-        return "( ", None, None
+        return ' ( ', None, None
     elif actual == ')':
-        return " )", None, None
+        return ' ) ', None, None
     elif actual == '"':
         return ' " ', None, None
     else:
