@@ -114,7 +114,7 @@ def quotation_marks(match, text, new_span):
 def newlines(match, text, new_span):
     # check here because previous preprocessing could have been applied
     if re.match('^[\n\s]*\n[\n\s]*$', text[new_span[0]:new_span[1]]):
-        return '\n', None, None
+        return ' \n ', None, None
     else:
         return None, None, None
     
