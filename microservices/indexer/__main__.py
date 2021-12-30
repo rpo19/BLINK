@@ -45,7 +45,11 @@ async def search(input_: Input):
         all_candidates_4_sample_n.append([])
     for index in indexes:
         indexer = index['indexer']
-        scores, candidates = indexer.search_knn(encodings, top_k)
+        if indexer.index.ntotal == 0:
+            scores = np.zeros((encodings.shape[0], top_k))
+            candidates = -np.ones((encodings.shape[0], top_k)).astype(int)
+        else:
+            scores, candidates = indexer.search_knn(encodings, top_k)
         n = 0
         candidate_ids = set([id for cs in candidates for id in cs])
         with dbconnection.cursor() as cur:
