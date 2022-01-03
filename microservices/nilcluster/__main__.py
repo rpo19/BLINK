@@ -45,56 +45,56 @@ async def cluster_mention(item: Item):
     elif not item.encodings and not item.embeddings:
         raise Exception('Either "embeddings" or "encodings" field is required.')
     current_encodings = [vector_decode(e) for e in item.embeddings]
-    
+
     if len(current_mentions) == 1:
         cluster_numbers = np.zeros(1, dtype=np.int8)
     else:
         X = np.array(current_mentions).reshape(-1, 1)
         m_matrix = cdist(X, X, metric=dam_lev_metric)
-        
+
         # clusterizator1 = DBSCAN(metric=dam_lev_metric, eps=1, min_samples=0, n_jobs=-1)
         clusterizator1 = AgglomerativeClustering(n_clusters=None, affinity='precomputed', #
                                                  distance_threshold=0.2,
                                                  linkage="single")
-        
+
         cluster_numbers = clusterizator1.fit_predict(m_matrix)
 
     #Creo e vado a riempire un dizionario con chiave il numero del cluster e le menzioni all'interno del cluster, le entita corrispondenti
     #e l'encoding corrispondente ad: {0 : {entities: 'Milano', 'Milano', mentions: 'Milan', 'Milano', encodings:[[343][443]}}
     cee_dict = {k: {'mentions_id': [], 'mentions': [], 'encodings': [], 'sotto_clusters': None} for k in
                 set(cluster_numbers)}
-    
+
     for i, cluster in enumerate(cluster_numbers):
         cee_dict[cluster]['mentions_id'].append(i)
         cee_dict[cluster]['mentions'].append(current_mentions[i])
         cee_dict[cluster]['encodings'].append(current_encodings[i])
 
-    #STEP 2 - CLUSTERIZZAZIONE SEMANTICA - anche in questo caso agglomerativo: vado a raggruppare all'interno di ogni cluster, 
+    #STEP 2 - CLUSTERIZZAZIONE SEMANTICA - anche in questo caso agglomerativo: vado a raggruppare all'interno di ogni cluster,
     #creato nella fase precedente, gli elementi sulla base del loro encoding che tiene conto della semantica(BERT-encoding)
-    
+
     #aggiungo l'appartenenza di questo clustering al campo 'sottocluster' il quale e' un array con i sotto_cluster di appartenenza
     #cee_list e' un array dove ogni elemento e' {entities: 'Milano', 'Milano', mentions: 'Milan', 'Milano', encodings:[[343][443]}
     cee_list = cee_dict.values()
-    
+
     clusterizator2 = AgglomerativeClustering(n_clusters=None, affinity='cosine', distance_threshold=0.036,
                                              linkage="single")
-    
+
     #ciclo sopra il numero del cluster 0 , 1 , 2 .. dipende quanti cluster ho trovato e salvato in cee_dict
     for cluster in cee_dict.keys():
         try:
             cee_dict[cluster]['sotto_clusters'] = clusterizator2.fit_predict(cee_dict[cluster]['encodings'])
-            
+
         except ValueError:
             cee_dict[cluster]['sotto_clusters'] = np.zeros(1, dtype=np.int8)
-    
-    
+
+
     sottocluster_list = []
     #adesso cee_list e' sempre l'array in cui ogni elemento e' ogni cluster con entita'-menzioni- ma anche il campo sottocluster
     #ciclo sopra questo array: OGNI CELLA e' UN CLUSTER entities: 'Milano', 'Milano', mentions: 'Milan', 'Milano', encodings:[[343][443], sottocluster: [0,0]}
     for el in cee_list:
         #creo un dizionario ad ogni cluster con k il numero del sottocluster i esimo
         sotto_cluster = {k: Cluster() for k in set(el['sotto_clusters'])}
-        
+
         for i, key in enumerate(el['sotto_clusters']):
             #in sottocluster i-esimo (key) quindi ad esempio sottocluster  0 aggiungo come valore l'entita' menzione e encoding
             #corrispondente ( un po' come il lavoro fatto prima ma ora per ogni sottocluster)
@@ -103,13 +103,13 @@ async def cluster_mention(item: Item):
         #append alla liste sottocluster_list questo dizionario(1 dizionario per ogni cluster in cui all'interno abbiamo
         #il numero di sottocluster con le sue menzioni-entita'-encoding)
         sottocluster_list.append(sotto_cluster)
-    
+
     sottocluster_list = [clusters_dict[key] for clusters_dict in sottocluster_list for key in clusters_dict]
-    
+
     current_clusters = total_clusters + sottocluster_list
     #"FORSE" calcolo il centroide in ogni sottocluster
     sotto_encodings = [x.encodings_mean() for x in current_clusters]
-    
+
     #STEP 3 - CLUSTERIZZAZIONE TRA I SOTTOCLUSTER SULLA BASE DEL CENTROIDE - UTILE PER I SINONIMI
     if len(sotto_encodings) == 1:
         cluster_numbers = np.zeros(1, dtype=np.int8)
@@ -145,6 +145,10 @@ async def cluster_mention(item: Item):
     for i in sorted(to_remove_cluster, reverse=True):
         del total_clusters[i]
     total_clusters = total_clusters + broken_cluster
+
+    # getting centers
+    for c in total_clusters:
+        c.get_center()
 
     return total_clusters
 
