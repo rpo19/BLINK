@@ -30,6 +30,7 @@ def dam_lev_metric(x, y):
         return damerauLevenshtein(i.lower(), j.lower(), similarity=False)
 
 class Item(BaseModel):
+    ids: Optional[List[int]]
     mentions: List[str]
     embeddings: Optional[List[str]]
     encodings: Optional[List[str]]
@@ -40,6 +41,10 @@ app = FastAPI()
 async def cluster_mention(item: Item):
     total_clusters = []
     current_mentions = item.mentions
+    if item.ids is not None:
+        ids = item.ids
+    else:
+        ids = list(range(len(current_mentions)))
     if not item.embeddings:
         item.embeddings = item.encodings
     elif not item.encodings and not item.embeddings:
@@ -65,7 +70,7 @@ async def cluster_mention(item: Item):
                 set(cluster_numbers)}
 
     for i, cluster in enumerate(cluster_numbers):
-        cee_dict[cluster]['mentions_id'].append(i)
+        cee_dict[cluster]['mentions_id'].append(ids[i])
         cee_dict[cluster]['mentions'].append(current_mentions[i])
         cee_dict[cluster]['encodings'].append(current_encodings[i])
 
