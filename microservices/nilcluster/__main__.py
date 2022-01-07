@@ -37,50 +37,6 @@ class Item(BaseModel):
 
 app = FastAPI()
 
-@app.post('/api/nilcluster2')
-async def cluster_mention2(item: Item):
-    total_clusters = []
-    current_mentions = item.mentions
-    if item.ids is not None:
-        ids = item.ids
-    else:
-        ids = list(range(len(current_mentions)))
-    if not item.embeddings:
-        item.embeddings = item.encodings
-    elif not item.encodings and not item.embeddings:
-        raise Exception('Either "embeddings" or "encodings" field is required.')
-    current_encodings = [vector_decode(e) for e in item.embeddings]
-
-    if len(current_mentions) == 1:
-        cluster_numbers = np.zeros(1, dtype=np.int8)
-    else:
-        X = np.array(current_encodings).reshape(-1, 1)
-        m_matrix = cdist(X, X, metric=np.dot)
-
-        # clusterizator1 = DBSCAN(metric=dam_lev_metric, eps=1, min_samples=0, n_jobs=-1)
-        clusterizator1 = AgglomerativeClustering(n_clusters=None, affinity='precomputed', #
-                                                 distance_threshold=0.2,
-                                                 linkage="single")
-
-        cluster_numbers = clusterizator1.fit_predict(m_matrix)
-
-    #Creo e vado a riempire un dizionario con chiave il numero del cluster e le menzioni all'interno del cluster, le entita corrispondenti
-    #e l'encoding corrispondente ad: {0 : {entities: 'Milano', 'Milano', mentions: 'Milan', 'Milano', encodings:[[343][443]}}
-
-    cee = [Cluster() for _ in set(cluster_numbers)]
-
-    for i, cluster in enumerate(cluster_numbers):
-        cee[cluster].add_element(current_mentions[i], 'entity', current_encodings[i], ids[i])
-
-    total_clusters = cee
-
-    # getting centers
-    for c in total_clusters:
-        c.get_center()
-
-    return total_clusters
-
-
 @app.post('/api/nilcluster')
 async def cluster_mention(item: Item):
     total_clusters = []
@@ -164,7 +120,8 @@ async def cluster_mention(item: Item):
         cluster_numbers = np.zeros(1, dtype=np.int8)
     else:
         clusterizator3 = AgglomerativeClustering(n_clusters=None, affinity='cosine',
-                                                 distance_threshold=0.0155,
+                                                 #distance_threshold=0.0155,
+                                                 distance_threshold=0.1
                                                  linkage="single")
         cluster_numbers = clusterizator3.fit_predict(sotto_encodings)
     final_clusters = {k: Cluster() for k in set(cluster_numbers)}
