@@ -4,7 +4,7 @@ from pydantic import BaseModel
 import uvicorn
 from blink.main_dense import load_biencoder, _process_biencoder_dataloader
 from blink.biencoder.eval_biencoder import get_candidate_pool_tensor
-from typing import List
+from typing import List, Optional
 import json
 from tqdm import tqdm
 import torch
@@ -23,14 +23,14 @@ def vector_decode(s, dtype=np.float32):
     return v
 
 class Mention(BaseModel):
-    label:str
-    label_id:int
+    label: Optional[str]
+    label_id: Optional[int]
     context_left: str
     context_right:str
     mention: str
-    start_pos:int
-    end_pos: int
-    sent_idx:int
+    start_pos: Optional[int]
+    end_pos: Optional[int]
+    sent_idx: Optional[int]
 
 class Entity(BaseModel):
     title: str
