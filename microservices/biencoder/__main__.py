@@ -23,8 +23,8 @@ def vector_decode(s, dtype=np.float32):
     return v
 
 class Mention(BaseModel):
-    label: Optional[str]
-    label_id: Optional[int]
+    label = 'unknown'
+    label_id = -1
     context_left: str
     context_right:str
     mention: str
