@@ -55,7 +55,7 @@ async def search(input_: Input):
         with dbconnection.cursor() as cur:
             cur.execute("""
                 SELECT
-                    id, title, wikipedia_id, embedding
+                    id, title, wikipedia_id, type_, embedding
                 FROM
                     entities
                 WHERE
@@ -75,7 +75,7 @@ async def search(input_: Input):
                     break
                 # # compute dot product always (and normalized dot product)
 
-                title, wikipedia_id, embedding = id2info[_cand]
+                title, wikipedia_id, type_, embedding = id2info[_cand]
 
                 embedding = vector_decode(embedding)
                 _score = np.inner(_enc, embedding)
@@ -91,6 +91,7 @@ async def search(input_: Input):
                         'wikipedia_id': wikipedia_id,
                         'title': title,
                         'url': id2url(wikipedia_id),
+                        'type_': type_,
                         'indexer': index['indexid'],
                         'score': float(_score),
                         'norm_score': float(_norm_score)
@@ -106,6 +107,7 @@ class Item(BaseModel):
     wikipedia_id: Optional[int]
     title: str
     descr: Optional[str]
+    type_: Optional[str]
 
 @app.post('/api/indexer/add')
 async def add(items: List[Item]):
@@ -134,10 +136,10 @@ async def add(items: List[Item]):
 
     # add to postgres
     with dbconnection.cursor() as cursor:
-        with cursor.copy("COPY entities (id, indexer, wikipedia_id, title, descr, embedding) FROM STDIN") as copy:
+        with cursor.copy("COPY entities (id, indexer, wikipedia_id, title, descr, type_, embedding) FROM STDIN") as copy:
             for id, item in zip(ids, items):
                 wikipedia_id = -1 if item.wikipedia_id is None else item.wikipedia_id
-                copy.write_row((id, indexid, wikipedia_id, item.title, item.descr, item.encoding))
+                copy.write_row((id, indexid, wikipedia_id, item.title, item.descr, item.type_, item.encoding))
     dbconnection.commit()
 
     return {
