@@ -19,13 +19,46 @@ def vector_decode(s, dtype=np.float32):
     v = np.frombuffer(buffer, dtype=dtype)
     return v
 
+def jacc_metric(x, y):
+    x = set(x.lower().split())
+    y = set(y.lower().split())
+
+    intersection = len(x & y)
+    union = len(x | y)
+
+    jaccard_index = intersection / union
+
+    jaccard_distance = 1 - jaccard_index
+
+    return jaccard_distance
+
+def jacc_lev_metric(x, y):
+    x = set(x.lower().split())
+    y = set(y.lower().split())
+
+    intersection = 0
+
+    for wx in x:
+        for wy in y:
+            normalized_lev_sim = 1 - dam_lev_metric(wx, wy) / max(len(wx), len(wy))
+            intersection += normalized_lev_sim
+
+    union = len(x) + len(y)
+
+    jaccard_index = intersection / union
+
+    jaccard_distance = 1 - jaccard_index
+
+    return jaccard_distance
+
+
 def dam_lev_metric(x, y):
     i, j = x[0], y[0]
     if len(i) < 4 or len(j) < 4:
         if i == j:
             return 0
         else:
-                return damerauLevenshtein(i.lower(), j.lower(), similarity = False) + 3
+            return damerauLevenshtein(i.lower(), j.lower(), similarity = False) + 3
     else:
         return damerauLevenshtein(i.lower(), j.lower(), similarity=False)
 
