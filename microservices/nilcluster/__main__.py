@@ -154,7 +154,7 @@ async def cluster_mention(item: Item):
     else:
         clusterizator3 = AgglomerativeClustering(n_clusters=None, affinity='cosine',
                                                  #distance_threshold=0.0155,
-                                                 distance_threshold=0.1
+                                                 distance_threshold=0.05,
                                                  linkage="single")
         cluster_numbers = clusterizator3.fit_predict(sotto_encodings)
     final_clusters = {k: Cluster() for k in set(cluster_numbers)}
