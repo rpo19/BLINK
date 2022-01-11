@@ -680,7 +680,8 @@ class EntityMention:
 
         attrs = {}
         for e in entities:
-            attrs = attrs | e.attrs
+            # same key on right overwrites key on left: keeping the first
+            attrs = {**e.attrs, **attrs}
 
         entity_group = EntityMention(
             doc_id=doc_id,
