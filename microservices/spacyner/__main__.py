@@ -38,24 +38,29 @@ async def encode_mention(item: Item):
         doc, sentence = process_sent(sentence)
 
         if hasattr(doc, 'start_char') and hasattr(doc, 'end_char'):
-            start_pos_original, end_pos_original = preprocess.mapSpan((doc.start_char, doc.end_char), _mapping_back)
+            sent_start_pos = doc.start_char
+            sent_end_pos = doc.end_char
+            sent_start_pos_original, sent_end_pos_original = preprocess.mapSpan((sent_start_pos, sent_end_pos), _mapping_back)
             sentences.append({
                     'text': sentence,
-                    'start_pos': doc.start_char,
-                    'end_pos': doc.end_char,
-                    'start_pos_original': start_pos_original,
-                    'end_pos_original': end_pos_original
+                    'start_pos': sent_start_pos,
+                    'end_pos': sent_end_pos,
+                    'start_pos_original': sent_start_pos_original,
+                    'end_pos_original': sent_end_pos_original
                 })
         else:
-            start_pos_original, end_pos_original = preprocess.mapSpan((0, len(sentence)), _mapping_back)
+            sent_start_pos = 0
+            sent_end_pos = len(sentence)
+            sent_start_pos_original, sent_end_pos_original = preprocess.mapSpan((sent_start_pos, sent_end_pos), _mapping_back)
             sentences.append({
-                    'start_pos': 0,
+                    'start_pos': sent_start_pos,
                     'text': sentence,
-                    'end_pos': len(sentence),
-                    'start_pos_original': start_pos_original,
-                    'end_pos_original': end_pos_original
+                    'end_pos': sent_end_pos,
+                    'start_pos_original': sent_start_pos_original,
+                    'end_pos_original': sent_end_pos_original
                 })
 
+        # spacy ents # pos are already ok
         for ent in doc.ents:
             start_pos_original, end_pos_original = preprocess.mapSpan((ent.start_char, ent.end_char), _mapping_back)
             sample = {
@@ -86,10 +91,11 @@ async def encode_mention(item: Item):
                     'context_left': sentence[:ent.begin],
                     'context_right': sentence[ent.end:],
                     'mention': ent.text,
-                    'start_pos': ent.begin,
-                    'end_pos': ent.end,
-                    'start_pos_original': start_pos_original,
-                    'end_pos_original': end_pos_original,
+                    # tint pos starts from the beginning of the sentence: to fix
+                    'start_pos': sent_start_pos + ent.begin,
+                    'end_pos': sent_start_pos + ent.end,
+                    'start_pos_original': sent_start_pos_original + start_pos_original,
+                    'end_pos_original': sent_start_pos_original + end_pos_original,
                     'sent_idx': i,
                     'ner_type': ent.type_,
                     'normalized_date': ent.attrs['normalized_date']
@@ -172,7 +178,7 @@ if __name__ == '__main__':
             print('Maybe you did not download the model. To download it run ```python -m spacy download $MODEL```.')
         sys.exit(1)
     nlp.enable_pipe('senter')
-    
+
     print('Loading complete.')
 
     uvicorn.run(app, host = args.host, port = args.port)
