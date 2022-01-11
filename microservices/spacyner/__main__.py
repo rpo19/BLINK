@@ -96,8 +96,8 @@ async def encode_mention(item: Item):
                     # tint pos starts from the beginning of the sentence: to fix
                     'start_pos': start_pos,
                     'end_pos': end_pos,
-                    'start_pos_original': sent_start_pos_original + start_pos_original,
-                    'end_pos_original': sent_start_pos_original + end_pos_original,
+                    'start_pos_original': start_pos_original,
+                    'end_pos_original': end_pos_original,
                     'sent_idx': i,
                     'ner_type': ent.type_,
                     'normalized_date': ent.attrs['normalized_date']
