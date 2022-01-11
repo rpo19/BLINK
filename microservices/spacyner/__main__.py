@@ -84,7 +84,9 @@ async def encode_mention(item: Item):
         for ent in res_tint:
             if ent.type_ == 'DATE':
                 # only dates
-                start_pos_original, end_pos_original = preprocess.mapSpan((ent.begin, ent.end), _mapping_back)
+                start_pos = sent_start_pos + ent.begin
+                end_pos = sent_start_pos + ent.end
+                start_pos_original, end_pos_original = preprocess.mapSpan((start_pos, end_pos), _mapping_back)
                 sample = {
                     'label': 'unknown',
                     'label_id': -1,
@@ -92,8 +94,8 @@ async def encode_mention(item: Item):
                     'context_right': sentence[ent.end:],
                     'mention': ent.text,
                     # tint pos starts from the beginning of the sentence: to fix
-                    'start_pos': sent_start_pos + ent.begin,
-                    'end_pos': sent_start_pos + ent.end,
+                    'start_pos': start_pos,
+                    'end_pos': end_pos,
                     'start_pos_original': sent_start_pos_original + start_pos_original,
                     'end_pos_original': sent_start_pos_original + end_pos_original,
                     'sent_idx': i,
