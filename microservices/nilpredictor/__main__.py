@@ -53,7 +53,7 @@ async def run(input: List[Features]):
             index.append('max_bi')
 
         if features.max_cross:
-            data.append(features.max_coss)
+            data.append(features.max_cross)
             index.append('max_cross')
 
         # process features
