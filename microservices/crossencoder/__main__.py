@@ -51,14 +51,14 @@ class Id2Text(object):
         return descr
 
 class Mention(BaseModel):
-    label:str
-    label_id:int
+    label:Optional[str]
+    label_id:Optional[int]
     context_left: str
     context_right:str
     mention: str
-    start_pos:int
-    end_pos: int
-    sent_idx:int
+    start_pos:Optional[int]
+    end_pos: Optional[int]
+    sent_idx:Optional[int]
 
 class Candidate(BaseModel):
     id: int
