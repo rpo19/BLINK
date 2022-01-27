@@ -60,11 +60,11 @@ async def run(input: List[Features]):
         _jacc, _leve = process_text_similarities(
             mention=features.mention, title=features.title, jaccard=features.jaccard, levenshtein=features.levenshtein)
 
-        if _jacc:
+        if _jacc is not None:
             data.append(_jacc)
             index.append('jaccard')
 
-        if _leve:
+        if _leve is not None:
             data.append(_leve)
             index.append('levenshtein')
 
