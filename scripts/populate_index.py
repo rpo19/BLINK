@@ -56,7 +56,11 @@ def populate(args, data):
         with cursor.copy("COPY entities (id, indexer, wikipedia_id, title, descr, embedding) FROM STDIN") as copy:
             for id, (i, row) in tqdm(zip(ids, data.iterrows()), total=data.shape[0]):
                 wikipedia_id = -1 if row[args.id_key] is None else row[args.id_key]
-                copy.write_row((id, indexid, wikipedia_id, row[args.title_key], row[args.descr_key], row['encoding']))
+                title = row[args.title_key]
+                if len(title) > 100:
+                    print('Found big title:', i, title)
+                    title = title[:100]
+                copy.write_row((id, indexid, wikipedia_id, title, row[args.descr_key], row['encoding']))
     dbconnection.commit()
     print('Done.')
 
