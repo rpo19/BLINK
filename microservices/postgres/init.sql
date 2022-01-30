@@ -1,8 +1,9 @@
 CREATE TABLE IF NOT EXISTS entities (
     id INT NOT NULL,
     indexer INT NOT NULL,
-    wikipedia_id INT NOT NULL,
+    wikipedia_id INT,
     wikidata_qid INT,
+    redirects_to INT,
     title varchar(100) NOT NULL,
     descr TEXT,
     type_ varchar(20),

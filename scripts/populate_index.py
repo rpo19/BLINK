@@ -54,15 +54,16 @@ def populate(args, data):
     # add to postgres
     print('Populating db...')
     with dbconnection.cursor() as cursor:
-        with cursor.copy("COPY entities (id, indexer, wikipedia_id, title, descr, embedding, wikidata_qid) FROM STDIN") as copy:
+        with cursor.copy("COPY entities (id, indexer, wikipedia_id, title, descr, embedding, wikidata_qid, redirects_to) FROM STDIN") as copy:
             for id, (i, row) in tqdm(zip(ids, data.iterrows()), total=data.shape[0]):
-                wikipedia_id = -1 if row[args.id_key] is None else row[args.id_key]
-                wikidata_qid = -1 if row[args.qid_key] is None else row[args.qid_key]
+                wikipedia_id = -1 if row[args.id_key] is None or isnan(row[args.id_key]) else row[args.id_key]
+                wikidata_qid = -1 if row[args.qid_key] is None or isnan(row[args.qid_key]) else row[args.qid_key]
+                redirects_to = -1 if row[args.rd_key] is None or isnan(row[args.rd_key]) else row[args.rd_key]
                 title = row[args.title_key]
                 if len(title) > 100:
                     print('Found big title:', i, title)
                     title = title[:100]
-                copy.write_row((id, indexid, wikipedia_id, title, row[args.descr_key], row['encoding'], wikidata_qid))
+                copy.write_row((id, indexid, wikipedia_id, title, row[args.descr_key], row['encoding'], wikidata_qid, redirects_to))
     dbconnection.commit()
     print('Done.')
 
@@ -102,10 +103,7 @@ def main(args):
     data = data.drop_duplicates(subset=[args.id_key], keep='first')
 
     ## remove unneeded fields
-    if args.qid_key is not None:
-        data = data[[args.id_key, args.title_key, args.descr_key, args.qid_key]].copy()
-    else:
-        data = data[[args.id_key, args.title_key, args.descr_key]].copy()
+    data = data[[args.id_key, args.title_key, args.descr_key, args.qid_key, args.rd_key]].copy()
 
     # get encodings
     data['encoding'] = biencoder_get_encodings(args, data)
@@ -141,7 +139,11 @@ if __name__ == '__main__':
         # id
     )
     parser.add_argument(
-        "--qid-key", type=str, default=None, help='Wikidata QId key.', dest="qid_key"
+        "--qid-key", type=str, default='qid', help='Wikidata QId key.', dest="qid_key"
+        # id
+    )
+    parser.add_argument(
+        "--rd-key", type=str, default='rd_to', help='Redirect key.', dest="rd_key"
         # id
     )
     parser.add_argument(
