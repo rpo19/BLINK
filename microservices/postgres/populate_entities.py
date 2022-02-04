@@ -9,16 +9,10 @@ import psycopg
 import io
 from tqdm import tqdm
 import gzip
+import itertools
 
 max_title_len = 100
 chunksize = 500
-
-title2id = {}
-id2title = {}
-id2text = {}
-wikipedia_id2local_id = {}
-local_id2wikipedia_id = {}
-id2url = {}
 
 def vector_encode(v):
     s = base64.b64encode(v).decode()
@@ -29,96 +23,52 @@ def vector_decode(s, dtype=np.float32):
     v = np.frombuffer(buffer, dtype=dtype)
     return v
 
-def load_models(args):
-    local_idx = 0
+def ents_generator(args):
+    indexer = args.indexer
+
     if args.entity_catalogue.endswith('gz'):
         fin = gzip.open(args.entity_catalogue, "rt")
     else:
         fin = open(args.entity_catalogue, "r")
 
-    lines = fin.readlines()
-    fin.close()
+    for local_idx in itertools.count():
+        line = fin.readline()
+        # if line is empty
+        # end of file is reached
+        if not line:
+            break
 
-    for line in lines:
         entity = json.loads(line)
 
-        if "idx" in entity:
-            split = entity["idx"].split("curid=")
-            if len(split) > 1:
-                wikipedia_id = int(split[-1].strip())
-            else:
-                wikipedia_id = entity["idx"].strip()
+        split = entity["idx"].split("curid=")
+        if len(split) > 1:
+            wikipedia_id = int(split[-1].strip())
+        else:
+            wikipedia_id = int(entity["idx"].strip())
 
-            assert wikipedia_id not in wikipedia_id2local_id
-            wikipedia_id2local_id[wikipedia_id] = local_idx
+        title = entity["title"]
+        title = title[:max_title_len]
+        text = entity["text"]
 
-        title2id[entity["title"]] = local_idx
-        id2title[local_idx] = entity["title"]
-        id2text[local_idx] = entity["text"]
-        local_idx += 1
+        yield local_idx, wikipedia_id, indexer, title, text
 
-    for k,v in wikipedia_id2local_id.items():
-        local_id2wikipedia_id[v] = k
+    fin.close()
 
-    id2url = {
-        v: "https://en.wikipedia.org/wiki?curid=%s" % k
-        for k, v in wikipedia_id2local_id.items()
-    }
-
+def load_models(args):
     return torch.load(args.entity_encoding)
 
 def populate(entity_encodings, connection, table_name):
     assert entity_encodings[0].numpy().dtype == 'float32'
 
-    global wikipedia_id2local_id
-    global id2url
-    global title2id
-    global id2title
-    global local_id2wikipedia_id
-    global id2text
-    del wikipedia_id2local_id
-    del id2url
-    del title2id
-
-    print('Loading into dataframe...')
-    df = pd.DataFrame(columns=['id', 'indexer', 'wikipedia_id', 'title', 'descr', 'embedding'])
-
-    df['id'] = pd.Series(id2title.keys(), dtype=int)
-    df['indexer'] = pd.Series([0] * len(id2title), dtype=int) # indexer = 0
-    df['title'] = pd.Series(id2title.values(), dtype=str)
-    del id2title
-
-    df['wikipedia_id'] = pd.Series(local_id2wikipedia_id.values(), dtype=int)
-    del local_id2wikipedia_id
-
-    df['descr'] = pd.Series(id2text.values(), dtype=str)
-    del id2text
-
-    # embedding are string encoded
-    df['embedding'] = pd.Series(map(lambda tensor: vector_encode(tensor.numpy()), entity_encodings), dtype=str)
-    del entity_encodings
-
-    print('Truncating titles to {} characters strings'.format(max_title_len))
-    df['title'] = df['title'].apply(lambda x: x[0:max_title_len])
-
-    print('Saving to postgres...')
-    print('Shape', df.shape)
+    total = entity_encodings.shape[0]
 
     with connection.cursor() as cursor:
         with cursor.copy("COPY {} (id, indexer, wikipedia_id, title, descr, embedding) FROM STDIN".format(table_name)) as copy:
-            max_i = df.shape[0]
-            for i, record in tqdm(df.iterrows(), total=df.shape[0]):
-                copy.write_row(tuple(record.values))
+            for (id, wikipedia_id, indexer, title, text), tensor in tqdm(zip(ents_generator(args), entity_encodings), total=total):
+                embedding = vector_encode(tensor.numpy())
+                copy.write_row((id, indexer, wikipedia_id, title, text, embedding))
     connection.commit()
-
-    #df.to_sql(table_name, engine, if_exists='append', method='multi', index=False, chunksize=chunksize)
     print('Done.')
-
-
-
-    # ...
-
-
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
@@ -149,11 +99,17 @@ if __name__ == '__main__':
         default=None,  # ALL WIKIPEDIA!
         help="Postgres table name.",
     )
+    parser.add_argument(
+        "--indexer",
+        dest="indexer",
+        type=int,
+        default=0,
+        help="Indexer id.",
+    )
 
     args = parser.parse_args()
 
     assert args.table_name is not None, 'Error: table-name is required!'
-
 
     connection = psycopg.connect(args.postgres)
 
