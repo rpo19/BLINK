@@ -8,6 +8,7 @@ import sys
 import psycopg
 import io
 from tqdm import tqdm
+import gzip
 
 max_title_len = 100
 chunksize = 500
@@ -30,25 +31,31 @@ def vector_decode(s, dtype=np.float32):
 
 def load_models(args):
     local_idx = 0
-    with open(args.entity_catalogue, "r") as fin:
-        lines = fin.readlines()
-        for line in lines:
-            entity = json.loads(line)
+    if args.entity_catalogue.endswith('gz'):
+        fin = gzip.open(args.entity_catalogue, "rt")
+    else:
+        fin = open(args.entity_catalogue, "r")
 
-            if "idx" in entity:
-                split = entity["idx"].split("curid=")
-                if len(split) > 1:
-                    wikipedia_id = int(split[-1].strip())
-                else:
-                    wikipedia_id = entity["idx"].strip()
+    lines = fin.readlines()
+    fin.close()
 
-                assert wikipedia_id not in wikipedia_id2local_id
-                wikipedia_id2local_id[wikipedia_id] = local_idx
+    for line in lines:
+        entity = json.loads(line)
 
-            title2id[entity["title"]] = local_idx
-            id2title[local_idx] = entity["title"]
-            id2text[local_idx] = entity["text"]
-            local_idx += 1
+        if "idx" in entity:
+            split = entity["idx"].split("curid=")
+            if len(split) > 1:
+                wikipedia_id = int(split[-1].strip())
+            else:
+                wikipedia_id = entity["idx"].strip()
+
+            assert wikipedia_id not in wikipedia_id2local_id
+            wikipedia_id2local_id[wikipedia_id] = local_idx
+
+        title2id[entity["title"]] = local_idx
+        id2title[local_idx] = entity["title"]
+        id2text[local_idx] = entity["text"]
+        local_idx += 1
 
     for k,v in wikipedia_id2local_id.items():
         local_id2wikipedia_id[v] = k
