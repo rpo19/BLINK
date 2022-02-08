@@ -2,6 +2,8 @@ from tqdm import trange
 import psycopg
 import argparse
 from annoy import AnnoyIndex
+import numpy as np
+import base64
 
 def vector_decode(s, dtype=np.float32):
     buffer = base64.b64decode(s)
