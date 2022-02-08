@@ -24,8 +24,8 @@ if [[ ! -f biencoder_wiki_large.json ]]; then
     wget http://dl.fbaipublicfiles.com/BLINK/biencoder_wiki_large.json
 fi
 
-if [[ ! -f entity.jsonl ]]; then
-    wget http://dl.fbaipublicfiles.com/BLINK/entity.jsonl
+if [[ ! -f entity.jsonl.gz ]]; then
+    curl http://dl.fbaipublicfiles.com/BLINK/entity.jsonl | gzip --best - > entity.jsonl.gz
 fi
 
 if [[ ! -f all_entities_large.t7 ]]; then
