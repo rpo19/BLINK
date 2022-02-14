@@ -18,6 +18,7 @@ class AnnoyWrapper:
     def __init__(self, annoyIndex):
         self._index = annoyIndex
         self.index = _Index(self._index.get_n_items())
+        self.index_type = 'annoy'
     def search_knn(self, encodings, top_k):
         candidates = []
         scores = []
@@ -94,12 +95,12 @@ async def search(input_: Input):
 
                 title, wikipedia_id, type_ = id2info[_cand]
 
-                if indexer.index_type == 'flat':
+                if index['index_type'] == 'flat':
                     embedding = indexer.index.reconstruct(_cand)
-                elif indexer.index_type == 'hnsw':
+                elif index['index_type'] == 'hnsw':
                     embedding = indexer.index.reconstruct(_cand)[:-1]
                     _score = np.inner(_enc, embedding)
-                elif indexer.index_type == 'annoy':
+                elif index['index_type'] == 'annoy':
                     embedding = indexer._index.get_item_vector(_cand)
                 else:
                     raise Exception('Should not happen.')
@@ -180,13 +181,16 @@ def load_models(args):
         if os.path.isfile(index_path):
             if index_type == "flat":
                 indexer = DenseFlatIndexer(1)
+                indexer.deserialize_from(index_path)
             elif index_type == "hnsw":
                 indexer = DenseHNSWFlatIndexer(1)
+                indexer.deserialize_from(index_path)
             elif index_type == 'annoy':
-                indexer = 
+                _annoy_idx = AnnoyIndex(args.vector_size, 'dot')
+                _annoy_idx.load(index_path)
+                indexer = AnnoyWrapper(_annoy_idx)
             else:
                 raise ValueError("Error! Unsupported indexer type! Choose from flat,hnsw.")
-            indexer.deserialize_from(index_path)
         else:
             if index_type == "flat":
                 indexer = DenseFlatIndexer(args.vector_size)
@@ -197,7 +201,8 @@ def load_models(args):
         indexes.append({
             'indexer': indexer,
             'indexid': int(indexid),
-            'path': index_path
+            'path': index_path,
+            'index_type': index_type
             })
 
         global rw_index
