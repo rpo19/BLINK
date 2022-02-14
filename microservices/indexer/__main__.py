@@ -9,6 +9,23 @@ from blink.indexer.faiss_indexer import DenseFlatIndexer, DenseHNSWFlatIndexer
 import json
 import psycopg
 import os
+from annoy import AnnoyIndex
+
+class _Index:
+    def __init__(self, n):
+        self.ntotal = n
+class AnnoyWrapper:
+    def __init__(self, annoyIndex):
+        self._index = annoyIndex
+        self.index = _Index(self._index.get_n_items())
+    def search_knn(self, encodings, top_k):
+        candidates = []
+        scores = []
+        for v in encodings:
+            _c, _s = self._index.get_nns_by_vector(v, top_k, include_distances=True)
+            candidates.append(_c)
+            scores.append(_s)
+        return scores, candidates
 
 def vector_encode(v):
     s = base64.b64encode(v).decode()
@@ -55,7 +72,7 @@ async def search(input_: Input):
         with dbconnection.cursor() as cur:
             cur.execute("""
                 SELECT
-                    id, title, wikipedia_id, type_, embedding
+                    id, title, wikipedia_id, type_
                 FROM
                     entities
                 WHERE
@@ -75,10 +92,18 @@ async def search(input_: Input):
                     break
                 # # compute dot product always (and normalized dot product)
 
-                title, wikipedia_id, type_, embedding = id2info[_cand]
+                title, wikipedia_id, type_ = id2info[_cand]
 
-                embedding = vector_decode(embedding)
-                _score = np.inner(_enc, embedding)
+                if indexer.index_type == 'flat':
+                    embedding = indexer.index.reconstruct(_cand)
+                elif indexer.index_type == 'hnsw':
+                    embedding = indexer.index.reconstruct(_cand)[:-1]
+                    _score = np.inner(_enc, embedding)
+                elif indexer.index_type == 'annoy':
+                    embedding = indexer._index.get_item_vector(_cand)
+                else:
+                    raise Exception('Should not happen.')
+
                 # normalized dot product
                 _enc_norm = np.linalg.norm(_enc)
                 _embedding_norm = np.linalg.norm(embedding)
@@ -157,6 +182,8 @@ def load_models(args):
                 indexer = DenseFlatIndexer(1)
             elif index_type == "hnsw":
                 indexer = DenseHNSWFlatIndexer(1)
+            elif index_type == 'annoy':
+                indexer = 
             else:
                 raise ValueError("Error! Unsupported indexer type! Choose from flat,hnsw.")
             indexer.deserialize_from(index_path)
@@ -164,7 +191,7 @@ def load_models(args):
             if index_type == "flat":
                 indexer = DenseFlatIndexer(args.vector_size)
             elif index_type == "hnsw":
-                indexer = DenseHNSWFlatIndexer(args.vector_size)
+                raise ValueError("Error! HNSW index File not Found! Cannot create a hnsw index from scratch.")
             else:
                 raise ValueError("Error! Unsupported indexer type! Choose from flat,hnsw.")
         indexes.append({
