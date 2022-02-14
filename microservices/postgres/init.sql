@@ -7,7 +7,6 @@ CREATE TABLE IF NOT EXISTS entities (
     title varchar(100) NOT NULL,
     descr TEXT,
     type_ varchar(20),
-    embedding TEXT,
     PRIMARY KEY (id, indexer)
 );
 

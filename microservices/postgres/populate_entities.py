@@ -60,13 +60,12 @@ def load_models(args):
 def populate(entity_encodings, connection, table_name):
     assert entity_encodings[0].numpy().dtype == 'float32'
 
-    total = entity_encodings.shape[0]
+    total = args.total
 
     with connection.cursor() as cursor:
-        with cursor.copy("COPY {} (id, indexer, wikipedia_id, title, descr, embedding) FROM STDIN".format(table_name)) as copy:
-            for (id, wikipedia_id, indexer, title, text), tensor in tqdm(zip(ents_generator(args), entity_encodings), total=total):
-                embedding = vector_encode(tensor.numpy())
-                copy.write_row((id, indexer, wikipedia_id, title, text, embedding))
+        with cursor.copy("COPY {} (id, indexer, wikipedia_id, title, descr) FROM STDIN".format(table_name)) as copy:
+            for id, wikipedia_id, indexer, title, text in tqdm(ents_generator(args), total=total):
+                copy.write_row((id, indexer, wikipedia_id, title, text))
     connection.commit()
     print('Done.')
 
@@ -85,14 +84,6 @@ if __name__ == '__main__':
         help="Path to the entity catalogue.",
     )
     parser.add_argument(
-        "--entity_encoding",
-        dest="entity_encoding",
-        type=str,
-        # default="models/tac_candidate_encode_large.t7",  # TAC-KBP
-        default="models/all_entities_large.t7",  # ALL WIKIPEDIA!
-        help="Path to the entity catalogue.",
-    )
-    parser.add_argument(
         "--table-name",
         dest="table_name",
         type=str,
@@ -105,6 +96,13 @@ if __name__ == '__main__':
         type=int,
         default=0,
         help="Indexer id.",
+    )
+    parser.add_argument(
+        "--total",
+        dest="total",
+        type=int,
+        default=-1,
+        help="Total number of entities.",
     )
 
     args = parser.parse_args()
