@@ -9,6 +9,12 @@ import sys
 from tqdm import tqdm
 from tqdm.contrib.concurrent import process_map
 
+"""
+starting from multifile json dumps (e.g. wiki_00) each representing a wikipeida page,
+it extracts every link to other pages and creates jsonl files containing these links
+with context_left, context_right, mention,...  
+"""
+
 def find_nth(haystack, needle, n):
     start = haystack.find(needle)
     while start >= 0 and n > 1:

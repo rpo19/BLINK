@@ -4,6 +4,11 @@ from urllib.parse import quote
 import pandas as pd
 import os
 
+"""
+Resolves redirects.
+Probably worth to use sql dump. TODO
+"""
+
 def get_id(title, title2norm, title2pageid):
     if title in title2norm:
         title = title2norm[title]

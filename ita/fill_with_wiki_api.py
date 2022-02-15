@@ -4,6 +4,12 @@ from urllib.parse import quote
 import pandas as pd
 import os
 
+"""
+Since wikipedia dumps contain the href but not the id this is getting the ids.
+It uses an API.
+Probably better to use a sql dump instead. # TODO
+"""
+
 def get_id(title, title2norm, title2pageid):
     if title in title2norm:
         title = title2norm[title]
