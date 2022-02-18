@@ -27,7 +27,7 @@ def get_id2title_id2text(dbconnection, candidates):
     candidates = [c for arr in candidates for c in arr]
 
     cand_df = pd.DataFrame(candidates, columns=['id', 'indexer'])
-    indexes = cand_df['indxer'].unique().values
+    indexes = cand_df['indexer'].unique()
 
     def flatten(x):
         flattened = []
@@ -49,7 +49,7 @@ def get_id2title_id2text(dbconnection, candidates):
                 WHERE
                     id in ({}) AND
                     indexer = %s;
-                """.format(','.join(list(cand_df.query('indexer = {}'.format(indexid))['id'].astype(str).values))), indexid)
+                """.format(','.join(list(cand_df.query('indexer == {}'.format(indexid))['id'].astype(str).values))), (int(indexid),))
             id2info = cur.fetchall()
 
         for x in id2info:

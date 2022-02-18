@@ -53,7 +53,7 @@ print('Encoded {} entities.'.format(data.shape[0]))
 data.head()
 
 # ### Retrieval
-
+print('retrieval')
 body = {
     'encodings': data['encoding'].values.tolist(),
     'top_k': 10
@@ -69,21 +69,17 @@ else:
 
 if len(candidates) == 0 or len(candidates[0]) == 0:
     print('No candidates received.')
-else:
-    _top_k = len(candidates[0])
-    for _cand in candidates:
-        assert len(_cand) == _top_k
-    print('Received {} candidates for all the {} entities.'.format(_top_k, len(candidates)))
 
 data['candidates'] = candidates
 
 data.head()
 
 # ### Crossencoder
-
+print('crossencoder')
 res_cross = requests.post(crossencoder, json= {
     'samples': data[['context_left', 'context_right', 'mention']].to_dict(orient='records'),
-    'candidates': data['candidates'].tolist()
+    'candidates': data['candidates'].tolist(),
+    'top_k': 10
 })
 
 res_cross.json()
@@ -134,7 +130,7 @@ data[['is_nil', 'nil_features']] = data.apply(prepare_for_nil_prediction, axis=1
 data.head()
 
 # ## NIL prediction
-
+print('nil prediction')
 # prepare fields (default NIL)
 data['nil_score'] = np.zeros(data.shape[0])
 
@@ -169,7 +165,7 @@ data['top_title'] = data['candidates'].apply(lambda x: x[0]['title'])
 data.query('is_nil == False')[['mention', 'top_title']].head()
 
 # ## Entity Clustering
-
+print('clustering')
 nil_mentions = data.query('is_nil == True')
 
 res_nilcluster = requests.post(nilcluster, json={
@@ -194,9 +190,10 @@ clusters = clusters.sort_values(by='nelements', ascending=False)
 clusters.head()
 #clusters
 
-clusters['nelements'].plot(kind='hist', bins=20)
+#clusters['nelements'].plot(kind='hist', bins=20)
 
 print('Found {} clusters out of {} NIL mentions.'.format(clusters.shape[0], nil_mentions.shape[0]))
+print('saving')
 
 outdata = './output_test/{}_outdata.pickle'.format(os.path.splitext(os.path.basename(infile))[0])
 data.to_pickle(outdata)
