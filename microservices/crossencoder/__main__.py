@@ -10,7 +10,7 @@ import psycopg
 
 def get_id2title_id2text(dbconnection, candidates):
 
-    candidates = [c for arr in cadidates for c in arr]
+    candidates = [c for arr in candidates for c in arr]
 
     def flatten(x):
         flattened = []
@@ -27,12 +27,12 @@ def get_id2title_id2text(dbconnection, candidates):
     with dbconnection.cursor() as cur:
         cur.execute("""
             SELECT
-                id, title, text
+                id, title, descr
             FROM
                 entities
             WHERE
                 {};
-            """.format(subquery)), flatten(candidates))
+            """.format(subquery), flatten(candidates))
         id2info = cur.fetchall()
     id2title = dict(zip(map(lambda x:x[0], id2info), map(lambda x:x[1], id2info)))
     id2text = dict(zip(map(lambda x:x[0], id2info), map(lambda x:x[2], id2info)))
