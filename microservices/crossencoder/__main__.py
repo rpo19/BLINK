@@ -67,7 +67,11 @@ class Candidate(BaseModel):
     indexer: int
     score: Optional[float]
     bi_score: Optional[float]
+    raw_score: Optional[float]
     is_cross: Optional[bool]
+    wikipedia_id: Optional[int]
+    type_: Optional[str]
+    norm_score: Optional[float]
 
 class Item(BaseModel):
     samples: List[Mention]
