@@ -8,47 +8,36 @@ from typing import List, Optional
 import json
 import psycopg
 
-class Id2Title(object):
-    def __init__(self, dbconnection, tablename):
-        self.dbconnection = dbconnection
-        self.tablename = tablename
-    def __getitem__(self, arg):
-        # args is a tuple (id, indexer)
-        with self.dbconnection.cursor() as cur:
-            cur.execute("""
-            SELECT
-                title
-            FROM
-                entities
-            WHERE
-                id = %s AND
-                indexer = %s;
-            """, (int(arg[0]), int(arg[1])))
-            title = cur.fetchone()
-        if title:
-            title = title[0]
-        return title
+def get_id2title_id2text(dbconnection, candidates):
 
-class Id2Text(object):
-    def __init__(self, dbconnection, tablename):
-        self.dbconnection = dbconnection
-        self.tablename = tablename
-    def __getitem__(self, arg):
-        # args is a tuple (id, indexer)
-        with self.dbconnection.cursor() as cur:
-            cur.execute("""
+    candidates = [c for arr in cadidates for c in arr]
+
+    def flatten(x):
+        flattened = []
+        for k in x:
+            for i in k:
+                flattened.append(i)
+        return flattened
+
+    # candidates is a tuple (id, index_id)
+    subquery = '(id = %s AND indexer = %s)'
+    if len(candidates) > 1:
+        for cand in candidates[1:]:
+            subquery += ' OR (id = %s AND indexer = %s)'
+    with dbconnection.cursor() as cur:
+        cur.execute("""
             SELECT
-                descr
+                id, title, text
             FROM
                 entities
             WHERE
-                id = %s AND
-                indexer = %s;
-            """, (int(arg[0]), int(arg[1])))
-            descr = cur.fetchone()
-        if descr:
-            descr = descr[0]
-        return descr
+                {};
+            """.format(subquery)), flatten(candidates))
+        id2info = cur.fetchall()
+    id2title = dict(zip(map(lambda x:x[0], id2info), map(lambda x:x[1], id2info)))
+    id2text = dict(zip(map(lambda x:x[0], id2info), map(lambda x:x[2], id2info)))
+
+    return id2title, id2text
 
 class Mention(BaseModel):
     label:Optional[str]
@@ -109,6 +98,8 @@ async def run(item: Item):
     keep_all = True
     logger = None
 
+    global dbconnection
+    id2title, id2text = get_id2title_id2text(dbconnection, nns)
 
     # prepare crossencoder data
     context_input, candidate_input, label_input = prepare_crossencoder_data(
@@ -181,9 +172,6 @@ if __name__ == '__main__':
 
     assert args.postgres is not None, 'Error. postgres url is required.'
     dbconnection = psycopg.connect(args.postgres)
-
-    id2title = Id2Title(dbconnection=dbconnection, tablename='entities')
-    id2text = Id2Text(dbconnection=dbconnection, tablename='entities')
 
     print('Loading crossencoder...')
     crossencoder, crossencoder_params = load_models(args)
