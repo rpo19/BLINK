@@ -50,7 +50,7 @@ def get_id2title_id2text(dbconnection, candidates):
 
     id2title = TupleDict()
     id2text = TupleDict()
-    for row in id2info:
+    for x in id2info:
         id2title.add(x[0], x[1], x[2])
         id2text.add(x[0], x[1], x[3])
 
