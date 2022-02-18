@@ -1,12 +1,12 @@
 import pickle
 import pandas as pd
-from textdistance.algorithms.edit_based import Levenshtein
 from fastapi import FastAPI
 from pydantic import BaseModel
 import uvicorn
 from typing import List, Optional
 import argparse
 import textdistance
+import statistics
 
 # input: features
 # output: NIL score
@@ -71,6 +71,18 @@ async def run(input: List[Features]):
         # process types TODO
 
         # process stats TODO
+        if features.topcandidates:
+            scores = [c.score for c in features.topcandidates]
+
+            stats = {
+                'mean': statistics.mean(scores),
+                'median': statistics.median(scores),
+                'stdev': statistics.stdev(scores)
+            }
+
+            for i,v in stats.items():
+                data.append(v)
+                index.append(i)
 
         nil_X = nil_X.append(pd.Series(data=data, index=index, name=i))
 
