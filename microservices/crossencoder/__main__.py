@@ -8,6 +8,19 @@ from typing import List, Optional
 import json
 import psycopg
 
+class TupleDict(object):
+    def __init__(self):
+        self.dict = {}
+    def __getitem__(self, arg):
+        try:
+            return self.dict[arg[0]][arg[1]]
+        except KeyError:
+            return None
+    def add(self, id, index_id, data):
+        if index_id not in self.dict:
+            self.dict[index_id] = {}
+        self.dict[index_id][id] = data
+
 def get_id2title_id2text(dbconnection, candidates):
 
     candidates = [c for arr in candidates for c in arr]
@@ -27,15 +40,19 @@ def get_id2title_id2text(dbconnection, candidates):
     with dbconnection.cursor() as cur:
         cur.execute("""
             SELECT
-                id, title, descr
+                id, indexer, title, descr
             FROM
                 entities
             WHERE
                 {};
             """.format(subquery), flatten(candidates))
         id2info = cur.fetchall()
-    id2title = dict(zip(map(lambda x:x[0], id2info), map(lambda x:x[1], id2info)))
-    id2text = dict(zip(map(lambda x:x[0], id2info), map(lambda x:x[2], id2info)))
+
+    id2title = TupleDict()
+    id2text = TupleDict()
+    for row in id2info:
+        id2title.add(x[0], x[1], x[2])
+        id2text.add(x[0], x[1], x[3])
 
     return id2title, id2text
 
