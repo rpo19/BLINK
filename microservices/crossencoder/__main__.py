@@ -76,6 +76,7 @@ class Candidate(BaseModel):
 class Item(BaseModel):
     samples: List[Mention]
     candidates: List[List[Candidate]]
+    top_k: int
 
 app = FastAPI()
 
@@ -85,6 +86,9 @@ async def run(item: Item):
     samples = [dict(s) for s in samples]
 
     candidates = item.candidates
+
+    top_k = item.top_k
+
     # converting candidates in tuples
     nns = []
     for cands in candidates:
@@ -96,11 +100,15 @@ async def run(item: Item):
                 _cand.bi_score = _cand.score
             # reset score
             _cand.score = -100.0
+        while len(nn) < top_k:
+            # all samples should have the same amount of cands
+            nn.append((_cand.id, _cand.indexer))
         nns.append(nn)
 
     labels = [-1] * len(samples)
     keep_all = True
     logger = None
+
 
     # prepare crossencoder data
     context_input, candidate_input, label_input = prepare_crossencoder_data(
