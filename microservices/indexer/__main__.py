@@ -93,6 +93,9 @@ async def search(input_: Input):
                     break
                 # # compute dot product always (and normalized dot product)
 
+                if _cand not in id2info:
+                    # candidate removed from kb but not from index (requires to reconstruct the whole index)
+                    continue
                 title, wikipedia_id, type_ = id2info[_cand]
 
                 if index['index_type'] == 'flat':
