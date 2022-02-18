@@ -7,6 +7,7 @@ from blink.crossencoder.train_cross import modify
 from typing import List, Optional
 import json
 import psycopg
+import pandas as pd
 
 class TupleDict(object):
     def __init__(self):
@@ -25,6 +26,9 @@ def get_id2title_id2text(dbconnection, candidates):
 
     candidates = [c for arr in candidates for c in arr]
 
+    cand_df = pd.DataFrame(candidates, columns=['id', 'indexer'])
+    indexes = cand_df['indxer'].unique().values
+
     def flatten(x):
         flattened = []
         for k in x:
@@ -32,27 +36,25 @@ def get_id2title_id2text(dbconnection, candidates):
                 flattened.append(i)
         return flattened
 
-    # candidates is a tuple (id, index_id)
-    subquery = '(id = %s AND indexer = %s)'
-    if len(candidates) > 1:
-        for cand in candidates[1:]:
-            subquery += ' OR (id = %s AND indexer = %s)'
-    with dbconnection.cursor() as cur:
-        cur.execute("""
-            SELECT
-                id, indexer, title, descr
-            FROM
-                entities
-            WHERE
-                {};
-            """.format(subquery), flatten(candidates))
-        id2info = cur.fetchall()
-
     id2title = TupleDict()
     id2text = TupleDict()
-    for x in id2info:
-        id2title.add(x[0], x[1], x[2])
-        id2text.add(x[0], x[1], x[3])
+
+    for indexid in indexes:
+        with dbconnection.cursor() as cur:
+            cur.execute("""
+                SELECT
+                    id, indexer, title, descr
+                FROM
+                    entities
+                WHERE
+                    id in ({}) AND
+                    indexer = %s;
+                """.format(','.join(list(cand_df.query('indexer = {}'.format(indexid))['id'].astype(str).values))), indexid)
+            id2info = cur.fetchall()
+
+        for x in id2info:
+            id2title.add(x[0], x[1], x[2])
+            id2text.add(x[0], x[1], x[3])
 
     return id2title, id2text
 
