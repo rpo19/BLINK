@@ -14,7 +14,7 @@ class TupleDict(object):
         self.dict = {}
     def __getitem__(self, arg):
         try:
-            return self.dict[arg[0]][arg[1]]
+            return self.dict[arg[1]][arg[0]]
         except KeyError:
             return None
     def add(self, id, index_id, data):
