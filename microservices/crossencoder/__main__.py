@@ -54,7 +54,10 @@ def get_id2title_id2text(dbconnection, candidates):
 
         for x in id2info:
             id2title.add(x[0], x[1], x[2])
-            id2text.add(x[0], x[1], x[3])
+            descr = x[3]
+            if descr is None:
+                descr = ''
+            id2text.add(x[0], x[1], descr)
 
     return id2title, id2text
 
