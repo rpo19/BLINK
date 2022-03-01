@@ -106,9 +106,9 @@ def prepare_for_nil_prediction(x):
     if len(c) == 0:
         is_nil = True
         return is_nil, features
-
+        
     is_cross = 'is_cross' in c[0] and c[0]['is_cross']
-
+    
     features = {}
     if not is_cross:
         # bi only
@@ -118,10 +118,10 @@ def prepare_for_nil_prediction(x):
         if 'bi_score' in c[0]:
             features['max_bi'] = c[0]['bi_score']
         features['max_cross'] = c[0]['score']
-
+        
     features['mention'] = x['mention']
     features['title'] = c[0]['title']
-
+    
     return is_nil, features
 
 
@@ -197,19 +197,6 @@ print('saving')
 
 outdata = './output_test/{}_outdata.pickle'.format(os.path.splitext(os.path.basename(infile))[0])
 data.to_pickle(outdata)
-
-# populate with new entities
-print('Populating rw index with new entities')
-
-data_new = clusters[['title', 'center']].rename(columns={'center': 'encoding'})
-new_indexed = requests.post(indexer_add, json=data_new)
-
-if not new_indexed.ok:
-    print('error adding new entities')
-else:
-    new_indexed = new_indexed.json()
-    clusters['index_id'] = new_indexed['ids']
-    clusters['index_indexer'] = new_indexed['indexer']
 
 outclusters ='./output_test/{}_outclusters.pickle'.format(os.path.splitext(os.path.basename(infile))[0])
 clusters.to_pickle(outclusters)
