@@ -165,10 +165,10 @@ async def add(items: List[Item]):
 
     # add to postgres
     with dbconnection.cursor() as cursor:
-        with cursor.copy("COPY entities (id, indexer, wikipedia_id, title, descr, type_, embedding) FROM STDIN") as copy:
+        with cursor.copy("COPY entities (id, indexer, wikipedia_id, title, descr, type_) FROM STDIN") as copy:
             for id, item in zip(ids, items):
                 wikipedia_id = -1 if item.wikipedia_id is None else item.wikipedia_id
-                copy.write_row((id, indexid, wikipedia_id, item.title, item.descr, item.type_, item.encoding))
+                copy.write_row((id, indexid, wikipedia_id, item.title, item.descr, item.type_))
     dbconnection.commit()
 
     return {
