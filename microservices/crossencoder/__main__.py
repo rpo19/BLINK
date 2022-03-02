@@ -142,6 +142,7 @@ async def run(item: Item):
         dataloader,
         logger,
         context_len=crossencoder_params["max_context_length"],
+        device = 'cpu' if crossencoder_params["no_cuda"] else 'cuda'
     )
 
     for sample, _candidates, _nns, _scores in zip(samples, candidates, nns, unsorted_scores):
