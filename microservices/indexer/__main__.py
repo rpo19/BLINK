@@ -95,6 +95,17 @@ async def search(input_: Input):
 
                 if _cand not in id2info:
                     # candidate removed from kb but not from index (requires to reconstruct the whole index)
+                    all_candidates_4_sample_n[n].append({
+                        'raw_score': -1.0,
+                        'id': _cand,
+                        'wikipedia_id': 0,
+                        'title': '',
+                        'url': '',
+                        'type_': '',
+                        'indexer': index['indexid'],
+                        'score': -1.0,
+                        'norm_score': -1.0
+                    })
                     continue
                 title, wikipedia_id, type_ = id2info[_cand]
 
