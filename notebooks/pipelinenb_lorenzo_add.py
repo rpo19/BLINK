@@ -178,6 +178,18 @@ print('saving')
 outdata = './output_test/{}_outdata.pickle'.format(os.path.splitext(os.path.basename(infile))[0])
 data.to_pickle(outdata)
 
+# populate with new entities
+print('Populating rw index with new entities')
+
+data_new = clusters[['title', 'center']].rename(columns={'center': 'encoding'})
+new_indexed = requests.post(indexer_add, json=data_new.to_dict(orient='records'))
+
+if not new_indexed.ok:
+    print('error adding new entities')
+else:
+    new_indexed = new_indexed.json()
+    clusters['index_id'] = new_indexed['ids']
+    clusters['index_indexer'] = new_indexed['indexer']
 
 outclusters ='./output_test/{}_outclusters.pickle'.format(os.path.splitext(os.path.basename(infile))[0])
 clusters.to_pickle(outclusters)
