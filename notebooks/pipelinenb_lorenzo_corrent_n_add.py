@@ -187,29 +187,35 @@ clusters.to_pickle(outclusters)
 print('correct clusters')
 ## get gold NILs, correctly cluster them and then add
 # title nelements mentions_id mentions center
+def vector_encode(v):
+    s = base64.b64encode(v).decode()
+    return s
+
 def vector_decode(s, dtype=np.float32):
     buffer = base64.b64decode(s)
     v = np.frombuffer(buffer, dtype=dtype)
     return v
 
-correct_clusters = pd.DataFrame(columns=['title', 'nelements', 'mentions_id', 'mentions', 'center', 'original_url'])
+correct_clusters = pd.DataFrame(columns=['title', 'nelements', 'mentions_id', 'mentions', 'center', 'original_url', 'original_id'])
 for k,v in data.query('NIL').groupby('y_wikiurl_dump').groups.items():
     df_mentions = data.iloc[v]
     title = df_mentions['mention'].value_counts().index[0]
     center = KMedoids(n_clusters=1).fit(np.stack(df_mentions['encoding'].apply(vector_decode).to_numpy())).cluster_centers_
-    correct_clusters.append({
+    center = vector_encode(center)
+    correct_clusters = correct_clusters.append({
         'original_url': k,
+	'original_id': int(k.split('=')[1]),
         'mentions_id': v.tolist(),
         'nelements': len(v),
-        'mentions': df_mentions['mentions'],
+        'mentions': df_mentions['mention'].tolist(),
         'title': title,
         'center': center
-    })
+    }, ignore_index=True)
 
 # populate with new entities
 print('Populating rw index with new entities')
 
-data_new = correct_clusters[['title', 'center']].rename(columns={'center': 'encoding'})
+data_new = correct_clusters[['title', 'center', 'original_id']].rename(columns={'center': 'encoding', 'original_id': 'wikipedia_id'})
 new_indexed = requests.post(indexer_add, json=data_new.to_dict(orient='records'))
 
 if not new_indexed.ok:
