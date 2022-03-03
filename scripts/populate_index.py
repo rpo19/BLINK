@@ -105,6 +105,9 @@ def main(args):
     ## remove unneeded fields
     data = data[[args.id_key, args.title_key, args.descr_key, args.qid_key, args.rd_key]].copy()
 
+    if args.skip_empty_descr:
+        data = data.query("{} != ''".format(args.descr_key))
+
     # get encodings
     data['encoding'] = biencoder_get_encodings(args, data)
 
@@ -153,6 +156,9 @@ if __name__ == '__main__':
     parser.add_argument(
         "--descr-key", type=str, default='label', help='Description key.', dest="descr_key"
         # parsed
+    )
+    parser.add_argument(
+        "--skip-empty-descr", default=False, action='store_true', help='Skip entities with no description', dest='skip_emtpy_descr'
     )
     parser.add_argument(
         "--batchsize", type=int, default="200", help="Batchsize for biencoder requests",
