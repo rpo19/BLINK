@@ -142,8 +142,8 @@ to_correct = data.query('nil_score <= 0.6 and nil_score >= 0.4')
 to_correct_nil = to_correct.query('NIL')
 to_correct_not_nil = to_correct.query('~NIL')
 
-data.loc[to_correct_nil, 'is_nil'] = True
-data.loc[to_correct_not_nil, 'is_nil'] = False
+data.loc[to_correct_nil.index, 'is_nil'] = True
+data.loc[to_correct_not_nil.index, 'is_nil'] = False
 
 def get_new_cand(x):
     url = x['y_wikiurl_dump']
@@ -160,7 +160,7 @@ def get_new_cand(x):
     candidates.insert(0, _cand)
     return candidates
 
-data.loc[to_correct_not_nil, 'candidates'] = to_correct_not_nil.apply(get_new_cand)
+data.loc[to_correct_not_nil.index, 'candidates'] = to_correct_not_nil.apply(get_new_cand)
 
 ##
 
