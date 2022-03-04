@@ -156,11 +156,12 @@ def get_new_cand(x):
         'url': url,
         'indexer': -1,
         'score': score,
+        'hitl': True
     }
     candidates.insert(0, _cand)
     return candidates
 
-data.loc[to_correct_not_nil.index, 'candidates'] = to_correct_not_nil.apply(get_new_cand)
+data.loc[to_correct_not_nil.index, 'candidates'] = to_correct_not_nil.apply(get_new_cand, axis=1)
 
 ##
 
