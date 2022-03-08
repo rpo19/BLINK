@@ -8,6 +8,7 @@ import requests
 import numpy as np
 import base64
 from tqdm import trange
+import gzip
 
 def vector_encode(v):
     s = base64.b64encode(v).decode()
@@ -68,11 +69,14 @@ def populate(args, data):
     print('Done.')
 
 def load_dataset(path):
-    _, ext = os.path.splitext(path)
+    path2, ext = os.path.splitext(path)
+    if ext == '.gz':
+        kwargs = {'compression': 'gzip'}
+        _, ext = os.path.splitext(path2)
     if ext == '.jsonl':
-        df = pd.read_json(path, lines=True)
+        df = pd.read_json(path, lines=True, **kwargs)
     elif ext == '.pickle':
-        df = pd.read_pickle(path)
+        df = pd.read_pickle(path, **kwargs)
     else:
         raise Exception('Error. Not implemented for {} datasets.'.format(ext))
     return df
