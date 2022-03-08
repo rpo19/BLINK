@@ -107,7 +107,11 @@ def main(args):
     data = data.drop_duplicates(subset=[args.id_key], keep='first')
 
     ## remove unneeded fields
-    data = data[[args.id_key, args.title_key, args.descr_key, args.qid_key, args.rd_key]].copy()
+    needed_cols = []
+    for i in [args.id_key, args.title_key, args.descr_key, args.qid_key, args.rd_key]:
+        if i:
+            needed_cols.append(i)
+    data = data[needed_cols].copy()
 
     if args.skip_empty_descr:
         data = data.query("{} != ''".format(args.descr_key))
@@ -146,11 +150,11 @@ if __name__ == '__main__':
         # id
     )
     parser.add_argument(
-        "--qid-key", type=str, default='qid', help='Wikidata QId key.', dest="qid_key"
+        "--qid-key", type=str, default=None, help='Wikidata QId key.', dest="qid_key"
         # id
     )
     parser.add_argument(
-        "--rd-key", type=str, default='rd_to', help='Redirect key.', dest="rd_key"
+        "--rd-key", type=str, default=None, help='Redirect key.', dest="rd_key"
         # id
     )
     parser.add_argument(
