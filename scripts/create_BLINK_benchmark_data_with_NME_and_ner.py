@@ -210,10 +210,14 @@ def extract_questions(filename):
 
                 _text = split[0]
                 if _text.endswith('\n'):
-                    _text = _text[:-1] + " "
+                    _text = _text[:-1]
+
 
                 if _text.strip() == "":
                     _text = '\n'
+                else:
+                    # TODO some tokens may not need the extra space (e.g. saxon genitive)
+                    _text += ' '
 
                 document_fd.write(_text)
 
