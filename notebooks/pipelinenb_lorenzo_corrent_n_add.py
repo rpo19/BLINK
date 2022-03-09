@@ -20,7 +20,7 @@ import json
 import sys
 import os
 import base64
-from sklearn_extra.cluster import KMedoids
+from Packages.TimeEvolving import Cluster
 
 biencoder = 'http://localhost:30300/api/blink/biencoder' # mention # entity
 biencoder_mention = f'{biencoder}/mention'
@@ -199,12 +199,17 @@ def vector_decode(s, dtype=np.float32):
 correct_clusters = pd.DataFrame(columns=['title', 'nelements', 'mentions_id', 'mentions', 'center', 'original_url', 'original_id'])
 for k,v in data.query('NIL').groupby('y_wikiurl_dump').groups.items():
     df_mentions = data.iloc[v]
-    title = df_mentions['mention'].value_counts().index[0]
-    center = KMedoids(n_clusters=1).fit(np.stack(df_mentions['encoding'].apply(vector_decode).to_numpy())).cluster_centers_
+    df_mentions['embedding'] = df_mentions['encoding'].apply(vector_decode)
+    c = Cluster()
+    for i, row in df_mentions.iterrows():
+        c.add_element(mention=row['mention'], entity='entity',
+                                           encodings=row['embedding'], mentions_id=i)
+    title = c.get_title()
+    center = c.get_center()
     center = vector_encode(center)
     correct_clusters = correct_clusters.append({
         'original_url': k,
-	'original_id': int(k.split('=')[1]),
+	    'original_id': int(k.split('=')[1]),
         'mentions_id': v.tolist(),
         'nelements': len(v),
         'mentions': df_mentions['mention'].tolist(),
