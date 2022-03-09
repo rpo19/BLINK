@@ -9,6 +9,7 @@ import numpy as np
 import base64
 from tqdm import trange
 import gzip
+from math import isnan
 
 def vector_encode(v):
     s = base64.b64encode(v).decode()
@@ -55,21 +56,22 @@ def populate(args, data):
     # add to postgres
     print('Populating db...')
     with dbconnection.cursor() as cursor:
-        with cursor.copy("COPY entities (id, indexer, wikipedia_id, title, descr, embedding, wikidata_qid, redirects_to) FROM STDIN") as copy:
+        with cursor.copy("COPY entities (id, indexer, wikipedia_id, title, descr, wikidata_qid, redirects_to) FROM STDIN") as copy:
             for id, (i, row) in tqdm(zip(ids, data.iterrows()), total=data.shape[0]):
-                wikipedia_id = -1 if row[args.id_key] is None or isnan(row[args.id_key]) else row[args.id_key]
-                wikidata_qid = -1 if row[args.qid_key] is None or isnan(row[args.qid_key]) else row[args.qid_key]
-                redirects_to = -1 if row[args.rd_key] is None or isnan(row[args.rd_key]) else row[args.rd_key]
+                wikipedia_id = -1 if args.id_key is None or row[args.id_key] is None or isnan(row[args.id_key]) else row[args.id_key]
+                wikidata_qid = -1 if args.qid_key is None or row[args.qid_key] is None or isnan(row[args.qid_key]) else row[args.qid_key]
+                redirects_to = -1 if args.rd_key is None or row[args.rd_key] is None or isnan(row[args.rd_key]) else row[args.rd_key]
                 title = row[args.title_key]
                 if len(title) > 100:
                     print('Found big title:', i, title)
                     title = title[:100]
-                copy.write_row((id, indexid, wikipedia_id, title, row[args.descr_key], row['encoding'], wikidata_qid, redirects_to))
+                copy.write_row((id, indexid, wikipedia_id, title, row[args.descr_key], wikidata_qid, redirects_to))
     dbconnection.commit()
     print('Done.')
 
 def load_dataset(path):
     path2, ext = os.path.splitext(path)
+    kwargs = {}
     if ext == '.gz':
         kwargs = {'compression': 'gzip'}
         _, ext = os.path.splitext(path2)
@@ -166,7 +168,7 @@ if __name__ == '__main__':
         # parsed
     )
     parser.add_argument(
-        "--skip-empty-descr", default=False, action='store_true', help='Skip entities with no description', dest='skip_emtpy_descr'
+        "--skip-empty-descr", default=False, action='store_true', help='Skip entities with no description', dest='skip_empty_descr'
     )
     parser.add_argument(
         "--batchsize", type=int, default="200", help="Batchsize for biencoder requests",
