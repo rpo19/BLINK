@@ -6,6 +6,7 @@
 #
 import json
 import os
+from xml.dom.minidom import Document
 import requests
 from bs4 import BeautifulSoup
 from tqdm import tqdm
@@ -15,6 +16,8 @@ END_ENT_TOKEN = "[END_ENT]"
 
 url2id_cache = {}
 
+out_base_dir = "data/BLINK_benchmark"
+os.makedirs(os.path.join(out_base_dir, "docs"), exist_ok=True)
 
 def _read_url(url):
     with urllib.request.urlopen(url) as response:
@@ -67,6 +70,8 @@ def extract_questions(filename):
     # question id in the document
     question_i = 0
 
+    document_fd = None
+
     with open(filename) as fin:
         lines = fin.readlines()
 
@@ -98,6 +103,11 @@ def extract_questions(filename):
                 left_context = []
                 document_questions = []
                 question_i = 0
+
+                if document_fd:
+                    document_fd.close()
+
+                document_fd = open(os.path.join(out_base_dir, "docs", doc_id + ".txt"), "w")
 
             else:
                 split = line.split("\t")
@@ -198,6 +208,15 @@ def extract_questions(filename):
                         document_questions[-1]["input"].append(END_ENT_TOKEN)
                         open_entity = False
 
+                _text = split[0]
+                if _text.endswith('\n'):
+                    _text = _text[:-1] + " "
+
+                if _text.strip() == "":
+                    _text = '\n'
+
+                document_fd.write(_text)
+
                 left_context.append(token)
                 for q in document_questions:
                     q["input"].append(token)
@@ -207,6 +226,8 @@ def extract_questions(filename):
 
                 if len(document_questions) > 0 and not open_entity:
                     document_questions[-1]["right_context"].append(token)
+
+        document_fd.close()
 
     # FINAL SENTENCE
     if open_entity:
@@ -279,11 +300,11 @@ train_blink = convert_to_BLINK_format(train)
 testa_blink = convert_to_BLINK_format(testa)
 testb_blink = convert_to_BLINK_format(testb)
 
-out_train_aida_filename = "data/BLINK_benchmark/AIDA-YAGO2_train_ner.jsonl"
+out_train_aida_filename = os.path.join(out_base_dir, "AIDA-YAGO2_train_ner.jsonl")
 store_questions(train_blink, out_train_aida_filename)
-out_testa_aida_filename = "data/BLINK_benchmark/AIDA-YAGO2_testa_ner.jsonl"
+out_testa_aida_filename = os.path.join(out_base_dir, "AIDA-YAGO2_testa_ner.jsonl")
 store_questions(testa_blink, out_testa_aida_filename)
-out_testb_aida_filename = "data/BLINK_benchmark/AIDA-YAGO2_testb_ner.jsonl"
+out_testb_aida_filename = os.path.join(out_base_dir, "AIDA-YAGO2_testb_ner.jsonl")
 store_questions(testb_blink, out_testb_aida_filename)
 
 
