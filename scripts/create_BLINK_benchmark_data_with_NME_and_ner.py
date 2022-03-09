@@ -133,6 +133,7 @@ def extract_questions(filename):
                             Wikipedia_ID = pageid
 
                         q = {
+                            "doc_id": doc_id,
                             "id": "{}:{}".format(doc_id, question_i),
                             "input": left_context.copy() + [BEGIN_ENT_TOKEN],
                             "mention": mention,
@@ -172,6 +173,7 @@ def extract_questions(filename):
                     elif B_I == "B":
 
                         q = {
+                            "doc_id": doc_id,
                             "id": "{}:{}".format(doc_id, question_i),
                             "input": left_context.copy() + [BEGIN_ENT_TOKEN],
                             "mention": mention,
@@ -240,6 +242,7 @@ def convert_to_BLINK_format(questions):
             "context_left": " ".join(q["left_context"]).strip(),
             "mention": q["mention"],
             "context_right": " ".join(q["right_context"]).strip(),
+            "doc_id": q["doc_id"],
             "query_id": q["id"],
             "label_id": q["Wikipedia_ID"],
             "Wikipedia_ID": q["Wikipedia_ID"],
