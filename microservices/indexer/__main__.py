@@ -53,6 +53,29 @@ def id2url(wikipedia_id):
 
 app = FastAPI()
 
+@app.post('/api/indexer/reset/rw')
+async def reset():
+    # reset rw index
+    index_type = indexes[rw_index]['index_type']
+    del indexes[rw_index]['indexer']
+    if index_type == 'flat':
+        indexes[rw_index]['indexer'] = DenseFlatIndexer(args.vector_size)
+        indexes[rw_index]['indexer'].serialize(indexes[rw_index]['path'])
+    else:
+        raise Exception('Not implemented for index {}'.format(index_type))
+
+    # reset db
+    with dbconnection.cursor() as cur:
+        cur.execute("""
+            DELETE
+            FROM
+                entities
+            WHERE
+                indexer = %s;
+            """, (indexes[rw_index]['indexid'],))
+
+    return {'res': 'OK'}
+
 @app.post('/api/indexer/search')
 async def search(input_: Input):
     encodings = input_.encodings
