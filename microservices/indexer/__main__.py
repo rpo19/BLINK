@@ -127,7 +127,8 @@ async def search(input_: Input):
                         'type_': '',
                         'indexer': index['indexid'],
                         'score': -1000.0,
-                        'norm_score': -1000.0
+                        'norm_score': -1000.0,
+                        'dummy': 1
                     })
                     continue
                 title, wikipedia_id, type_ = id2info[_cand]

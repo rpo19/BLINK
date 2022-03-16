@@ -72,7 +72,9 @@ async def run(input: List[Features]):
 
         # process stats TODO
         if features.topcandidates:
-            scores = [c.score for c in features.topcandidates]
+            # remove dummy candidates
+            _topcandidates = [c for c in features.topcandidates if 'dummy' not in c]
+            scores = [c.score for c in _topcandidates]
 
             stats = {
                 'mean': statistics.mean(scores),
