@@ -66,6 +66,7 @@ async def reset():
 
     # reset db
     with dbconnection.cursor() as cur:
+        print('deleting from db...')
         cur.execute("""
             DELETE
             FROM
@@ -73,6 +74,7 @@ async def reset():
             WHERE
                 indexer = %s;
             """, (indexes[rw_index]['indexid'],))
+    dbconnection.commit()
 
     return {'res': 'OK'}
 
