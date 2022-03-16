@@ -76,816 +76,389 @@ outpath = 'output/feature_ablation_study'
 os.makedirs(outpath, exist_ok=True)
 
 print('loading dataset...')
-dataset = pd.read_pickle('./data/nil_dataset.pickle')
+datasets = {}
+train_dataset = 'notebooks/output_test_train_data0/data0_outdata.pickle_mod'
+dev_dataset = 'notebooks/output_test_dev_data0/data0_outdata.pickle_mod'
+datasets[train_dataset] = pd.read_pickle(train_dataset)
+datasets[dev_dataset] = pd.read_pickle(dev_dataset)
 print('loaded...')
 
 tasks = [
-    {
-        'name': 'aida_under_cross_max',
-        'train': ['AIDA-YAGO2_train_ner'],
-        'test': ['AIDA-YAGO2_testa_ner', 'AIDA-YAGO2_testb_ner'],
-        'sampling': 'undersample',
-        'features':  [
-                'cross_stats_10_max',
-            ]
-    },
-    {
-        'name': 'aida_under_all_max',
-        'train': ['AIDA-YAGO2_train_ner'],
-        'test': ['AIDA-YAGO2_testa_ner', 'AIDA-YAGO2_testb_ner'],
-        'sampling': 'undersample',
-        'features':  [
-                'cross_stats_10_max',
-                'bi_stats_10_max',
-            ]
-    },
-    {
-        'name': 'aida_all_max',
-        'train': ['AIDA-YAGO2_train_ner'],
-        'test': ['AIDA-YAGO2_testa_ner', 'AIDA-YAGO2_testb_ner'],
-        'sampling': 'no',
-        'features':  [
-                'cross_stats_10_max',
-                'bi_stats_10_max',
-            ]
-    },
-    {
-        'name': 'aida_under_all_max_levenshtein',
-        'train': ['AIDA-YAGO2_train_ner'],
-        'test': ['AIDA-YAGO2_testa_ner', 'AIDA-YAGO2_testb_ner'],
-        'sampling': 'undersample',
-        'features':  [
-                'cross_stats_10_max',
-                'bi_stats_10_max',
-                'cross_levenshtein'
-                # no bi levenshtein
-            ]
-    },
-    {
-        'name': 'aida_under_all_max_jaccard',
-        'train': ['AIDA-YAGO2_train_ner'],
-        'test': ['AIDA-YAGO2_testa_ner', 'AIDA-YAGO2_testb_ner'],
-        'sampling': 'undersample',
-        'features':  [
-                'cross_stats_10_max',
-                'bi_stats_10_max',
-                'cross_jaccard'
-                # no bi levenshtein
-            ]
-    },
-    {
-        'name': 'aida_under_cross_max_jaccard',
-        'train': ['AIDA-YAGO2_train_ner'],
-        'test': ['AIDA-YAGO2_testa_ner', 'AIDA-YAGO2_testb_ner'],
-        'sampling': 'undersample',
-        'features':  [
-                'cross_stats_10_max',
-                'cross_jaccard'
-                # no bi levenshtein
-            ]
-    },
-    {
-        'name': 'aida_under_all_max_stdev4',
-        'train': ['AIDA-YAGO2_train_ner'],
-        'test': ['AIDA-YAGO2_testa_ner', 'AIDA-YAGO2_testb_ner'],
-        'sampling': 'undersample',
-        'features':  [
-                'cross_stats_10_max',
-                'cross_stats_4_stdev',
-                'bi_stats_10_max',
-                'bi_stats_4_stdev',
-            ]
-    },
-    {
-        'name': 'aida_under_all_max_stdev10',
-        'train': ['AIDA-YAGO2_train_ner'],
-        'test': ['AIDA-YAGO2_testa_ner', 'AIDA-YAGO2_testb_ner'],
-        'sampling': 'undersample',
-        'features':  [
-                'cross_stats_10_max',
-                'cross_stats_10_stdev',
-                'bi_stats_10_max',
-                'bi_stats_10_stdev',
-            ]
-    },
-    {
-        'name': 'aida_under_all_max_stats10',
-        'train': ['AIDA-YAGO2_train_ner'],
-        'test': ['AIDA-YAGO2_testa_ner', 'AIDA-YAGO2_testb_ner'],
-        'sampling': 'undersample',
-        'features':  [
-                'cross_stats_10_max',
-                'cross_stats_10_mean',
-                'cross_stats_10_median',
-                'cross_stats_10_stdev',
-                'bi_stats_10_max',
-                'bi_stats_10_mean',
-                'bi_stats_10_median',
-                'bi_stats_10_stdev',
-            ]
-    },
-    {
-        'name': 'aida_under_all_max_ner_wiki',
-        'train': ['AIDA-YAGO2_train_ner'],
-        'test': ['AIDA-YAGO2_testa_ner', 'AIDA-YAGO2_testb_ner'],
-        'sampling': 'undersample',
-        'features':  [
-                'cross_stats_10_max',
-                'bi_stats_10_max',
-                'ner_per',
-                'ner_loc',
-                'ner_org',
-                'ner_misc',
-                'wiki_per_cross',
-                'wiki_loc_cross',
-                'wiki_org_cross',
-                'wiki_misc_cross',
-            ]
-    },
-    {
-        'name': 'aida_under_all_max_ner_wiki_stdev4',
-        'train': ['AIDA-YAGO2_train_ner'],
-        'test': ['AIDA-YAGO2_testa_ner', 'AIDA-YAGO2_testb_ner'],
-        'sampling': 'undersample',
-        'features':  [
-                'cross_stats_10_max',
-                'cross_stats_4_stdev',
-                'bi_stats_10_max',
-                'bi_stats_4_stdev',
-                'ner_per',
-                'ner_loc',
-                'ner_org',
-                'ner_misc',
-                'wiki_per_cross',
-                'wiki_loc_cross',
-                'wiki_org_cross',
-                'wiki_misc_cross',
-            ]
-    },
-    {
-        'name': 'aida_under_all_max_ner_wiki_stdev4_levenshtein',
-        'train': ['AIDA-YAGO2_train_ner'],
-        'test': ['AIDA-YAGO2_testa_ner', 'AIDA-YAGO2_testb_ner'],
-        'sampling': 'undersample',
-        'features':  [
-                'cross_stats_10_max',
-                'cross_stats_4_stdev',
-                'bi_stats_10_max',
-                'bi_stats_4_stdev',
-                'cross_levenshtein',
-                'ner_per',
-                'ner_loc',
-                'ner_org',
-                'ner_misc',
-                'wiki_per_cross',
-                'wiki_loc_cross',
-                'wiki_org_cross',
-                'wiki_misc_cross',
-            ]
-    },
-    {
-        'name': 'aida_under_all_max_ner_wiki_levenshtein',
-        'train': ['AIDA-YAGO2_train_ner'],
-        'test': ['AIDA-YAGO2_testa_ner', 'AIDA-YAGO2_testb_ner'],
-        'sampling': 'undersample',
-        'features':  [
-                'cross_stats_10_max',
-                'bi_stats_10_max',
-                'cross_levenshtein',
-                'ner_per',
-                'ner_loc',
-                'ner_org',
-                'ner_misc',
-                'wiki_per_cross',
-                'wiki_loc_cross',
-                'wiki_org_cross',
-                'wiki_misc_cross',
-            ]
-    },
-    {
-        'name': 'aida_under_all_max_ner_wiki_jaccard',
-        'train': ['AIDA-YAGO2_train_ner'],
-        'test': ['AIDA-YAGO2_testa_ner', 'AIDA-YAGO2_testb_ner'],
-        'sampling': 'undersample',
-        'features':  [
-                'cross_stats_10_max',
-                'bi_stats_10_max',
-                'cross_jaccard',
-                'ner_per',
-                'ner_loc',
-                'ner_org',
-                'ner_misc',
-                'wiki_per_cross',
-                'wiki_loc_cross',
-                'wiki_org_cross',
-                'wiki_misc_cross',
-            ]
-    },
-    {
-        'name': 'aida_under_all_max_ner_wiki_levenshtein_jaccard',
-        'train': ['AIDA-YAGO2_train_ner'],
-        'test': ['AIDA-YAGO2_testa_ner', 'AIDA-YAGO2_testb_ner'],
-        'sampling': 'undersample',
-        'features':  [
-                'cross_stats_10_max',
-                'bi_stats_10_max',
-                'cross_levenshtein',
-                'cross_jaccard',
-                'ner_per',
-                'ner_loc',
-                'ner_org',
-                'ner_misc',
-                'wiki_per_cross',
-                'wiki_loc_cross',
-                'wiki_org_cross',
-                'wiki_misc_cross',
-            ]
-    },
-    {
-        'name': 'aida_under_all_max_levenshtein_jaccard',
-        'train': ['AIDA-YAGO2_train_ner'],
-        'test': ['AIDA-YAGO2_testa_ner', 'AIDA-YAGO2_testb_ner'],
-        'sampling': 'undersample',
-        'features':  [
-                'cross_stats_10_max',
-                'bi_stats_10_max',
-                'cross_levenshtein',
-                'cross_jaccard'
-                # no bi levenshtein
-            ]
-    },
-    {
-        'name': 'aida_under_all_max_stdev4_levenshtein',
-        'train': ['AIDA-YAGO2_train_ner'],
-        'test': ['AIDA-YAGO2_testa_ner', 'AIDA-YAGO2_testb_ner'],
-        'sampling': 'undersample',
-        'features':  [
-                'cross_stats_10_max',
-                'cross_stats_4_stdev',
-                'bi_stats_10_max',
-                'bi_stats_4_stdev',
-                'cross_levenshtein'
-            ]
-    },
-    {
-        'name': 'aida_under_all_max_stdev4_jaccard',
-        'train': ['AIDA-YAGO2_train_ner'],
-        'test': ['AIDA-YAGO2_testa_ner', 'AIDA-YAGO2_testb_ner'],
-        'sampling': 'undersample',
-        'features':  [
-                'cross_stats_10_max',
-                'cross_stats_4_stdev',
-                'bi_stats_10_max',
-                'bi_stats_4_stdev',
-                'cross_jaccard'
-            ]
-    },
-    {
-        'name': 'aida_under_all_max_stdev4_levenshtein_jaccard',
-        'train': ['AIDA-YAGO2_train_ner'],
-        'test': ['AIDA-YAGO2_testa_ner', 'AIDA-YAGO2_testb_ner'],
-        'sampling': 'undersample',
-        'features':  [
-                'cross_stats_10_max',
-                'cross_stats_4_stdev',
-                'bi_stats_10_max',
-                'bi_stats_4_stdev',
-                'cross_levenshtein',
-                'cross_jaccard'
-            ]
-    },
-    {
-        'name': 'aida_under_all_max_stats10_levenshtein',
-        'train': ['AIDA-YAGO2_train_ner'],
-        'test': ['AIDA-YAGO2_testa_ner', 'AIDA-YAGO2_testb_ner'],
-        'sampling': 'undersample',
-        'features':  [
-                'cross_stats_10_max',
-                'cross_stats_10_mean',
-                'cross_stats_10_median',
-                'cross_stats_10_stdev',
-                'bi_stats_10_max',
-                'bi_stats_10_mean',
-                'bi_stats_10_median',
-                'bi_stats_10_stdev',
-                'cross_levenshtein'
-            ]
-    },
-    {
-        'name': 'aida_under_all_max_stats10_jaccard',
-        'train': ['AIDA-YAGO2_train_ner'],
-        'test': ['AIDA-YAGO2_testa_ner', 'AIDA-YAGO2_testb_ner'],
-        'sampling': 'undersample',
-        'features':  [
-                'cross_stats_10_max',
-                'cross_stats_10_mean',
-                'cross_stats_10_median',
-                'cross_stats_10_stdev',
-                'bi_stats_10_max',
-                'bi_stats_10_mean',
-                'bi_stats_10_median',
-                'bi_stats_10_stdev',
-                'cross_jaccard'
-            ]
-    },
-    {
-        'name': 'aida_under_all_max_stats10_levenshtein_jaccard',
-        'train': ['AIDA-YAGO2_train_ner'],
-        'test': ['AIDA-YAGO2_testa_ner', 'AIDA-YAGO2_testb_ner'],
-        'sampling': 'undersample',
-        'features':  [
-                'cross_stats_10_max',
-                'cross_stats_10_mean',
-                'cross_stats_10_median',
-                'cross_stats_10_stdev',
-                'bi_stats_10_max',
-                'bi_stats_10_mean',
-                'bi_stats_10_median',
-                'bi_stats_10_stdev',
-                'cross_levenshtein',
-                'cross_jaccard'
-            ]
-    },
-    {
-        'name': 'aida_under_all_max_stats10_levenshtein_ner_wiki',
-        'train': ['AIDA-YAGO2_train_ner'],
-        'test': ['AIDA-YAGO2_testa_ner', 'AIDA-YAGO2_testb_ner'],
-        'sampling': 'undersample',
-        'features':  [
-                'cross_stats_10_max',
-                'cross_stats_10_mean',
-                'cross_stats_10_median',
-                'cross_stats_10_stdev',
-                'bi_stats_10_max',
-                'bi_stats_10_mean',
-                'bi_stats_10_median',
-                'bi_stats_10_stdev',
-                'cross_levenshtein',
-                'ner_per',
-                'ner_loc',
-                'ner_org',
-                'ner_misc',
-                'wiki_per_cross',
-                'wiki_loc_cross',
-                'wiki_org_cross',
-                'wiki_misc_cross',
-            ]
-    },
-    {
-        'name': 'aida_under_all_max_stats10_ner_wiki',
-        'train': ['AIDA-YAGO2_train_ner'],
-        'test': ['AIDA-YAGO2_testa_ner', 'AIDA-YAGO2_testb_ner'],
-        'sampling': 'undersample',
-        'features':  [
-                'cross_stats_10_max',
-                'cross_stats_10_mean',
-                'cross_stats_10_median',
-                'cross_stats_10_stdev',
-                'bi_stats_10_max',
-                'bi_stats_10_mean',
-                'bi_stats_10_median',
-                'bi_stats_10_stdev',
-                'ner_per',
-                'ner_loc',
-                'ner_org',
-                'ner_misc',
-                'wiki_per_cross',
-                'wiki_loc_cross',
-                'wiki_org_cross',
-                'wiki_misc_cross',
-            ]
-    },
-    {
-        'name': 'aida_all_max_stats10_ner_wiki',
-        'train': ['AIDA-YAGO2_train_ner'],
-        'test': ['AIDA-YAGO2_testa_ner', 'AIDA-YAGO2_testb_ner'],
-        'sampling': 'no',
-        'features':  [
-                'cross_stats_10_max',
-                'cross_stats_10_mean',
-                'cross_stats_10_median',
-                'cross_stats_10_stdev',
-                'bi_stats_10_max',
-                'bi_stats_10_mean',
-                'bi_stats_10_median',
-                'bi_stats_10_stdev',
-                'ner_per',
-                'ner_loc',
-                'ner_org',
-                'ner_misc',
-                'wiki_per_cross',
-                'wiki_loc_cross',
-                'wiki_org_cross',
-                'wiki_misc_cross',
-            ]
-    },
-    {
-        'name': 'aida_under_cross_max_stats10_ner_wiki',
-        'train': ['AIDA-YAGO2_train_ner'],
-        'test': ['AIDA-YAGO2_testa_ner', 'AIDA-YAGO2_testb_ner'],
-        'sampling': 'undersample',
-        'features':  [
-                'cross_stats_10_max',
-                'cross_stats_10_mean',
-                'cross_stats_10_median',
-                'cross_stats_10_stdev',
-                'ner_per',
-                'ner_loc',
-                'ner_org',
-                'ner_misc',
-                'wiki_per_cross',
-                'wiki_loc_cross',
-                'wiki_org_cross',
-                'wiki_misc_cross',
-            ]
-    },
-    {
-        'name': 'aida_under_all_max_stats10_ner_wiki_jaccard',
-        'train': ['AIDA-YAGO2_train_ner'],
-        'test': ['AIDA-YAGO2_testa_ner', 'AIDA-YAGO2_testb_ner'],
-        'sampling': 'undersample',
-        'features':  [
-                'cross_stats_10_max',
-                'cross_stats_10_mean',
-                'cross_stats_10_median',
-                'cross_stats_10_stdev',
-                'bi_stats_10_max',
-                'bi_stats_10_mean',
-                'bi_stats_10_median',
-                'bi_stats_10_stdev',
-                'cross_jaccard',
-                'ner_per',
-                'ner_loc',
-                'ner_org',
-                'ner_misc',
-                'wiki_per_cross',
-                'wiki_loc_cross',
-                'wiki_org_cross',
-                'wiki_misc_cross',
-            ]
-    },
 ################## bi
-
+    {
+        'name': 'aida_bi_max',
+        'train': train_dataset,
+        'test': dev_dataset,
+        'sampling': 'no',
+        'features':  [
+                'max',
+            ],
+        'y': 'labels',
+    },
     {
         'name': 'aida_under_bi_max',
-        'train': ['AIDA-YAGO2_train_ner'],
-        'test': ['AIDA-YAGO2_testa_ner', 'AIDA-YAGO2_testb_ner'],
+        'train': train_dataset,
+        'test': dev_dataset,
         'sampling': 'undersample',
         'features':  [
-                'bi_stats_10_max',
+                'max',
             ],
-        'y': 'y_bi',
+        'y': 'labels',
     },
     {
         'name': 'aida_under_bi_max_levenshtein',
-        'train': ['AIDA-YAGO2_train_ner'],
-        'test': ['AIDA-YAGO2_testa_ner', 'AIDA-YAGO2_testb_ner'],
+        'train': train_dataset,
+        'test': dev_dataset,
         'sampling': 'undersample',
         'features':  [
-                'bi_stats_10_max',
-                'bi_levenshtein'
+                'max',
+                'levenshtein'
                 # no cross levenshtein
             ],
-        'y': 'y_bi',
+        'y': 'labels',
     },
     {
         'name': 'aida_under_bi_max_jaccard',
-        'train': ['AIDA-YAGO2_train_ner'],
-        'test': ['AIDA-YAGO2_testa_ner', 'AIDA-YAGO2_testb_ner'],
+        'train': train_dataset,
+        'test': dev_dataset,
         'sampling': 'undersample',
         'features':  [
-                'bi_stats_10_max',
-                'bi_jaccard'
+                'max',
+                'jaccard'
                 # no cross levenshtein
             ],
-        'y': 'y_bi',
-    },
-    {
-        'name': 'aida_under_bi_max_stdev4',
-        'train': ['AIDA-YAGO2_train_ner'],
-        'test': ['AIDA-YAGO2_testa_ner', 'AIDA-YAGO2_testb_ner'],
-        'sampling': 'undersample',
-        'features':  [
-                'bi_stats_10_max',
-                'bi_stats_4_stdev',
-                # no cross levenshtein
-            ],
-        'y': 'y_bi',
+        'y': 'labels',
     },
     {
         'name': 'aida_under_bi_max_stdev10',
-        'train': ['AIDA-YAGO2_train_ner'],
-        'test': ['AIDA-YAGO2_testa_ner', 'AIDA-YAGO2_testb_ner'],
+        'train': train_dataset,
+        'test': dev_dataset,
         'sampling': 'undersample',
         'features':  [
-                'bi_stats_10_max',
-                'bi_stats_10_stdev',
+                'max',
+                'stdev',
                 # no cross levenshtein
             ],
-        'y': 'y_bi',
+        'y': 'labels',
     },
     {
         'name': 'aida_under_bi_max_stats10',
-        'train': ['AIDA-YAGO2_train_ner'],
-        'test': ['AIDA-YAGO2_testa_ner', 'AIDA-YAGO2_testb_ner'],
+        'train': train_dataset,
+        'test': dev_dataset,
         'sampling': 'undersample',
         'features':  [
-                'bi_stats_10_max',
-                'bi_stats_10_mean',
-                'bi_stats_10_median',
-                'bi_stats_10_stdev',
+                'max',
+                'mean',
+                'median',
+                'stdev',
                 # no cross levenshtein
             ],
-        'y': 'y_bi',
+        'y': 'labels',
     },
-    {
-        'name': 'aida_under_bi_max_ner_wiki',
-        'train': ['AIDA-YAGO2_train_ner'],
-        'test': ['AIDA-YAGO2_testa_ner', 'AIDA-YAGO2_testb_ner'],
-        'sampling': 'undersample',
-        'features':  [
-                'bi_stats_10_max',
-                'ner_per',
-                'ner_loc',
-                'ner_org',
-                'ner_misc',
-                'wiki_per_bi',
-                'wiki_loc_bi',
-                'wiki_org_bi',
-                'wiki_misc_bi',
-                # no cross levenshtein
-            ],
-        'y': 'y_bi',
-    },
-    {
-        'name': 'aida_under_bi_max_ner_wiki_stdev4',
-        'train': ['AIDA-YAGO2_train_ner'],
-        'test': ['AIDA-YAGO2_testa_ner', 'AIDA-YAGO2_testb_ner'],
-        'sampling': 'undersample',
-        'features':  [
-                'bi_stats_10_max',
-                'bi_stats_4_stdev',
-                'ner_per',
-                'ner_loc',
-                'ner_org',
-                'ner_misc',
-                'wiki_per_bi',
-                'wiki_loc_bi',
-                'wiki_org_bi',
-                'wiki_misc_bi',
-                # no cross levenshtein
-            ],
-        'y': 'y_bi',
-    },
-    {
-        'name': 'aida_under_bi_max_ner_wiki_levenshtein',
-        'train': ['AIDA-YAGO2_train_ner'],
-        'test': ['AIDA-YAGO2_testa_ner', 'AIDA-YAGO2_testb_ner'],
-        'sampling': 'undersample',
-        'features':  [
-                'bi_stats_10_max',
-                'bi_levenshtein',
-                'ner_per',
-                'ner_loc',
-                'ner_org',
-                'ner_misc',
-                'wiki_per_bi',
-                'wiki_loc_bi',
-                'wiki_org_bi',
-                'wiki_misc_bi',
-                # no cross levenshtein
-            ],
-        'y': 'y_bi',
-    },
-    {
-        'name': 'aida_under_bi_max_ner_wiki_jaccard',
-        'train': ['AIDA-YAGO2_train_ner'],
-        'test': ['AIDA-YAGO2_testa_ner', 'AIDA-YAGO2_testb_ner'],
-        'sampling': 'undersample',
-        'features':  [
-                'bi_stats_10_max',
-                'bi_jaccard',
-                'ner_per',
-                'ner_loc',
-                'ner_org',
-                'ner_misc',
-                'wiki_per_bi',
-                'wiki_loc_bi',
-                'wiki_org_bi',
-                'wiki_misc_bi',
-                # no cross levenshtein
-            ],
-        'y': 'y_bi',
-    },
-    {
-        'name': 'aida_under_bi_max_ner_wiki_levenshtein_jaccard',
-        'train': ['AIDA-YAGO2_train_ner'],
-        'test': ['AIDA-YAGO2_testa_ner', 'AIDA-YAGO2_testb_ner'],
-        'sampling': 'undersample',
-        'features':  [
-                'bi_stats_10_max',
-                'bi_levenshtein',
-                'bi_jaccard',
-                'ner_per',
-                'ner_loc',
-                'ner_org',
-                'ner_misc',
-                'wiki_per_bi',
-                'wiki_loc_bi',
-                'wiki_org_bi',
-                'wiki_misc_bi',
-                # no cross levenshtein
-            ],
-        'y': 'y_bi',
-    },
+    # {
+    #     'name': 'aida_under_bi_max_ner_wiki',
+    #     'train': train_dataset,
+    #     'test': dev_dataset,
+    #     'sampling': 'undersample',
+    #     'features':  [
+    #             'max',
+    #             'ner_per',
+    #             'ner_loc',
+    #             'ner_org',
+    #             'ner_misc',
+    #             'wiki_per_bi',
+    #             'wiki_loc_bi',
+    #             'wiki_org_bi',
+    #             'wiki_misc_bi',
+    #             # no cross levenshtein
+    #         ],
+    #     'y': 'labels',
+    # },
+    # {
+    #     'name': 'aida_under_bi_max_ner_wiki_stdev',
+    #     'train': train_dataset,
+    #     'test': dev_dataset,
+    #     'sampling': 'undersample',
+    #     'features':  [
+    #             'max',
+    #             'stdev',
+    #             'ner_per',
+    #             'ner_loc',
+    #             'ner_org',
+    #             'ner_misc',
+    #             'wiki_per_bi',
+    #             'wiki_loc_bi',
+    #             'wiki_org_bi',
+    #             'wiki_misc_bi',
+    #             # no cross levenshtein
+    #         ],
+    #     'y': 'labels',
+    # },
+    # {
+    #     'name': 'aida_under_bi_max_ner_wiki_levenshtein',
+    #     'train': train_dataset,
+    #     'test': dev_dataset,
+    #     'sampling': 'undersample',
+    #     'features':  [
+    #             'max',
+    #             'levenshtein',
+    #             'ner_per',
+    #             'ner_loc',
+    #             'ner_org',
+    #             'ner_misc',
+    #             'wiki_per_bi',
+    #             'wiki_loc_bi',
+    #             'wiki_org_bi',
+    #             'wiki_misc_bi',
+    #             # no cross levenshtein
+    #         ],
+    #     'y': 'labels',
+    # },
+    # {
+    #     'name': 'aida_under_bi_max_ner_wiki_jaccard',
+    #     'train': train_dataset,
+    #     'test': dev_dataset,
+    #     'sampling': 'undersample',
+    #     'features':  [
+    #             'max',
+    #             'jaccard',
+    #             'ner_per',
+    #             'ner_loc',
+    #             'ner_org',
+    #             'ner_misc',
+    #             'wiki_per_bi',
+    #             'wiki_loc_bi',
+    #             'wiki_org_bi',
+    #             'wiki_misc_bi',
+    #             # no cross levenshtein
+    #         ],
+    #     'y': 'labels',
+    # },
+    # {
+    #     'name': 'aida_under_bi_max_ner_wiki_levenshtein_jaccard',
+    #     'train': train_dataset,
+    #     'test': dev_dataset,
+    #     'sampling': 'undersample',
+    #     'features':  [
+    #             'max',
+    #             'levenshtein',
+    #             'jaccard',
+    #             'ner_per',
+    #             'ner_loc',
+    #             'ner_org',
+    #             'ner_misc',
+    #             'wiki_per_bi',
+    #             'wiki_loc_bi',
+    #             'wiki_org_bi',
+    #             'wiki_misc_bi',
+    #             # no cross levenshtein
+    #         ],
+    #     'y': 'labels',
+    # },
     {
         'name': 'aida_under_bi_max_levenshtein_jaccard',
-        'train': ['AIDA-YAGO2_train_ner'],
-        'test': ['AIDA-YAGO2_testa_ner', 'AIDA-YAGO2_testb_ner'],
+        'train': train_dataset,
+        'test': dev_dataset,
         'sampling': 'undersample',
         'features':  [
-                'bi_stats_10_max',
-                'bi_levenshtein',
-                'bi_jaccard',
+                'max',
+                'levenshtein',
+                'jaccard',
                 # no cross levenshtein
             ],
-        'y': 'y_bi',
+        'y': 'labels',
     },
     {
-        'name': 'aida_under_bi_max_stdev4_levenshtein',
-        'train': ['AIDA-YAGO2_train_ner'],
-        'test': ['AIDA-YAGO2_testa_ner', 'AIDA-YAGO2_testb_ner'],
+        'name': 'aida_under_bi_max_stdev_levenshtein',
+        'train': train_dataset,
+        'test': dev_dataset,
         'sampling': 'undersample',
         'features':  [
-                'bi_stats_10_max',
-                'bi_stats_4_stdev',
-                'bi_levenshtein',
+                'max',
+                'stdev',
+                'levenshtein',
                 # no cross levenshtein
             ],
-        'y': 'y_bi',
+        'y': 'labels',
     },
     {
-        'name': 'aida_under_bi_max_stdev4_jaccard',
-        'train': ['AIDA-YAGO2_train_ner'],
-        'test': ['AIDA-YAGO2_testa_ner', 'AIDA-YAGO2_testb_ner'],
+        'name': 'aida_under_bi_max_stdev_jaccard',
+        'train': train_dataset,
+        'test': dev_dataset,
         'sampling': 'undersample',
         'features':  [
-                'bi_stats_10_max',
-                'bi_stats_4_stdev',
-                'bi_jaccard',
+                'max',
+                'stdev',
+                'jaccard',
                 # no cross levenshtein
             ],
-        'y': 'y_bi',
+        'y': 'labels',
     },
     {
-        'name': 'aida_under_bi_max_stdev4_levenshtein_jaccard',
-        'train': ['AIDA-YAGO2_train_ner'],
-        'test': ['AIDA-YAGO2_testa_ner', 'AIDA-YAGO2_testb_ner'],
+        'name': 'aida_under_bi_max_stdev_levenshtein_jaccard',
+        'train': train_dataset,
+        'test': dev_dataset,
         'sampling': 'undersample',
         'features':  [
-                'bi_stats_10_max',
-                'bi_stats_4_stdev',
-                'bi_levenshtein',
-                'bi_jaccard'
+                'max',
+                'stdev',
+                'levenshtein',
+                'jaccard'
                 # no cross levenshtein
             ],
-        'y': 'y_bi',
+        'y': 'labels',
     },
     {
         'name': 'aida_under_bi_max_stats10_levenshtein',
-        'train': ['AIDA-YAGO2_train_ner'],
-        'test': ['AIDA-YAGO2_testa_ner', 'AIDA-YAGO2_testb_ner'],
+        'train': train_dataset,
+        'test': dev_dataset,
         'sampling': 'undersample',
         'features':  [
-                'bi_stats_10_max',
-                'bi_stats_10_mean',
-                'bi_stats_10_median',
-                'bi_stats_10_stdev',
-                'bi_levenshtein'
+                'max',
+                'mean',
+                'median',
+                'stdev',
+                'levenshtein'
                 # no cross levenshtein
             ],
-        'y': 'y_bi',
+        'y': 'labels',
     },
     {
         'name': 'aida_under_bi_max_stats10_jaccard',
-        'train': ['AIDA-YAGO2_train_ner'],
-        'test': ['AIDA-YAGO2_testa_ner', 'AIDA-YAGO2_testb_ner'],
+        'train': train_dataset,
+        'test': dev_dataset,
         'sampling': 'undersample',
         'features':  [
-                'bi_stats_10_max',
-                'bi_stats_10_mean',
-                'bi_stats_10_median',
-                'bi_stats_10_stdev',
-                'bi_jaccard'
+                'max',
+                'mean',
+                'median',
+                'stdev',
+                'jaccard'
                 # no cross levenshtein
             ],
-        'y': 'y_bi',
+        'y': 'labels',
     },
     {
         'name': 'aida_under_bi_max_stats10_levenshtein_jaccard',
-        'train': ['AIDA-YAGO2_train_ner'],
-        'test': ['AIDA-YAGO2_testa_ner', 'AIDA-YAGO2_testb_ner'],
+        'train': train_dataset,
+        'test': dev_dataset,
         'sampling': 'undersample',
         'features':  [
-                'bi_stats_10_max',
-                'bi_stats_10_mean',
-                'bi_stats_10_median',
-                'bi_stats_10_stdev',
-                'bi_levenshtein',
-                'bi_jaccard'
+                'max',
+                'mean',
+                'median',
+                'stdev',
+                'levenshtein',
+                'jaccard'
                 # no cross levenshtein
             ],
-        'y': 'y_bi',
+        'y': 'labels',
     },
     {
-        'name': 'aida_under_bi_max_stats10_levenshtein_ner_wiki',
-        'train': ['AIDA-YAGO2_train_ner'],
-        'test': ['AIDA-YAGO2_testa_ner', 'AIDA-YAGO2_testb_ner'],
-        'sampling': 'undersample',
+        'name': 'aida_bi_max_stats10_levenshtein_jaccard',
+        'train': train_dataset,
+        'test': dev_dataset,
+        'sampling': 'no',
         'features':  [
-                'bi_stats_10_max',
-                'bi_stats_10_mean',
-                'bi_stats_10_median',
-                'bi_stats_10_stdev',
-                'bi_levenshtein',
-                'ner_per',
-                'ner_loc',
-                'ner_org',
-                'ner_misc',
-                'wiki_per_bi',
-                'wiki_loc_bi',
-                'wiki_org_bi',
-                'wiki_misc_bi',
+                'max',
+                'mean',
+                'median',
+                'stdev',
+                'levenshtein',
+                'jaccard'
                 # no cross levenshtein
             ],
-        'y': 'y_bi',
+        'y': 'labels',
     },
-    {
-        'name': 'aida_under_bi_max_stats10_jaccard_ner_wiki',
-        'train': ['AIDA-YAGO2_train_ner'],
-        'test': ['AIDA-YAGO2_testa_ner', 'AIDA-YAGO2_testb_ner'],
-        'sampling': 'undersample',
-        'features':  [
-                'bi_stats_10_max',
-                'bi_stats_10_mean',
-                'bi_stats_10_median',
-                'bi_stats_10_stdev',
-                'bi_jaccard',
-                'ner_per',
-                'ner_loc',
-                'ner_org',
-                'ner_misc',
-                'wiki_per_bi',
-                'wiki_loc_bi',
-                'wiki_org_bi',
-                'wiki_misc_bi',
-                # no cross levenshtein
-            ],
-        'y': 'y_bi',
-    },
-    {
-        'name': 'aida_under_bi_max_stdev4_levenshtein_ner_wiki',
-        'train': ['AIDA-YAGO2_train_ner'],
-        'test': ['AIDA-YAGO2_testa_ner', 'AIDA-YAGO2_testb_ner'],
-        'sampling': 'undersample',
-        'features':  [
-                'bi_stats_10_max',
-                'bi_stats_4_stdev',
-                'bi_levenshtein',
-                'ner_per',
-                'ner_loc',
-                'ner_org',
-                'ner_misc',
-                'wiki_per_bi',
-                'wiki_loc_bi',
-                'wiki_org_bi',
-                'wiki_misc_bi',
-                # no cross levenshtein
-            ],
-        'y': 'y_bi',
-    },
-    {
-        'name': 'aida_under_bi_max_stats10_ner_wiki',
-        'train': ['AIDA-YAGO2_train_ner'],
-        'test': ['AIDA-YAGO2_testa_ner', 'AIDA-YAGO2_testb_ner'],
-        'sampling': 'undersample',
-        'features':  [
-                'bi_stats_10_max',
-                'bi_stats_10_mean',
-                'bi_stats_10_median',
-                'bi_stats_10_stdev',
-                'ner_per',
-                'ner_loc',
-                'ner_org',
-                'ner_misc',
-                'wiki_per_bi',
-                'wiki_loc_bi',
-                'wiki_org_bi',
-                'wiki_misc_bi',
-                # no cross levenshtein
-            ],
-        'y': 'y_bi',
-    },
+    # {
+    #     'name': 'aida_under_bi_max_stats10_levenshtein_ner_wiki',
+    #     'train': train_dataset,
+    #     'test': dev_dataset,
+    #     'sampling': 'undersample',
+    #     'features':  [
+    #             'max',
+    #             'mean',
+    #             'median',
+    #             'stdev',
+    #             'levenshtein',
+    #             'ner_per',
+    #             'ner_loc',
+    #             'ner_org',
+    #             'ner_misc',
+    #             'wiki_per_bi',
+    #             'wiki_loc_bi',
+    #             'wiki_org_bi',
+    #             'wiki_misc_bi',
+    #             # no cross levenshtein
+    #         ],
+    #     'y': 'labels',
+    # },
+    # {
+    #     'name': 'aida_under_bi_max_stats10_jaccard_ner_wiki',
+    #     'train': train_dataset,
+    #     'test': dev_dataset,
+    #     'sampling': 'undersample',
+    #     'features':  [
+    #             'max',
+    #             'mean',
+    #             'median',
+    #             'stdev',
+    #             'jaccard',
+    #             'ner_per',
+    #             'ner_loc',
+    #             'ner_org',
+    #             'ner_misc',
+    #             'wiki_per_bi',
+    #             'wiki_loc_bi',
+    #             'wiki_org_bi',
+    #             'wiki_misc_bi',
+    #             # no cross levenshtein
+    #         ],
+    #     'y': 'labels',
+    # },
+    # {
+    #     'name': 'aida_under_bi_max_stdev_levenshtein_ner_wiki',
+    #     'train': train_dataset,
+    #     'test': dev_dataset,
+    #     'sampling': 'undersample',
+    #     'features':  [
+    #             'max',
+    #             'stdev',
+    #             'levenshtein',
+    #             'ner_per',
+    #             'ner_loc',
+    #             'ner_org',
+    #             'ner_misc',
+    #             'wiki_per_bi',
+    #             'wiki_loc_bi',
+    #             'wiki_org_bi',
+    #             'wiki_misc_bi',
+    #             # no cross levenshtein
+    #         ],
+    #     'y': 'labels',
+    # },
+    # {
+    #     'name': 'aida_under_bi_max_stats10_ner_wiki',
+    #     'train': train_dataset,
+    #     'test': dev_dataset,
+    #     'sampling': 'undersample',
+    #     'features':  [
+    #             'max',
+    #             'mean',
+    #             'median',
+    #             'stdev',
+    #             'ner_per',
+    #             'ner_loc',
+    #             'ner_org',
+    #             'ner_misc',
+    #             'wiki_per_bi',
+    #             'wiki_loc_bi',
+    #             'wiki_org_bi',
+    #             'wiki_misc_bi',
+    #             # no cross levenshtein
+    #         ],
+    #     'y': 'labels',
+    # },
 ]
 
 # assert no duplicates
@@ -918,13 +491,8 @@ for task in tasks:
     if 'y' in task:
         y_whom = task['y']
 
-    train_df = dataset[dataset['src'].isin(task['train'])]
-    if isinstance(task['test'], list):
-        test_df = dataset[dataset['src'].isin(task['test'])]
-    elif isinstance(task['test'], float):
-        train_df, test_df = train_test_split(train_df, test_size = task['test'], random_state = 1234)
-    else:
-        raise Exception()
+    train_df = datasets[task['train']]
+    test_df = datasets[task['test']]
 
     train_df_shape_original = train_df.shape[0]
     test_df_shape_original = test_df.shape[0]
@@ -980,19 +548,13 @@ for task in tasks:
     test_df['y_pred_round'] = y_pred_round
     test_df['y_pred'] = y_pred
 
-    bi_baseline = test_df.query('bi_labels == bi_best_candidate or Wikipedia_title == bi_best_candidate_title').shape[0]
-    cross_baseline = test_df.query('cross_labels == cross_best_candidate or Wikipedia_title == cross_best_candidate_title').shape[0]
+    bi_baseline = test_df.query('wikiId == top_id or y_title == top_title').shape[0]
 
-    bi_acc = test_df.query('(y_pred_round == 1 and (bi_labels == bi_best_candidate or Wikipedia_title == bi_best_candidate_title)) or (bi_labels == -1 and y_pred_round == 0)').shape[0]
-    cross_acc = test_df.query('(y_pred_round == 1 and (cross_labels == cross_best_candidate or Wikipedia_title == cross_best_candidate_title)) or (cross_labels == -1 and y_pred_round == 0)').shape[0]
+    bi_acc = test_df.query('(y_pred_round == 1 and (wikiId == top_id or y_title == top_title)) or (NIL and y_pred_round == 0)').shape[0]
 
     bi_acc_correcting_nel = test_df.query(
-        '(y_pred_round == 1 and (bi_labels == bi_best_candidate or Wikipedia_title == bi_best_candidate_title))'
-        ' or (bi_labels != bi_best_candidate and y_pred_round == 0)').shape[0]
-    cross_acc_correcting_nel = test_df.query(
-        '(y_pred_round == 1 and '
-        '(cross_labels == cross_best_candidate or Wikipedia_title == cross_best_candidate_title))'
-        ' or (cross_labels != cross_best_candidate and y_pred_round == 0)').shape[0]
+        '(y_pred_round == 1 and (wikiId == top_id or y_title == top_title))'
+        ' or (wikiId != top_id and y_pred_round == 0)').shape[0]
 
     _classification_report = classification_report(y_test, y_pred_round)
 
@@ -1012,8 +574,7 @@ for task in tasks:
 
     test_df_oracle = test_df.query(f'y_pred <= {tl} or y_pred >= {th}')
 
-    bi_acc_oracle = test_df_oracle.query('(y_pred_round == 1 and (bi_labels == bi_best_candidate or Wikipedia_title == bi_best_candidate_title)) or (bi_labels == -1 and y_pred_round == 0)').shape[0]
-    cross_acc_oracle = test_df_oracle.query('(y_pred_round == 1 and (cross_labels == cross_best_candidate or Wikipedia_title == cross_best_candidate_title)) or (cross_labels == -1 and y_pred_round == 0)').shape[0]
+    bi_acc_oracle = test_df_oracle.query('(y_pred_round == 1 and (wikiId == top_id or y_title == top_title)) or (NIL and y_pred_round == 0)').shape[0]
 
     _f1_0 = f1_score(y_test, y_pred_round, pos_label=0)
     _f1_1 = f1_score(y_test, y_pred_round, pos_label=1)
@@ -1028,19 +589,14 @@ for task in tasks:
     csv_report = csv_report.append({
         'name': task['name'],
         'bi_baseline': bi_baseline / test_df_shape_actual,
-        'cross_baseline': cross_baseline / test_df_shape_actual,
         'bi_acc': bi_acc / test_df_shape_actual,
-        'cross_acc': cross_acc / test_df_shape_actual,
         'bi_acc_adjusted': bi_acc / test_df_shape_original,
-        'cross_acc_adjusted': cross_acc / test_df_shape_original,
         'bi_acc_correcting_nel': bi_acc_correcting_nel / test_df_shape_actual,
-        'cross_acc_correcting_nel': cross_acc_correcting_nel / test_df_shape_actual,
         '0-f1': _f1_0,
         '1-f1': _f1_1,
         'macro-avg-f1': _macro_avg_f1,
         'oracle_ratio': 1 - (oracle_df.shape[0] / oracle_original_shape),
         'bi_acc_oracle': bi_acc_oracle / test_df_oracle.shape[0],
-        'cross_acc_oracle': cross_acc_oracle / test_df_oracle.shape[0],
         '0-f1-oracle': _f1_0_oracle,
         '1-f1-oracle': _f1_1_oracle,
         'macro-avg-f1-oracle': _macro_avg_f1_oracle,
@@ -1050,18 +606,14 @@ for task in tasks:
 
     print('-- Performances over test set:', task['test'], '--')
     print('Bi baseline:', bi_baseline / test_df_shape_actual)
-    print('Cross baseline:', cross_baseline / test_df_shape_actual)
     print('Bi acc:', bi_acc / test_df_shape_actual)
-    print('Cross acc:', cross_acc / test_df_shape_actual)
     print('Bi acc adjusted:', bi_acc / test_df_shape_original)
-    print('Cross acc adjusted:', cross_acc / test_df_shape_original)
 
     print(f'-- Oracle HITL evaluation when y_pred in [{tl}, {th}]')
     print('Ratio to human validator:', 1 - (oracle_df.shape[0] / oracle_original_shape))
     print(_classification_report_oracle)
 
     print('Bi acc oracle:', bi_acc_oracle / test_df_oracle.shape[0])
-    print('Cross acc oracle:', cross_acc_oracle / test_df_oracle.shape[0])
 
 
     with open(os.path.join(outpath, task['name']+'_report.txt'), 'w') as fd:
@@ -1071,17 +623,13 @@ for task in tasks:
 
         print('-- Performances over test set:', task['test'], '--', file=fd)
         print('Bi baseline:', bi_baseline / test_df_shape_actual, file=fd)
-        print('Cross baseline:', cross_baseline / test_df_shape_actual, file=fd)
         print('Bi acc:', bi_acc / test_df_shape_actual, file=fd)
-        print('Cross acc:', cross_acc / test_df_shape_actual, file=fd)
         print('Bi acc adjusted:', bi_acc / test_df_shape_original, file=fd)
-        print('Cross acc adjusted:', cross_acc / test_df_shape_original, file=fd)
 
         print(f'-- Oracle HITL evaluation when y_pred in [{tl}, {th}]', file=fd)
         print('Ratio to human validator:', oracle_df.shape[0] / oracle_original_shape, file=fd)
         print(_classification_report_oracle, file=fd)
         print('Bi acc oracle:', bi_acc_oracle / test_df_oracle.shape[0], file=fd)
-        print('Cross acc oracle:', cross_acc_oracle / test_df_oracle.shape[0], file=fd)
 
 
 
