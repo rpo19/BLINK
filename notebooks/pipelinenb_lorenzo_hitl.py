@@ -147,12 +147,12 @@ data.loc[to_correct_not_nil.index, 'is_nil'] = False
 
 def get_new_cand(x):
     url = x['y_wikiurl_dump']
-    curid = int(url.split('=')[1])
+    curid = x['wikiId']
     candidates = x['candidates']
     score = candidates[0]['score'] + 1
     _cand = {
         'wikipedia_id': curid,
-        'title': 'Marwari language',
+        'title': x['y_title'],
         'url': url,
         'indexer': -1,
         'score': score,

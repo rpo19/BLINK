@@ -77,8 +77,8 @@ os.makedirs(outpath, exist_ok=True)
 
 print('loading dataset...')
 datasets = {}
-train_dataset = 'notebooks/output_test_train_data0/data0_outdata.pickle_mod'
-dev_dataset = 'notebooks/output_test_dev_data0/data0_outdata.pickle_mod'
+train_dataset = 'notebooks/output_test/train0_outdata.pickle_mod'
+dev_dataset = 'notebooks/output_test/dev0_outdata.pickle_mod'
 datasets[train_dataset] = pd.read_pickle(train_dataset)
 datasets[dev_dataset] = pd.read_pickle(dev_dataset)
 print('loaded...')
@@ -260,6 +260,19 @@ tasks = [
         'train': train_dataset,
         'test': dev_dataset,
         'sampling': 'undersample',
+        'features':  [
+                'max',
+                'levenshtein',
+                'jaccard',
+                # no cross levenshtein
+            ],
+        'y': 'labels',
+    },
+    {
+        'name': 'aida_bi_max_levenshtein_jaccard',
+        'train': train_dataset,
+        'test': dev_dataset,
+        'sampling': 'no',
         'features':  [
                 'max',
                 'levenshtein',

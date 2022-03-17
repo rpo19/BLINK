@@ -4,9 +4,12 @@ import pandas as pd
 import json
 import statistics
 import textdistance
+import sys
 # %%
 #filename = 'notebooks/output_test_train_data0/data0_outdata.pickle'
-filename = 'notebooks/output_test_dev_data0/data0_outdata.pickle'
+#filename = 'notebooks/output_test_dev_data0/data0_outdata.pickle'
+# filename = 'notebooks/output_test/train0_outdata.pickle'
+filename = sys.argv[1]
 # %%
 df = pd.read_pickle(filename)
 # %%

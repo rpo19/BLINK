@@ -33,12 +33,14 @@ nilcluster = 'http://localhost:30305/api/nilcluster'
 infile = sys.argv[1]
 
 data = pd.read_json(infile, lines=True)
+#data = pd.read_json(infile, orient='records')
 
 data = data.rename(columns={'right_context_text': 'context_right', 'left_context_text': 'context_left', 'word': 'mention'})
 
 # ## Entity Linking
 
 # ### Encoding
+outdata = './output_test/{}_outdata.pickle'.format(os.path.splitext(os.path.basename(infile))[0])
 
 res_biencoder = requests.post(biencoder_mention, json=data.to_dict(orient='records'))
 
@@ -51,6 +53,7 @@ else:
 print('Encoded {} entities.'.format(data.shape[0]))
 
 data.head()
+data.to_pickle(outdata)
 
 # ### Retrieval
 print('retrieval')
@@ -71,6 +74,7 @@ if len(candidates) == 0 or len(candidates[0]) == 0:
     print('No candidates received.')
 
 data['candidates'] = candidates
+data.to_pickle(outdata)
 
 data.head()
 
@@ -98,6 +102,7 @@ def prepare_for_nil_prediction(x):
 
     features['mention'] = x['mention']
     features['title'] = c[0]['title']
+    features['topcandidates'] = c
 
     return is_nil, features
 
