@@ -318,6 +318,13 @@ def run_batch(batch, add_correct, hitl, no_add, save_path, reset,
     ## Linking
     ### Consider also previously added entities ?
     report['no_correct_links'] = data.eval('top_wikiId == wikiId').sum()
+    report['no_correct_links_normalized'] = report['no_correct_links'] / data.shape[0]
+    # no nil
+    report['no_correct_links_no_nil'] = data.eval('~NIL and top_wikiId == wikiId').sum()
+    report['no_correct_links_no_nil_normalized'] = report['no_correct_links_no_nil'] / data.eval('~NIL').sum()
+    # considers nil
+    report['no_correct_links_overall'] = data.eval('( NIL and is_nil ) or ( top_wikiId == wikiId and ~is_nil )').sum()
+    report['no_correct_links_overall_normalized'] = report['no_correct_links_overall'] / data.shape[0]
     data_not_nil = data.query('~NIL')
     if data_not_nil.shape[0] > 0:
         # how many are correct among the not NIL ones (gold)
@@ -359,8 +366,8 @@ def run_batch(batch, add_correct, hitl, no_add, save_path, reset,
     report['nil_mitigated_tp'] = data.eval('( NIL or top_wikiId != wikiId ) and is_nil').sum()
     # not nil and correct linking --> false positive
     report['nil_mitigated_fp'] = data.eval('~NIL and top_wikiId == wikiId and is_nil').sum()
-    report['nil_mitigated_tn'] = data.eval('~NIL and ~is_nil').sum()
-    report['nil_mitigated_fn'] = data.eval('NIL and ~is_nil').sum()
+    report['nil_mitigated_tn'] = data.eval('~NIL and top_wikiId == wikiId and ~is_nil').sum()
+    report['nil_mitigated_fn'] = data.eval('( NIL or top_wikiId != wikiId ) and ~is_nil').sum()
     report['nil_mitigated_precision'] = report['nil_mitigated_tp'] / (report['nil_mitigated_tp'] + report['nil_mitigated_fp'])
     report['nil_mitigated_recall'] = report['nil_mitigated_tp'] / (report['nil_mitigated_tp'] + report['nil_mitigated_fn'])
     report['nil_mitigated_f1'] = 2 * report['nil_mitigated_precision'] * report['nil_mitigated_recall'] / (report['nil_mitigated_precision'] + report['nil_mitigated_recall'])
