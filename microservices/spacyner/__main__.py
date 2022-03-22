@@ -11,6 +11,7 @@ import json
 import requests
 # from multiprocessing import Pool
 from .entity import EntityMention
+from tqdm import tqdm
 
 class Item(BaseModel):
     text: Union[List[str], str]
@@ -22,19 +23,27 @@ async def encode_mention(item: Item):
     samples = []
     sentences = []
 
+    print('senter')
     if isinstance(item.text, str):
         text = item.text
-        text, mapping, mapping_back = preprocess.preprocess(text)
-        input_sentences = nlp(text).sents
-        process_sent = lambda x: (x, x.text)
+        text, mapping, mapping_back = preprocess_wrapper(text)
+        nlp.enable_pipe('senter')
+        old_nlp_max_length = nlp.max_length
+        nlp.max_length = len(text) + 100
+        input_sentences = [s.as_doc() for s in nlp(text).sents]
+        nlp.max_length = old_nlp_max_length
+        process_sent = lambda x: (nlp(x), x)
         get_mapping_back = itertools.repeat(mapping_back)
     else:
         input_sentences = item.text
-        input_sentences, mapping, mapping_back = tuple(zip(*map(lambda x: preprocess.preprocess(x), input_sentences)))
+        input_sentences, mapping, mapping_back = tuple(zip(*map(lambda x: preprocess_wrapper(x), input_sentences)))
         process_sent = lambda x: (nlp(x), x)
         get_mapping_back = mapping_back
 
-    for i, sentence, _mapping_back in zip(itertools.count(), input_sentences, get_mapping_back):
+    print('ner')
+    nlp.disable_pipe('senter')
+    nlp.enable_pipe('ner')
+    for i, sentence, _mapping_back in tqdm(zip(itertools.count(), input_sentences, get_mapping_back), total=len(input_sentences)):
         doc, sentence = process_sent(sentence)
 
         if hasattr(doc, 'start_char') and hasattr(doc, 'end_char'):
@@ -116,6 +125,14 @@ async def encode_mention(item: Item):
         }
     }
 
+def preprocess_wrapper(text):
+    global args
+    if args.preprocess:
+        return preprocess.preprocess(text)
+    else:
+        return text, {}, {}
+
+
 def nlp_tint(text):
     global args
 
@@ -163,6 +180,9 @@ if __name__ == '__main__':
     parser.add_argument(
         "--tint", type=str, default="http://127.0.0.1:8012/tint", help="tint URL",
     )
+    parser.add_argument(
+        "--preprocess",  action='store_true', default=False, help="Run preprocessing",
+    )
 
     # pool to run tint in parallel # TODO
     #pool = Pool(1)
@@ -179,7 +199,8 @@ if __name__ == '__main__':
         if "Can't find model" in str(e):
             print('Maybe you did not download the model. To download it run ```python -m spacy download $MODEL```.')
         sys.exit(1)
-    nlp.enable_pipe('senter')
+    # nlp.enable_pipe('senter')
+    nlp.disable_pipe('ner')
 
     print('Loading complete.')
 
