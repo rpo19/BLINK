@@ -79,7 +79,7 @@ tasks = [
     {
         'name': 'max',
         'train': 'data/ita/nil/train.pickle',
-        'test': 'data/ita/nil/test.pickle',
+        'test': 'data/ita/nil/valid.pickle',
         'sampling': 'undersample',
         'features':  [
                 'candidate_score',
@@ -88,7 +88,7 @@ tasks = [
     {
         'name': 'max_leve',
         'train': 'data/ita/nil/train.pickle',
-        'test': 'data/ita/nil/test.pickle',
+        'test': 'data/ita/nil/valid.pickle',
         'sampling': 'undersample',
         'features':  [
                 'candidate_score',
@@ -98,7 +98,7 @@ tasks = [
     {
         'name': 'max_jacc',
         'train': 'data/ita/nil/train.pickle',
-        'test': 'data/ita/nil/test.pickle',
+        'test': 'data/ita/nil/valid.pickle',
         'sampling': 'undersample',
         'features':  [
                 'candidate_score',
@@ -108,7 +108,7 @@ tasks = [
     {
         'name': 'max_leve_jacc',
         'train': 'data/ita/nil/train.pickle',
-        'test': 'data/ita/nil/test.pickle',
+        'test': 'data/ita/nil/valid.pickle',
         'sampling': 'undersample',
         'features':  [
                 'candidate_score',

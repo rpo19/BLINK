@@ -58,7 +58,11 @@ def evaluate(
     nb_eval_steps = 0
 
     for step, batch in enumerate(iter_):
-        batch = tuple(t.to(device) for t in batch)
+        try:
+            batch = tuple(t.to(device) for t in batch)
+        except:
+            import pdb
+            pdb.set_trace()
         context_input, candidate_input, _ = batch
 
         with torch.no_grad():
@@ -146,10 +150,10 @@ def main(params):
         torch.cuda.manual_seed_all(seed)
 
     # Load train data
-    train_samples = utils.read_dataset("train", params["data_path"])
+    train_samples = utils.read_dataset("train", params["data_path"], compression='gzip')
     logger.info("Read %d train samples." % len(train_samples))
 
-    train_data, train_tensor_data = data.process_mention_data(
+    train_tensor_data = data.process_mention_data(
         train_samples,
         tokenizer,
         params["max_context_length"],
@@ -158,22 +162,26 @@ def main(params):
         silent=params["silent"],
         logger=logger,
         debug=params["debug"],
+        batch_size=train_batch_size
     )
+    #logger.info("Saving tensor data...")
+    #torch.save(train_tensor_data, './train_tensor_data.pkl')
+    #sys.exit(0)
+    # import pdb
+    # pdb.set_trace()
     if params["shuffle"]:
         train_sampler = RandomSampler(train_tensor_data)
     else:
         train_sampler = SequentialSampler(train_tensor_data)
 
-    train_dataloader = DataLoader(
-        train_tensor_data, sampler=train_sampler, batch_size=train_batch_size
-    )
+    train_dataloader = train_tensor_data
 
     # Load eval data
     # TODO: reduce duplicated code here
-    valid_samples = utils.read_dataset("valid", params["data_path"])
+    valid_samples = utils.read_dataset("valid", params["data_path"], compression='gzip')
     logger.info("Read %d valid samples." % len(valid_samples))
 
-    valid_data, valid_tensor_data = data.process_mention_data(
+    valid_tensor_data = data.process_mention_data(
         valid_samples,
         tokenizer,
         params["max_context_length"],
@@ -182,11 +190,10 @@ def main(params):
         silent=params["silent"],
         logger=logger,
         debug=params["debug"],
+        batch_size=eval_batch_size
     )
     valid_sampler = SequentialSampler(valid_tensor_data)
-    valid_dataloader = DataLoader(
-        valid_tensor_data, sampler=valid_sampler, batch_size=eval_batch_size
-    )
+    valid_dataloader = valid_tensor_data
 
     # evaluate before training
     results = evaluate(
@@ -293,7 +300,7 @@ def main(params):
     # save the best model in the parent_dir
     logger.info("Best performance in epoch: {}".format(best_epoch_idx))
     params["path_to_model"] = os.path.join(
-        model_output_path, 
+        model_output_path,
         "epoch_{}".format(best_epoch_idx),
         WEIGHTS_NAME,
     )

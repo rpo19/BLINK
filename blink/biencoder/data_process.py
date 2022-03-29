@@ -105,15 +105,18 @@ def process_mention_data(
     silent,
     mention_key="mention",
     context_key="context",
-    label_key="label",
-    title_key='label_title',
+    label_key="descr",
+    title_key='href',
     ent_start_token=ENT_START_TAG,
     ent_end_token=ENT_END_TAG,
     title_token=ENT_TITLE_TAG,
     debug=False,
     logger=None,
+    batch_size=8
 ):
-    processed_samples = []
+    context_v = []
+    label_v = []
+    label_idx_v = []
 
     if debug:
         samples = samples[:200]
@@ -141,60 +144,25 @@ def process_mention_data(
         label_tokens = get_candidate_representation(
             label, tokenizer, max_cand_length, title,
         )
-        label_idx = int(sample["label_id"])
+        label_idx = int(sample["label"])
 
-        record = {
-            "context": context_tokens,
-            "label": label_tokens,
-            "label_idx": [label_idx],
-        }
+        context_v.append(context_tokens['ids'])
+        label_v.append(label_tokens['ids'])
+        label_idx_v.append([label_idx])
 
-        if "world" in sample:
-            src = sample["world"]
-            src = world_to_id[src]
-            record["src"] = [src]
-            use_world = True
-        else:
-            use_world = False
+        if len(context_v) == batch_size:
 
-        processed_samples.append(record)
+            yield TensorDataset(
+                    torch.tensor(context_v, dtype=torch.long),
+                    torch.tensor(label_v, dtype=torch.long),
+                    torch.tensor(label_idx_v, dtype=torch.long),
+                )
+            context_v = []
+            label_v = []
+            label_idx_v = []
 
-    if debug and logger:
-        logger.info("====Processed samples: ====")
-        for sample in processed_samples[:5]:
-            logger.info("Context tokens : " + " ".join(sample["context"]["tokens"]))
-            logger.info(
-                "Context ids : " + " ".join([str(v) for v in sample["context"]["ids"]])
-            )
-            logger.info("Label tokens : " + " ".join(sample["label"]["tokens"]))
-            logger.info(
-                "Label ids : " + " ".join([str(v) for v in sample["label"]["ids"]])
-            )
-            logger.info("Src : %d" % sample["src"][0])
-            logger.info("Label_id : %d" % sample["label_idx"][0])
-
-    context_vecs = torch.tensor(
-        select_field(processed_samples, "context", "ids"), dtype=torch.long,
-    )
-    cand_vecs = torch.tensor(
-        select_field(processed_samples, "label", "ids"), dtype=torch.long,
-    )
-    if use_world:
-        src_vecs = torch.tensor(
-            select_field(processed_samples, "src"), dtype=torch.long,
+    yield TensorDataset(
+            torch.tensor(context_v, dtype=torch.long),
+            torch.tensor(label_v, dtype=torch.long),
+            torch.tensor(label_idx_v, dtype=torch.long),
         )
-    label_idx = torch.tensor(
-        select_field(processed_samples, "label_idx"), dtype=torch.long,
-    )
-    data = {
-        "context_vecs": context_vecs,
-        "cand_vecs": cand_vecs,
-        "label_idx": label_idx,
-    }
-
-    if use_world:
-        data["src"] = src_vecs
-        tensor_data = TensorDataset(context_vecs, cand_vecs, src_vecs, label_idx)
-    else:
-        tensor_data = TensorDataset(context_vecs, cand_vecs, label_idx)
-    return data, tensor_data
