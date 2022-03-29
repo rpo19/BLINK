@@ -58,11 +58,7 @@ def evaluate(
     nb_eval_steps = 0
 
     for step, batch in enumerate(iter_):
-        try:
-            batch = tuple(t.to(device) for t in batch)
-        except:
-            import pdb
-            pdb.set_trace()
+        batch = tuple(t.to(device) for t in batch)
         context_input, candidate_input, _ = batch
 
         with torch.no_grad():
@@ -78,6 +74,7 @@ def evaluate(
         eval_accuracy += tmp_eval_accuracy
 
         nb_eval_examples += context_input.size(0)
+
         nb_eval_steps += 1
 
     normalized_eval_accuracy = eval_accuracy / nb_eval_examples
@@ -153,7 +150,7 @@ def main(params):
     train_samples = utils.read_dataset("train", params["data_path"], compression='gzip')
     logger.info("Read %d train samples." % len(train_samples))
 
-    train_tensor_data = data.process_mention_data(
+    train_dataloader = data.process_mention_data(
         train_samples,
         tokenizer,
         params["max_context_length"],
@@ -164,24 +161,13 @@ def main(params):
         debug=params["debug"],
         batch_size=train_batch_size
     )
-    #logger.info("Saving tensor data...")
-    #torch.save(train_tensor_data, './train_tensor_data.pkl')
-    #sys.exit(0)
-    # import pdb
-    # pdb.set_trace()
-    if params["shuffle"]:
-        train_sampler = RandomSampler(train_tensor_data)
-    else:
-        train_sampler = SequentialSampler(train_tensor_data)
-
-    train_dataloader = train_tensor_data
 
     # Load eval data
     # TODO: reduce duplicated code here
     valid_samples = utils.read_dataset("valid", params["data_path"], compression='gzip')
     logger.info("Read %d valid samples." % len(valid_samples))
 
-    valid_tensor_data = data.process_mention_data(
+    valid_dataloader = data.process_mention_data(
         valid_samples,
         tokenizer,
         params["max_context_length"],
@@ -192,12 +178,22 @@ def main(params):
         debug=params["debug"],
         batch_size=eval_batch_size
     )
-    valid_sampler = SequentialSampler(valid_tensor_data)
-    valid_dataloader = valid_tensor_data
 
     # evaluate before training
     results = evaluate(
         reranker, valid_dataloader, params, device=device, logger=logger,
+    )
+
+    valid_dataloader = data.process_mention_data(
+        valid_samples,
+        tokenizer,
+        params["max_context_length"],
+        params["max_cand_length"],
+        context_key=params["context_key"],
+        silent=params["silent"],
+        logger=logger,
+        debug=params["debug"],
+        batch_size=eval_batch_size
     )
 
     number_of_samples_per_dataset = {}
@@ -214,7 +210,7 @@ def main(params):
     )
 
     optimizer = get_optimizer(model, params)
-    scheduler = get_scheduler(params, optimizer, len(train_tensor_data), logger)
+    scheduler = get_scheduler(params, optimizer, len(train_samples), logger)
 
     model.train()
 
@@ -269,8 +265,32 @@ def main(params):
                 evaluate(
                     reranker, valid_dataloader, params, device=device, logger=logger,
                 )
+                # reset dataloader TODO improve
+                valid_dataloader = data.process_mention_data(
+                    valid_samples,
+                    tokenizer,
+                    params["max_context_length"],
+                    params["max_cand_length"],
+                    context_key=params["context_key"],
+                    silent=params["silent"],
+                    logger=logger,
+                    debug=params["debug"],
+                    batch_size=eval_batch_size
+                )
                 model.train()
                 logger.info("\n")
+
+        train_dataloader = data.process_mention_data(
+            train_samples,
+            tokenizer,
+            params["max_context_length"],
+            params["max_cand_length"],
+            context_key=params["context_key"],
+            silent=params["silent"],
+            logger=logger,
+            debug=params["debug"],
+            batch_size=train_batch_size
+        )
 
         logger.info("***** Saving fine - tuned model *****")
         epoch_output_folder_path = os.path.join(
@@ -281,6 +301,18 @@ def main(params):
         output_eval_file = os.path.join(epoch_output_folder_path, "eval_results.txt")
         results = evaluate(
             reranker, valid_dataloader, params, device=device, logger=logger,
+        )
+        # reset dataloader TODO improve
+        valid_dataloader = data.process_mention_data(
+            valid_samples,
+            tokenizer,
+            params["max_context_length"],
+            params["max_cand_length"],
+            context_key=params["context_key"],
+            silent=params["silent"],
+            logger=logger,
+            debug=params["debug"],
+            batch_size=eval_batch_size
         )
 
         ls = [best_score, results["normalized_accuracy"]]

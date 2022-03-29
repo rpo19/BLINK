@@ -152,7 +152,8 @@ def process_mention_data(
 
         if len(context_v) == batch_size:
 
-            yield TensorDataset(
+            # batch is 3 tensors batchsize x N
+            yield (
                     torch.tensor(context_v, dtype=torch.long),
                     torch.tensor(label_v, dtype=torch.long),
                     torch.tensor(label_idx_v, dtype=torch.long),
@@ -161,8 +162,9 @@ def process_mention_data(
             label_v = []
             label_idx_v = []
 
-    yield TensorDataset(
-            torch.tensor(context_v, dtype=torch.long),
-            torch.tensor(label_v, dtype=torch.long),
-            torch.tensor(label_idx_v, dtype=torch.long),
-        )
+    if len(context_v) > 0:
+        yield (
+                torch.tensor(context_v, dtype=torch.long),
+                torch.tensor(label_v, dtype=torch.long),
+                torch.tensor(label_idx_v, dtype=torch.long),
+            )
