@@ -150,7 +150,7 @@ def main(params):
     train_samples = utils.read_dataset("train", params["data_path"], compression='gzip')
     logger.info("Read %d train samples." % len(train_samples))
 
-    train_dataloader = data.process_mention_data(
+    train_dataloader = data.process_mention_data_iter(
         train_samples,
         tokenizer,
         params["max_context_length"],
@@ -159,7 +159,10 @@ def main(params):
         silent=params["silent"],
         logger=logger,
         debug=params["debug"],
-        batch_size=train_batch_size
+        batch_size=train_batch_size,
+        label_key="descr",
+        title_key='href',
+        label_idx_key='label',
     )
 
     # Load eval data
@@ -167,7 +170,7 @@ def main(params):
     valid_samples = utils.read_dataset("valid", params["data_path"], compression='gzip')
     logger.info("Read %d valid samples." % len(valid_samples))
 
-    valid_dataloader = data.process_mention_data(
+    valid_dataloader = data.process_mention_data_iter(
         valid_samples,
         tokenizer,
         params["max_context_length"],
@@ -176,7 +179,10 @@ def main(params):
         silent=params["silent"],
         logger=logger,
         debug=params["debug"],
-        batch_size=eval_batch_size
+        batch_size=eval_batch_size,
+        label_key="descr",
+        title_key='href',
+        label_idx_key='label_id',
     )
 
     # evaluate before training
@@ -184,7 +190,7 @@ def main(params):
         reranker, valid_dataloader, params, device=device, logger=logger,
     )
 
-    valid_dataloader = data.process_mention_data(
+    valid_dataloader = data.process_mention_data_iter(
         valid_samples,
         tokenizer,
         params["max_context_length"],
@@ -194,6 +200,9 @@ def main(params):
         logger=logger,
         debug=params["debug"],
         batch_size=eval_batch_size
+        label_key="descr",
+        title_key='href',
+        label_idx_key='label_id',
     )
 
     number_of_samples_per_dataset = {}
@@ -266,7 +275,7 @@ def main(params):
                     reranker, valid_dataloader, params, device=device, logger=logger,
                 )
                 # reset dataloader TODO improve
-                valid_dataloader = data.process_mention_data(
+                valid_dataloader = data.process_mention_data_iter(
                     valid_samples,
                     tokenizer,
                     params["max_context_length"],
@@ -276,11 +285,14 @@ def main(params):
                     logger=logger,
                     debug=params["debug"],
                     batch_size=eval_batch_size
+                    label_key="descr",
+                    title_key='href',
+                    label_idx_key='label_id',
                 )
                 model.train()
                 logger.info("\n")
 
-        train_dataloader = data.process_mention_data(
+        train_dataloader = data.process_mention_data_iter(
             train_samples,
             tokenizer,
             params["max_context_length"],
@@ -290,6 +302,9 @@ def main(params):
             logger=logger,
             debug=params["debug"],
             batch_size=train_batch_size
+            label_key="descr",
+            title_key='href',
+            label_idx_key='label_id',
         )
 
         logger.info("***** Saving fine - tuned model *****")
@@ -303,7 +318,7 @@ def main(params):
             reranker, valid_dataloader, params, device=device, logger=logger,
         )
         # reset dataloader TODO improve
-        valid_dataloader = data.process_mention_data(
+        valid_dataloader = data.process_mention_data_iter(
             valid_samples,
             tokenizer,
             params["max_context_length"],
@@ -313,6 +328,9 @@ def main(params):
             logger=logger,
             debug=params["debug"],
             batch_size=eval_batch_size
+            label_key="descr",
+            title_key='href',
+            label_idx_key='label_id',
         )
 
         ls = [best_score, results["normalized_accuracy"]]

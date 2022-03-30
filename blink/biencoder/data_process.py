@@ -70,9 +70,9 @@ def get_context_representation(
 
 
 def get_candidate_representation(
-    candidate_desc, 
-    tokenizer, 
-    max_seq_length, 
+    candidate_desc,
+    tokenizer,
+    max_seq_length,
     candidate_title=None,
     title_tag=ENT_TITLE_TAG,
 ):
@@ -96,7 +96,6 @@ def get_candidate_representation(
         "ids": input_ids,
     }
 
-
 def process_mention_data(
     samples,
     tokenizer,
@@ -105,8 +104,111 @@ def process_mention_data(
     silent,
     mention_key="mention",
     context_key="context",
-    label_key="descr",
-    title_key='href',
+    label_key="label",
+    title_key='label_title',
+    ent_start_token=ENT_START_TAG,
+    ent_end_token=ENT_END_TAG,
+    title_token=ENT_TITLE_TAG,
+    debug=False,
+    logger=None,
+):
+    processed_samples = []
+
+    if debug:
+        samples = samples[:200]
+
+    if silent:
+        iter_ = samples
+    else:
+        iter_ = tqdm(samples)
+
+    use_world = True
+
+    for idx, sample in enumerate(iter_):
+        context_tokens = get_context_representation(
+            sample,
+            tokenizer,
+            max_context_length,
+            mention_key,
+            context_key,
+            ent_start_token,
+            ent_end_token,
+        )
+
+        label = sample[label_key]
+        title = sample.get(title_key, None)
+        label_tokens = get_candidate_representation(
+            label, tokenizer, max_cand_length, title,
+        )
+        label_idx = int(sample["label_id"])
+
+        record = {
+            "context": context_tokens,
+            "label": label_tokens,
+            "label_idx": [label_idx],
+        }
+
+        if "world" in sample:
+            src = sample["world"]
+            src = world_to_id[src]
+            record["src"] = [src]
+            use_world = True
+        else:
+            use_world = False
+
+        processed_samples.append(record)
+
+    if debug and logger:
+        logger.info("====Processed samples: ====")
+        for sample in processed_samples[:5]:
+            logger.info("Context tokens : " + " ".join(sample["context"]["tokens"]))
+            logger.info(
+                "Context ids : " + " ".join([str(v) for v in sample["context"]["ids"]])
+            )
+            logger.info("Label tokens : " + " ".join(sample["label"]["tokens"]))
+            logger.info(
+                "Label ids : " + " ".join([str(v) for v in sample["label"]["ids"]])
+            )
+            logger.info("Src : %d" % sample["src"][0])
+            logger.info("Label_id : %d" % sample["label_idx"][0])
+
+    context_vecs = torch.tensor(
+        select_field(processed_samples, "context", "ids"), dtype=torch.long,
+    )
+    cand_vecs = torch.tensor(
+        select_field(processed_samples, "label", "ids"), dtype=torch.long,
+    )
+    if use_world:
+        src_vecs = torch.tensor(
+            select_field(processed_samples, "src"), dtype=torch.long,
+        )
+    label_idx = torch.tensor(
+        select_field(processed_samples, "label_idx"), dtype=torch.long,
+    )
+    data = {
+        "context_vecs": context_vecs,
+        "cand_vecs": cand_vecs,
+        "label_idx": label_idx,
+    }
+
+    if use_world:
+        data["src"] = src_vecs
+        tensor_data = TensorDataset(context_vecs, cand_vecs, src_vecs, label_idx)
+    else:
+        tensor_data = TensorDataset(context_vecs, cand_vecs, label_idx)
+    return data, tensor_data
+
+def process_mention_data_iter(
+    samples,
+    tokenizer,
+    max_context_length,
+    max_cand_length,
+    silent,
+    mention_key="mention",
+    context_key="context",
+    label_key="label",
+    title_key='label_title',
+    label_idx_key='label_id',
     ent_start_token=ENT_START_TAG,
     ent_end_token=ENT_END_TAG,
     title_token=ENT_TITLE_TAG,
@@ -144,7 +246,7 @@ def process_mention_data(
         label_tokens = get_candidate_representation(
             label, tokenizer, max_cand_length, title,
         )
-        label_idx = int(sample["label"])
+        label_idx = int(sample[label_idx_key])
 
         context_v.append(context_tokens['ids'])
         label_v.append(label_tokens['ids'])
