@@ -199,7 +199,7 @@ def main(params):
         silent=params["silent"],
         logger=logger,
         debug=params["debug"],
-        batch_size=eval_batch_size
+        batch_size=eval_batch_size,
         label_key="descr",
         title_key='href',
         label_idx_key='label_id',
@@ -284,7 +284,7 @@ def main(params):
                     silent=params["silent"],
                     logger=logger,
                     debug=params["debug"],
-                    batch_size=eval_batch_size
+                    batch_size=eval_batch_size,
                     label_key="descr",
                     title_key='href',
                     label_idx_key='label_id',
@@ -301,7 +301,7 @@ def main(params):
             silent=params["silent"],
             logger=logger,
             debug=params["debug"],
-            batch_size=train_batch_size
+            batch_size=train_batch_size,
             label_key="descr",
             title_key='href',
             label_idx_key='label_id',
@@ -327,7 +327,7 @@ def main(params):
             silent=params["silent"],
             logger=logger,
             debug=params["debug"],
-            batch_size=eval_batch_size
+            batch_size=eval_batch_size,
             label_key="descr",
             title_key='href',
             label_idx_key='label_id',
