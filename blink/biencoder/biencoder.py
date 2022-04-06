@@ -90,21 +90,45 @@ class BiEncoderRanker(torch.nn.Module):
         model_path = params.get("path_to_model", None)
         if model_path is not None:
             self.load_model(model_path)
+        else:
+            # add adapters for training
+            print('Setting adapters for training...')
+            self.model.cand_encoder.bert_model.add_adapter("sst-2")
+            self.model.cand_encoder.bert_model.train_adapter("sst-2")
+
+            self.model.context_encoder.bert_model.add_adapter("sst-2")
+            self.model.context_encoder.bert_model.train_adapter("sst-2")
 
         self.model = self.model.to(self.device)
         self.data_parallel = params.get("data_parallel")
         if self.data_parallel:
             self.model = torch.nn.DataParallel(self.model)
 
+    # def load_model(self, fname, cpu=False):
+    #     if cpu:
+    #         state_dict = torch.load(fname, map_location=lambda storage, location: "cpu")
+    #     else:
+    #         state_dict = torch.load(fname)
+    #     self.model.load_state_dict(state_dict)
+
     def load_model(self, fname, cpu=False):
-        if cpu:
-            state_dict = torch.load(fname, map_location=lambda storage, location: "cpu")
-        else:
-            state_dict = torch.load(fname)
-        self.model.load_state_dict(state_dict)
+        self.model.cand_encoder.bert_model.load_adapter(os.path.join(fname, 'cand_encoder_adapter.bin'))
+        self.model.cand_encoder.bert_model.set_active_adapters("sst-2")
+        self.model.context_encoder.bert_model.load_adapter(os.path.join(fname, 'context_encoder_adapter.bin'))
+        self.model.cand_encoder.bert_model.set_active_adapters("sst-2")
+
 
     def build_model(self):
         self.model = BiEncoderModule(self.params)
+
+    # def save_model(self, output_dir):
+    #     if not os.path.exists(output_dir):
+    #         os.makedirs(output_dir)
+    #     model_to_save = get_model_obj(self.model) 
+    #     output_model_file = os.path.join(output_dir, WEIGHTS_NAME)
+    #     output_config_file = os.path.join(output_dir, CONFIG_NAME)
+    #     torch.save(model_to_save.state_dict(), output_model_file)
+    #     model_to_save.config.to_json_file(output_config_file)
 
     def save_model(self, output_dir):
         if not os.path.exists(output_dir):
@@ -114,6 +138,7 @@ class BiEncoderRanker(torch.nn.Module):
         output_config_file = os.path.join(output_dir, CONFIG_NAME)
         torch.save(model_to_save.state_dict(), output_model_file)
         model_to_save.config.to_json_file(output_config_file)
+        model_to_save.save_all_adapters(output_dir)
 
     def get_optimizer(self, optim_states=None, saved_optim_type=None):
         return get_bert_optimizer(
