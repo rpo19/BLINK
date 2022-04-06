@@ -214,7 +214,8 @@ def process_mention_data_iter(
     title_token=ENT_TITLE_TAG,
     debug=False,
     logger=None,
-    batch_size=8
+    batch_size=8,
+    start_from_instance=0
 ):
     context_v = []
     label_v = []
@@ -231,6 +232,8 @@ def process_mention_data_iter(
     use_world = True
 
     for idx, sample in enumerate(iter_):
+        if idx < start_from_instance:
+            continue
         context_tokens = get_context_representation(
             sample,
             tokenizer,

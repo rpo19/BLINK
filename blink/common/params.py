@@ -233,6 +233,12 @@ class BlinkParser(argparse.ArgumentParser):
             "--shuffle", type=bool, default=False, 
             help="Whether to shuffle train data",
         )
+        parser.add_argument(
+            "--start_from_instance",
+            type=int,
+            default=0,
+            help="Start from the nth instance of the dataset (only on the first epoch).",
+        )
 
     def add_eval_args(self, args=None):
         """

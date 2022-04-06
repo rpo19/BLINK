@@ -164,6 +164,7 @@ def main(params):
         label_key="descr",
         title_key='href',
         label_idx_key='label',
+        start_from_instance=params["start_from_instance"]
     )
 
     # Load eval data
