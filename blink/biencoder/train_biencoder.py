@@ -147,7 +147,8 @@ def main(params):
         torch.cuda.manual_seed_all(seed)
 
     # Load train data
-    train_samples = utils.read_dataset("train", params["data_path"], compression='gzip')
+    # TODO get 9M randomly at every epoch?
+    train_samples = utils.read_dataset("train", params["data_path"], compression='gzip', max=9000000)
     logger.info("Read %d train samples." % len(train_samples))
 
     train_dataloader = data.process_mention_data_iter(
@@ -182,7 +183,7 @@ def main(params):
         batch_size=eval_batch_size,
         label_key="descr",
         title_key='href',
-        label_idx_key='label_id',
+        label_idx_key='label',
     )
 
     # evaluate before training
@@ -202,7 +203,7 @@ def main(params):
         batch_size=eval_batch_size,
         label_key="descr",
         title_key='href',
-        label_idx_key='label_id',
+        label_idx_key='label',
     )
 
     number_of_samples_per_dataset = {}
@@ -271,9 +272,18 @@ def main(params):
 
             if (step + 1) % (params["eval_interval"] * grad_acc_steps) == 0:
                 logger.info("Evaluation on the development dataset")
-                evaluate(
+                results = evaluate(
                     reranker, valid_dataloader, params, device=device, logger=logger,
                 )
+                logger.info("***** Saving fine - tuned model *****")
+                epoch_output_folder_path = os.path.join(
+                    model_output_path, "epoch_{}_{}".format(epoch_idx, step)
+                )
+                utils.save_model(model, tokenizer, epoch_output_folder_path)
+
+                output_eval_file = os.path.join(epoch_output_folder_path, "eval_results.txt")
+                with open(output_eval_file, 'w') as fd:
+                    json.dump(results, fd)  
                 # reset dataloader TODO improve
                 valid_dataloader = data.process_mention_data_iter(
                     valid_samples,
@@ -287,7 +297,7 @@ def main(params):
                     batch_size=eval_batch_size,
                     label_key="descr",
                     title_key='href',
-                    label_idx_key='label_id',
+                    label_idx_key='label',
                 )
                 model.train()
                 logger.info("\n")
@@ -304,7 +314,7 @@ def main(params):
             batch_size=train_batch_size,
             label_key="descr",
             title_key='href',
-            label_idx_key='label_id',
+            label_idx_key='label',
         )
 
         logger.info("***** Saving fine - tuned model *****")
@@ -317,6 +327,8 @@ def main(params):
         results = evaluate(
             reranker, valid_dataloader, params, device=device, logger=logger,
         )
+        with open(output_eval_file, 'w') as fd:
+            json.dump(results, fd)
         # reset dataloader TODO improve
         valid_dataloader = data.process_mention_data_iter(
             valid_samples,
@@ -330,7 +342,7 @@ def main(params):
             batch_size=eval_batch_size,
             label_key="descr",
             title_key='href',
-            label_idx_key='label_id',
+            label_idx_key='label',
         )
 
         ls = [best_score, results["normalized_accuracy"]]

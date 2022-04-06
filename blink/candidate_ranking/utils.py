@@ -22,7 +22,7 @@ from blink.biencoder.biencoder import BiEncoderRanker
 
 import gzip
 
-def read_dataset(dataset_name, preprocessed_json_data_parent_folder, debug=False, compression=None):
+def read_dataset(dataset_name, preprocessed_json_data_parent_folder, debug=False, compression=None, max=None):
     file_name = "{}.jsonl.gz" if compression == 'gzip' else "{}.jsonl"
     file_name = file_name.format(dataset_name)
 
@@ -35,6 +35,8 @@ def read_dataset(dataset_name, preprocessed_json_data_parent_folder, debug=False
         for line in tqdm(file):
             samples.append(json.loads(line.strip()))
             if debug and len(samples) > 200:
+                break
+            if max and len(samples) >= max:
                 break
 
     return samples
