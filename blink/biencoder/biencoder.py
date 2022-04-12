@@ -89,7 +89,7 @@ class BiEncoderRanker(torch.nn.Module):
         self.build_model()
         model_path = params.get("path_to_model", None)
         if model_path is not None:
-            self.load_model(model_path)
+            self.load_model(model_path, cpu = not torch.cuda.is_available() or params["no_cuda"])
 
         self.model = self.model.to(self.device)
         self.data_parallel = params.get("data_parallel")
@@ -109,7 +109,7 @@ class BiEncoderRanker(torch.nn.Module):
     def save_model(self, output_dir):
         if not os.path.exists(output_dir):
             os.makedirs(output_dir)
-        model_to_save = get_model_obj(self.model) 
+        model_to_save = get_model_obj(self.model)
         output_model_file = os.path.join(output_dir, WEIGHTS_NAME)
         output_config_file = os.path.join(output_dir, CONFIG_NAME)
         torch.save(model_to_save.state_dict(), output_model_file)
@@ -122,7 +122,7 @@ class BiEncoderRanker(torch.nn.Module):
             self.params["learning_rate"],
             fp16=self.params.get("fp16"),
         )
- 
+
     def encode_context(self, cands):
         token_idx_cands, segment_idx_cands, mask_cands = to_bert_input(
             cands, self.NULL_IDX
