@@ -116,7 +116,13 @@ def main(args):
     data = data[needed_cols].copy()
 
     if args.skip_empty_descr:
-        data = data.query("{} != ''".format(args.descr_key))
+        data = data.query("{} != ''".format(args.descr_key)).copy()
+
+    if args.skip_title_pattern:
+        print('Skipping title containins the string', args.skip_title_pattern)
+        data = data.query('~title.str.contains("{}", regex=False)'.format(args.skip_title_pattern)).copy()
+
+    print('shape:', data.shape)
 
     # get encodings
     data['encoding'] = biencoder_get_encodings(args, data)
@@ -169,6 +175,9 @@ if __name__ == '__main__':
     )
     parser.add_argument(
         "--skip-empty-descr", default=False, action='store_true', help='Skip entities with no description', dest='skip_empty_descr'
+    )
+    parser.add_argument(
+        "--skip-title-pattern", default=None, type=str, help='Skip entities with a specific pattern in title (e.g. "(disambiguation)")', dest='skip_title_pattern'
     )
     parser.add_argument(
         "--batchsize", type=int, default="200", help="Batchsize for biencoder requests",
