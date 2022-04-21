@@ -1,0 +1,22 @@
+version: "3"
+services:
+  tint:
+    build:
+      context: tint
+      dockerfile: Dockerfile
+    ports:
+      - 127.0.0.1:8012:8012
+  postgres:
+    image: postgres:14
+    environment:
+      POSTGRES_PASSWORD: $POSTGRES_PASSWORD
+    volumes:
+      - ./postgres/data:/var/lib/postgresql/data
+      - "./postgres/init.sql:/docker-entrypoint-initdb.d/init.sql"
+    ports:
+      - 127.0.0.1:5432:5432
+  nginx:
+    image: nginx
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/conf.d/default.conf
+    network_mode: host
