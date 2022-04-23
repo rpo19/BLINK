@@ -496,6 +496,8 @@ def run_batch(batch, add_correct, hitl, no_add, save_path, reset,
 @click.argument('batches', nargs=-1)
 def main(add_correct, hitl, no_add, save_path, reset, report, batches):
     outreports = []
+    for batch in batches:
+        assert os.path.isfile(batch)
     for batch in tqdm(batches):
         outreport = run_batch(batch, add_correct, hitl, no_add, save_path, reset)
         outreports.append(outreport)
