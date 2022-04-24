@@ -101,7 +101,7 @@ def get_new_cand(x):
             candidates.insert(0, _cand)
             return candidates
 
-def run_batch(batch, add_correct, hitl, no_add, save_path, reset,
+def run_batch(batch, add_correct, hitl, no_add, save_path,
         biencoder=biencoder,
         biencoder_mention=biencoder_mention,
         biencoder_entity=biencoder_entity,
@@ -116,16 +116,6 @@ def run_batch(batch, add_correct, hitl, no_add, save_path, reset,
     global prev_clusters
 
     print('Run batch', batch)
-
-    if reset:
-        print('Resetting RW index...')
-        res_reset = requests.post(indexer_reset, data={})
-
-        if res_reset.ok:
-            print('Reset done.')
-        else:
-            print('ERROR while resetting!')
-            sys.exit(1)
 
     print('Loading batch...')
     data = pd.read_json(batch, lines=True)
@@ -460,7 +450,7 @@ def run_batch(batch, add_correct, hitl, no_add, save_path, reset,
     #     report['no_correct_links_not_nil_normalized'] = -1
     # # TODO consider clusters without a mode ?? # actually if the cluster has a single mode we add it and we can evaluate
     # # TODO recall@k
-    
+
     # ## NIL prediction (consider added entities)
     # ### NIL mentions referring to previously added entity should be not NIL now
     # ### --> previoulsy identified NIL entities are expected to be linked
@@ -483,7 +473,7 @@ def run_batch(batch, add_correct, hitl, no_add, save_path, reset,
 
     return report
 
-    
+
 
 @click.command()
 @click.option('--add-correct', default=False, help='Populate the KB with gold entities.')
@@ -496,10 +486,24 @@ def run_batch(batch, add_correct, hitl, no_add, save_path, reset,
 @click.argument('batches', nargs=-1)
 def main(add_correct, hitl, no_add, save_path, reset, report, batches):
     outreports = []
+
+    # check batch files exist
     for batch in batches:
         assert os.path.isfile(batch)
+
+    # reset kbp
+    if reset:
+        print('Resetting RW index...')
+        res_reset = requests.post(indexer_reset, data={})
+
+        if res_reset.ok:
+            print('Reset done.')
+        else:
+            print('ERROR while resetting!')
+            sys.exit(1)
+
     for batch in tqdm(batches):
-        outreport = run_batch(batch, add_correct, hitl, no_add, save_path, reset)
+        outreport = run_batch(batch, add_correct, hitl, no_add, save_path)
         outreports.append(outreport)
 
     if report:
