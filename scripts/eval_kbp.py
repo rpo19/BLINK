@@ -419,7 +419,7 @@ def run_batch(batch, add_correct, hitl, no_add, save_path,
 
         if should_be_linked_to_prev_added.shape[0] > 0:
             # check they are linked correctly
-            should_be_linked_to_prev_added = should_be_linked_to_prev_added.merge(clusters, left_on = 'top_candidate_id', righ_on = 'index_id')
+            should_be_linked_to_prev_added = should_be_linked_to_prev_added.merge(clusters, left_on = 'top_candidate_id', right_on = 'index_id')
             # the majority of the cluster is correct
             should_be_linked_to_prev_added_correct = should_be_linked_to_prev_added.eval('wikiId == mode').sum()
             # half of the cluster is correct
