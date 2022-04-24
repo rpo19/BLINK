@@ -101,7 +101,7 @@ def get_new_cand(x):
             candidates.insert(0, _cand)
             return candidates
 
-def run_batch(batch, add_correct, hitl, no_add, save_path,
+def run_batch(batch, data, add_correct, hitl, no_add, save_path,
         biencoder=biencoder,
         biencoder_mention=biencoder_mention,
         biencoder_entity=biencoder_entity,
@@ -116,9 +116,6 @@ def run_batch(batch, add_correct, hitl, no_add, save_path,
     global prev_clusters
 
     print('Run batch', batch)
-
-    print('Loading batch...')
-    data = pd.read_json(batch, lines=True)
 
     # ## Entity Linking
 
@@ -480,15 +477,16 @@ def run_batch(batch, add_correct, hitl, no_add, save_path,
 
 
 @click.command()
-@click.option('--add-correct', default=False, help='Populate the KB with gold entities.')
-@click.option('--hitl', default=False, help='Simulate the HITL which corrects linking and NIL prediction results when the scores are uncertain.')
-@click.option('--no-add', default=False, help='Do not add new entities to the KB.')
-# @click.option('--cross', default=False, help='Use also the crossencoder (implies --no-add).')
+@click.option('--add-correct', is_flag=True, default=False, help='Populate the KB with gold entities.')
+@click.option('--hitl', is_flag=True, default=False, help='Simulate the HITL which corrects linking and NIL prediction results when the scores are uncertain.')
+@click.option('--no-add', is_flag=True, default=False, help='Do not add new entities to the KB.')
+# @click.option('--cross', is_flag=True, default=False, help='Use also the crossencoder (implies --no-add).')
 @click.option('--save-path', default=None, type=str, help='Folder in which to save data.')
-@click.option('--reset', default=True, help='Reset the RW index before starting.')
+@click.option('--reset', is_flag=True, default=True, help='Reset the RW index before starting.')
 @click.option('--report', default=None, help='File in which to write the report in JSON.')
+@click.option('--no-incremental', is_flag=True, default=False, help='Run the evaluation merging the batches')
 @click.argument('batches', nargs=-1)
-def main(add_correct, hitl, no_add, save_path, reset, report, batches):
+def main(add_correct, hitl, no_add, save_path, reset, report, batches, no_incremental):
     outreports = []
 
     # check batch files exist
@@ -506,9 +504,19 @@ def main(add_correct, hitl, no_add, save_path, reset, report, batches):
             print('ERROR while resetting!')
             sys.exit(1)
 
-    for batch in tqdm(batches):
-        outreport = run_batch(batch, add_correct, hitl, no_add, save_path)
+    if no_incremental:
+        print('*** NO INCREMENTAL ***')
+        print('Loading and combining batches')
+        datas = list(map(lambda x: pd.read_json(x, lines=True), batches))
+        data = pd.concat(datas, ignore_index=True)
+        outreport = run_batch("no_incremental", data, add_correct, hitl, no_add, save_path)
         outreports.append(outreport)
+    else:
+        for batch in tqdm(batches):
+            print('Loading batch...', batch)
+            data = pd.read_json(batch, lines=True)
+            outreport = run_batch(batch, data, add_correct, hitl, no_add, save_path)
+            outreports.append(outreport)
 
     if report:
         with open(report, 'w') as fd:
