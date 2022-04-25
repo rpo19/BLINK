@@ -307,7 +307,7 @@ def run_batch(batch, data, add_correct, hitl, no_add, save_path,
     # TODO use also top_title?
     report = {}
     report['batch'] = batch
-    report['size'] = batch.size[0]
+    report['size'] = data.shape[0]
     ## Linking
     def eval_linking_helper(x):
         candidate_ids = [i['wikipedia_id'] for i in x['candidates']]
@@ -532,7 +532,7 @@ def main(add_correct, hitl, no_add, save_path, reset, report, batches, no_increm
             incremental_overall['overall_accuracy'] = incremental_overall['overall_correct'] / incremental_overall['size']
             incremental_overall
 
-            report_df.append(incremental_overall, ignore_index=True)
+            report_df = report_df.append(incremental_overall, ignore_index=True)
 
         report_df.to_csv(report)
 
