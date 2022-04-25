@@ -13,6 +13,7 @@ from Packages.TimeEvolving import Cluster
 from pprint import pprint
 import bcubed
 from sklearn.metrics import classification_report
+import pandas as pd
 
 ### TODO move all them behind a single proxy and set configurable addresses
 biencoder = 'http://localhost:30300/api/blink/biencoder' # mention # entity
@@ -37,16 +38,6 @@ mention = 'word'
 added_entities = pd.DataFrame()
 # clusters with multiple modes
 prev_clusters = pd.DataFrame()
-
-class NpEncoder(json.JSONEncoder):
-    def default(self, obj):
-        if isinstance(obj, np.integer):
-            return int(obj)
-        if isinstance(obj, np.floating):
-            return float(obj)
-        if isinstance(obj, np.ndarray):
-            return obj.tolist()
-        return super(NpEncoder, self).default(obj)
 
 def vector_encode(v):
     s = base64.b64encode(v).decode()
@@ -316,6 +307,7 @@ def run_batch(batch, data, add_correct, hitl, no_add, save_path,
     # TODO use also top_title?
     report = {}
     report['batch'] = batch
+    report['size'] = batch.size[0]
     ## Linking
     def eval_linking_helper(x):
         candidate_ids = [i['wikipedia_id'] for i in x['candidates']]
@@ -474,7 +466,14 @@ def run_batch(batch, data, add_correct, hitl, no_add, save_path,
 
     return report
 
-
+def explode_nil(row, column='nil_prediction', label=''):
+    x = row[column]
+    res = {}
+    for k in x['True'].keys():
+        res[f'NIL-{label}-{k}'] = x['True'][k]
+    for k in x['False'].keys():
+        res[f'not-NIL-{label}-{k}'] = x['False'][k]
+    return res
 
 @click.command()
 @click.option('--add-correct', is_flag=True, default=False, help='Populate the KB with gold entities.')
@@ -519,8 +518,23 @@ def main(add_correct, hitl, no_add, save_path, reset, report, batches, no_increm
             outreports.append(outreport)
 
     if report:
-        with open(report, 'w') as fd:
-            json.dump(outreports, fd, cls=NpEncoder)
+        report_df = pd.DataFrame(outreports)
+        temp_df = report_df.apply(lambda x: explode_nil(x, 'nil_prediction'), result_type='expand', axis=1)
+        report_df[temp_df.columns] = temp_df
+        temp_df = report_df.apply(lambda x: explode_nil(x, 'nil_prediction_mitigated', 'mitigated'), result_type='expand', axis=1)
+        report_df[temp_df.columns] = temp_df
+        report_df = report_df.drop(columns=['nil_prediction', 'nil_prediction_mitigated'])
+        if not no_incremental:
+            incremental_overall = report_df.mean(numeric_only=True)
+            incremental_overall['batch'] = 'incremental_overall'
+            incremental_overall['overall_correct'] = report_df['overall_correct'].sum()
+            incremental_overall['size'] = report_df['size'].sum()
+            incremental_overall['overall_accuracy'] = incremental_overall['overall_correct'] / incremental_overall['size']
+            incremental_overall
+
+            report_df.append(incremental_overall, ignore_index=True)
+
+        report_df.to_csv(report)
 
 if __name__ == '__main__':
     main()
