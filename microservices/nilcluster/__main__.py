@@ -84,6 +84,7 @@ async def cluster_mention(item: Item):
         raise Exception('Either "embeddings" or "encodings" field is required.')
     current_encodings = [vector_decode(e) for e in item.embeddings]
 
+    print('STEP 1')
     if len(current_mentions) == 1:
         cluster_numbers = np.zeros(1, dtype=np.int8)
     else:
@@ -110,6 +111,7 @@ async def cluster_mention(item: Item):
     #STEP 2 - CLUSTERIZZAZIONE SEMANTICA - anche in questo caso agglomerativo: vado a raggruppare all'interno di ogni cluster,
     #creato nella fase precedente, gli elementi sulla base del loro encoding che tiene conto della semantica(BERT-encoding)
 
+    print('STEP 2')
     #aggiungo l'appartenenza di questo clustering al campo 'sottocluster' il quale e' un array con i sotto_cluster di appartenenza
     #cee_list e' un array dove ogni elemento e' {entities: 'Milano', 'Milano', mentions: 'Milan', 'Milano', encodings:[[343][443]}
     cee_list = cee_dict.values()
@@ -148,6 +150,7 @@ async def cluster_mention(item: Item):
     #"FORSE" calcolo il centroide in ogni sottocluster
     sotto_encodings = [x.encodings_mean() for x in current_clusters]
 
+    print('STEP 3')
     #STEP 3 - CLUSTERIZZAZIONE TRA I SOTTOCLUSTER SULLA BASE DEL CENTROIDE - UTILE PER I SINONIMI
     if len(sotto_encodings) == 1:
         cluster_numbers = np.zeros(1, dtype=np.int8)
