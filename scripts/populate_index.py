@@ -121,6 +121,27 @@ def main(args):
     if args.skip_title_pattern:
         print('Skipping title containins the string', args.skip_title_pattern)
         data = data.query('~title.str.contains("{}", regex=False)'.format(args.skip_title_pattern)).copy()
+        print('data shape after skipping title patter', data.shape)
+
+    if args.exclude_ids:
+        print('Excluding ids...')
+        to_exclude = pd.read_csv(args.exclude_ids, sep='\t', header=None)
+        print('to_exclude shape', to_exclude.shape)
+        to_exclude['id'] = to_exclude[list(to_exclude.columns)[0]].astype(int)
+        to_exclude = to_exclude.set_index('id', drop=True)
+
+        data = data[~data[args.id_key].isin(to_exclude.index)].copy()
+        print('data shape after excluding ids', data.shape)
+
+    if args.only_ids:
+        print('Only ids...')
+        to_include = pd.read_csv(args.only_ids, sep='\t', header=None)
+        print('to_include shape', to_include.shape)
+        to_include['id'] = to_include[list(to_include.columns)[0]].astype(int)
+        to_include = to_include.set_index('id', drop=True)
+
+        data = data[data[args.id_key].isin(to_include.index)].copy()
+        print('data shape after only ids', data.shape)
 
     print('shape:', data.shape)
 
@@ -181,6 +202,14 @@ if __name__ == '__main__':
     )
     parser.add_argument(
         "--batchsize", type=int, default="200", help="Batchsize for biencoder requests",
+    )
+    parser.add_argument(
+        "--exclude-ids", type=str, default=None, help='Exclude ids reading from file.', dest="exclude_ids"
+        # parsed
+    )
+    parser.add_argument(
+        "--only-ids", type=str, default=None, help='Only ids reading from file.', dest="only_ids"
+        # parsed
     )
 
     args = parser.parse_args()
