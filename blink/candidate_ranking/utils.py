@@ -20,9 +20,12 @@ from tqdm import tqdm
 from blink.candidate_ranking.bert_reranking import BertReranker
 from blink.biencoder.biencoder import BiEncoderRanker
 
+import random
+
 import gzip
 
-def read_dataset(dataset_name, preprocessed_json_data_parent_folder, debug=False, compression=None, max=None):
+def read_dataset(dataset_name, preprocessed_json_data_parent_folder, debug=False,
+        compression=None, max=None, sample=None, seed=None):
     file_name = "{}.jsonl.gz" if compression == 'gzip' else "{}.jsonl"
     file_name = file_name.format(dataset_name)
 
@@ -38,6 +41,11 @@ def read_dataset(dataset_name, preprocessed_json_data_parent_folder, debug=False
                 break
             if max and len(samples) >= max:
                 break
+
+        if sample:
+            if seed:
+                random.seed(seed)
+            samples = random.sample(sample)
 
     return samples
 
