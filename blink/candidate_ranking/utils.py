@@ -45,7 +45,7 @@ def read_dataset(dataset_name, preprocessed_json_data_parent_folder, debug=False
         if sample:
             if seed:
                 random.seed(seed)
-            samples = random.sample(sample)
+            samples = random.sample(samples, sample)
 
     return samples
 
