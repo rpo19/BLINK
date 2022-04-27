@@ -1,0 +1,93 @@
+version: "3.3"
+services:
+  biencoder:
+    build: 
+        context: ./biencoder
+        dockerfile: Dockerfile
+    expose:
+      - 30300
+    ports:
+      - 30300:30300
+    command: python -m microservices.biencoder --host 127.0.0.1 --port 30300 --biencoder_model models/ita/wiki/biencoder/epoch_3/pytorch_model.bin --biencoder_config models/ita/wiki/biencoder/epoch_3/config.json
+  # sembra non funzioni vedendo supervisord
+  # crossencoder:
+  #   build: 
+  #       context: ./crossencoder
+  #       dockerfile: Dockerfile
+  #   expose:
+  #     - 30300
+  #   ports:
+  #     - 30300:30300
+  #   command: python -m microservices.biencoder --host 127.0.0.1 --port 30300 --biencoder_model models/ita/wiki/biencoder/epoch_3/pytorch_model.bin --biencoder_config models/ita/wiki/biencoder/epoch_3/config.json
+  indexer:
+    build: 
+        context: ./biencoder
+        dockerfile: Dockerfile
+    expose:
+      - 30301
+    ports:
+      - 30301:30301
+    command: python -m microservices.indexer --host 127.0.0.1 --port 30301 --index hnsw:models/hnsw-ita-50k-index.pkl:6:rw --postgres 'postgres://postgres:Shie9cai9aerahchasio7yiigaekae8aeTiup1quaetheeghaicheizad3miesha@localhost:25432/postgres' --vector-size 768 --language it
+  nginx:
+    image: nginx
+    volumes:
+      - ./nginx.conf:/etc/nginx/conf.d/default.conf
+    network_mode: host
+  nilcluster:
+    build: 
+        context: ./nilcluster
+        dockerfile: Dockerfile
+    expose:
+      - 30305
+    ports:
+      - 30305:30305
+    environment:
+      - PYTHONPATH=/path/to/EntityClustering
+    command: python -m microservices.nilcluster --host 127.0.0.1 --port 30305
+  nilpredictor:
+    build: 
+        context: ./nilpredictor
+        dockerfile: Dockerfile
+    expose:
+      - 30303
+    ports:
+      - 30303:30303
+    command: python -m microservices.nilpredictor --host 127.0.0.1 --port 30303 --nil-bi-model output/feature_ablation_study_ita/max_leve_model.pickle --nil-bi-features 'max_bi,levenshtein'
+  db:
+    image: postgres:14
+    environment:
+      POSTGRES_PASSWORD: $POSTGRES_PASSWORD
+    volumes:
+      - ./data:/var/lib/postgresql/data
+      - "./init.sql:/docker-entrypoint-initdb.d/init.sql"
+    ports:
+      - $POSTGRES_LISTEN_ADDR:5432
+  # non è presente su supervisord
+  # recognition:
+  #   build: 
+  #       context: ./recognition
+  #       dockerfile: Dockerfile
+  #   expose:
+  #     - 30303
+  #   ports:
+  #     - 30303:30303
+  #   command: python -m microservices.nilpredictor --host 127.0.0.1 --port 30303 --nil-bi-model output/feature_ablation_study_ita/max_leve_model.pickle --nil-bi-features 'max_bi,levenshtein'
+  spacyner:
+    build: 
+        context: ./spacyner
+        dockerfile: Dockerfile
+    expose:
+      - 30304
+    ports:
+      - 30304:30304
+    command: python -m microservices.spacyner --host 127.0.0.1 --port 30304 --model it_core_news_sm
+  # non presente su supervisord
+  # tint:
+  #   build: 
+  #       context: ./tint
+  #       dockerfile: Dockerfile
+  #   expose:
+  #     - 30304
+  #   ports:
+  #     - 30304:30304
+  #   command: python -m microservices.spacyner --host 127.0.0.1 --port 30304 --model it_core_news_sm
