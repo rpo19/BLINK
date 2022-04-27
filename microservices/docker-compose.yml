@@ -1,4 +1,4 @@
-version: "3"
+version: "3.3"
 services:
 
   tint:
@@ -44,5 +44,72 @@ services:
       - 127.0.0.1:30900:30900
     volumes:
       - ./documents/.env:/app/.env
-      # - ./documents:/app
       - ./documents/src:/app/src
+
+  biencoder:
+    build: 
+        context: ./biencoder
+        dockerfile: Dockerfile
+    expose:
+      - 30300
+    ports:
+      - 127.0.0.1:30300:30300
+    command: python -m microservices.biencoder --host 127.0.0.1 --port 30300 --biencoder_model models/ita/wiki/biencoder/epoch_3/pytorch_model.bin --biencoder_config models/ita/wiki/biencoder/epoch_3/config.json
+
+  indexer:
+    build: 
+        context: ./biencoder
+        dockerfile: Dockerfile
+    expose:
+      - 30301
+    ports:
+      - 127.0.0.1:30301:30301
+    command: python -m microservices.indexer --host 127.0.0.1 --port 30301 --index hnsw:models/hnsw-ita-50k-index.pkl:6:rw --postgres 'postgres://postgres:Shie9cai9aerahchasio7yiigaekae8aeTiup1quaetheeghaicheizad3miesha@localhost:25432/postgres' --vector-size 768 --language it
+  nginx:
+    image: nginx
+    volumes:
+      - ./nginx.conf:/etc/nginx/conf.d/default.conf
+    network_mode: host
+
+  nilcluster:
+    build: 
+        context: ./nilcluster
+        dockerfile: Dockerfile
+    expose:
+      - 30305
+    ports:
+      - 127.0.0.1:30305:30305
+    environment:
+      - PYTHONPATH=/path/to/EntityClustering
+    command: python -m microservices.nilcluster --host 127.0.0.1 --port 30305
+
+  nilpredictor:
+    build: 
+        context: ./nilpredictor
+        dockerfile: Dockerfile
+    expose:
+      - 30303
+    ports:
+      - 127.0.0.1:30303:30303
+    command: python -m microservices.nilpredictor --host 127.0.0.1 --port 30303 --nil-bi-model output/feature_ablation_study_ita/max_leve_model.pickle --nil-bi-features 'max_bi,levenshtein'
+
+  # non è presente su supervisord
+  # recognition:
+  #   build: 
+  #       context: ./recognition
+  #       dockerfile: Dockerfile
+  #   expose:
+  #     - 30303
+  #   ports:
+  #     - 30303:30303
+  #   command: python -m microservices.nilpredictor --host 127.0.0.1 --port 30303 --nil-bi-model output/feature_ablation_study_ita/max_leve_model.pickle --nil-bi-features 'max_bi,levenshtein'
+
+  spacyner:
+    build: 
+        context: ./spacyner
+        dockerfile: Dockerfile
+    expose:
+      - 30304
+    ports:
+      - 127.0.0.1:30304:30304
+    command: python -m microservices.spacyner --host 127.0.0.1 --port 30304 --model it_core_news_sm
