@@ -149,7 +149,7 @@ class BiEncoderRanker(torch.nn.Module):
         self,
         text_vecs,
         cand_vecs,
-        random_negs=True,
+        random_negs=True, # must be true also for hard negs
         cand_encs=None,  # pre-computed candidate encoding.
     ):
         # Encode contexts first
@@ -185,18 +185,20 @@ class BiEncoderRanker(torch.nn.Module):
 
     # label_input -- negatives provided
     # If label_input is None, train on in-batch negatives
-    def forward(self, context_input, cand_input, label_input=None):
-        flag = label_input is None
-        scores = self.score_candidate(context_input, cand_input, flag)
-        bs = scores.size(0)
-        if label_input is None:
-            target = torch.LongTensor(torch.arange(bs))
-            target = target.to(self.device)
-            loss = F.cross_entropy(scores, target, reduction="mean")
+    def forward(self, context_input, cand_input, random_negs=True):
+        scores = self.score_candidate(context_input, cand_input)
+
+        if random_negs:
+            # square matrix
+            target = torch.LongTensor(torch.arange(scores.size(0)))
         else:
-            loss_fct = nn.BCEWithLogitsLoss(reduction="mean")
-            # TODO: add parameters?
-            loss = loss_fct(scores, label_input)
+            # batch contains a correct sample followed by a hard negative one
+            # we skip the hard negative when creating the target
+            target = torch.LongTensor(torch.arange(0, scores.size(1), 2))
+
+        target = target.to(self.device)
+        loss = F.cross_entropy(scores, target, reduction="mean")
+
         return loss, scores
 
 

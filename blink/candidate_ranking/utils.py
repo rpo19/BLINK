@@ -36,7 +36,10 @@ def read_dataset(dataset_name, preprocessed_json_data_parent_folder, debug=False
     with gzip.open(txt_file_path, mode="r") if compression == 'gzip' \
             else io.open(txt_file_path, mode="r", encoding="utf-8") as file:
         for line in tqdm(file):
-            samples.append(json.loads(line.strip()))
+            current = json.loads(line.strip())
+            if 'neg' in current:
+                current['target'] = 1 if current['neg'] == 0 else 0
+            samples.append(current)
             if debug and len(samples) > 200:
                 break
             if max and len(samples) >= max:

@@ -170,7 +170,7 @@ def main(params):
         batch_size=train_batch_size,
         label_key="descr",
         title_key='href',
-        label_idx_key='label',
+        label_idx_key='target',
         start_from_instance=params["start_from_instance"]
     )
 
@@ -247,7 +247,7 @@ def main(params):
 
         for step, batch in enumerate(iter_):
             batch = tuple(t.to(device) for t in batch)
-            context_input, candidate_input, _ = batch
+            context_input, candidate_input, label_input = batch
 
             # if params['hard_negatives']:
             #     with torch.no_grad():
@@ -267,8 +267,16 @@ def main(params):
 
             #     # TODO remove: dataset with hard negatives is created in advance
 
-
-            loss, _ = reranker(context_input, candidate_input)
+            # if hard negs pass label_input
+            if params['hard_negatives']:
+                # n -> n,1
+                label_input = torch.reshape(label_input, (label_input.shape[0],))
+                # label_input = label_input.type(torch.float)
+                # label_input.to(reranker.device)
+                context_input = context_input[label_input == 1]
+                loss, _ = reranker(context_input, candidate_input, random_negs=False)
+            else:
+                loss, _ = reranker(context_input, candidate_input)
 
             # if n_gpu > 1:
             #     loss = loss.mean() # mean() to average on multi-gpu.
@@ -342,7 +350,7 @@ def main(params):
             batch_size=train_batch_size,
             label_key="descr",
             title_key='href',
-            label_idx_key='label',
+            label_idx_key='target',
         )
 
         logger.info("***** Saving fine - tuned model *****")
