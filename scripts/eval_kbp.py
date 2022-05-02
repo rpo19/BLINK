@@ -1,8 +1,6 @@
-from ast import expr_context
 import click
 from tqdm import tqdm
 import requests
-import re
 import numpy as np
 import pandas as pd
 import json
@@ -12,7 +10,7 @@ import base64
 from Packages.TimeEvolving import Cluster
 from pprint import pprint
 import bcubed
-from sklearn.metrics import classification_report
+from sklearn.metrics import classification_report, confusion_matrix
 import pandas as pd
 import statistics
 import textdistance
@@ -137,7 +135,7 @@ def prepare_for_nil_prediction(x):
 
 def get_new_cand(x):
             url = x['y_wikiurl_dump']
-            curid = x['wikiId']
+            curid = x['Wikipedia_ID']
             candidates = x['candidates']
             score = candidates[0]['score'] + 1
             _cand = {
@@ -268,8 +266,8 @@ def run_batch(batch, data, add_correct, hitl, no_add, save_path, prepare_for_nil
     prev_added_entities = added_entities.copy()
 
     # TODO consider correcting added_entities?
-    added_entities = pd.concat([added_entities, pd.DataFrame(data.query('is_nil')['wikiId'].unique(), columns=['wikiId'])]).drop_duplicates()
-    added_entities.set_index('wikiId', drop=False, inplace=True)
+    added_entities = pd.concat([added_entities, pd.DataFrame(data.query('is_nil')['Wikipedia_ID'].unique(), columns=['Wikipedia_ID'])]).drop_duplicates()
+    added_entities.set_index('Wikipedia_ID', drop=False, inplace=True)
 
     # ## Entity Clustering
     print('clustering')
@@ -297,7 +295,7 @@ def run_batch(batch, data, add_correct, hitl, no_add, save_path, prepare_for_nil
         # inject url into cluster (most frequent one) # even NIL mentions still have the gold url
         def _helper(x):
             x = x['mentions_id']
-            modes = data.loc[x, 'wikiId'].mode()
+            modes = data.loc[x, 'Wikipedia_ID'].mode()
             if len(modes) > 1:
                 mode = None
             else:
@@ -333,7 +331,7 @@ def run_batch(batch, data, add_correct, hitl, no_add, save_path, prepare_for_nil
         # title nelements mentions_id mentions center
 
         correct_clusters = pd.DataFrame(columns=['title', 'nelements', 'mentions_id', 'mentions', 'center', 'original_url', 'original_id'])
-        for k,v in data.query('NIL').groupby('wikiId').groups.items():
+        for k,v in data.query('NIL').groupby('Wikipedia_ID').groups.items():
             df_mentions = data.iloc[v]
             df_mentions['embedding'] = df_mentions['encoding'].apply(vector_decode)
             c = Cluster()
@@ -373,7 +371,7 @@ def run_batch(batch, data, add_correct, hitl, no_add, save_path, prepare_for_nil
                 correct_clusters.to_pickle(outcorrect_clusters)
 
     # Evaluation
-    data['top_wikiId'] = data.apply(lambda x: x['candidates'][0]['wikipedia_id'], axis=1)
+    data['top_Wikipedia_ID'] = data.apply(lambda x: x['candidates'][0]['wikipedia_id'], axis=1)
     # TODO use also top_title?
     report = {}
     report['batch'] = batch
@@ -382,7 +380,7 @@ def run_batch(batch, data, add_correct, hitl, no_add, save_path, prepare_for_nil
     def eval_linking_helper(x):
         candidate_ids = [i['wikipedia_id'] for i in x['candidates']]
         try:
-            return candidate_ids.index(x['wikiId']) + 1 # starting from recall@1
+            return candidate_ids.index(x['Wikipedia_ID']) + 1 # starting from recall@1
         except ValueError:
             return -1
 
@@ -394,6 +392,8 @@ def run_batch(batch, data, add_correct, hitl, no_add, save_path, prepare_for_nil
         report[f'linking_recall@{i}'] = not_nil.eval(f'linking_found_at > 0 and linking_found_at <= {i}').sum() / not_nil.shape[0]
 
     ## NIL prediction
+    should_be_nil_bool = data['NIL'] & ~data['Wikipedia_ID'].isin(prev_added_entities.index)
+    data['should_be_nil'] = should_be_nil_bool
     # report['nil_tp'] = data.eval('NIL and is_nil').sum()
     # report['nil_fp'] = data.eval('~NIL and is_nil').sum()
     # report['nil_tn'] = data.eval('~NIL and ~is_nil').sum()
@@ -411,18 +411,48 @@ def run_batch(batch, data, add_correct, hitl, no_add, save_path, prepare_for_nil
     # report['nil_pred_macro_recall'] = (report['nil_recall'] + report['not_nil_recall']) / 2
     # report['nil_pred_macro_f1'] = (report['nil_f1'] + report['not_nil_f1']) / 2
 
-    report['nil_prediction'] = classification_report(data['NIL'], data['is_nil'], output_dict=True)
+    report['nil_prediction'] = classification_report(should_be_nil_bool, data['is_nil'], output_dict=True)
 
     ### NIL prediction mitigated
     ### consider correct also when linking is not correct but is_nil
-    data['NIL_mitigated'] = data.eval('NIL or top_wikiId != wikiId')
+    data['NIL_mitigated'] = data.eval('should_be_nil or top_Wikipedia_ID != Wikipedia_ID')
     report['nil_prediction_mitigated'] = classification_report(data['NIL_mitigated'], data['is_nil'], output_dict=True)
+    tn, fp, fn, tp = confusion_matrix(should_be_nil_bool, data['is_nil']).ravel()
+    report['nil_prediction_cm'] = {
+        'tn': tn,
+        'fp': fp,
+        'fn': fn,
+        'tp': tp
+    }
+
+    tn, fp, fn, tp = confusion_matrix(should_be_nil_bool, data['is_nil'], normalize = "true").ravel()
+    report['nil_prediction_cm_normalized'] = {
+        'tn': tn,
+        'fp': fp,
+        'fn': fn,
+        'tp': tp
+    }
+    tn, fp, fn, tp = confusion_matrix(data['NIL_mitigated'], data['is_nil']).ravel()
+    report['nil_prediction_mitigated_cm'] = {
+        'tn': tn,
+        'fp': fp,
+        'fn': fn,
+        'tp': tp
+    }
+
+    tn, fp, fn, tp = confusion_matrix(data['NIL_mitigated'], data['is_nil'], normalize = "true").ravel()
+    report['nil_prediction_mitigated_cm_normalized'] = {
+        'tn': tn,
+        'fp': fp,
+        'fn': fn,
+        'tp': tp
+    }
     # # NIL or wrong linking --> true positive
-    # report['nil_mitigated_tp'] = data.eval('( NIL or top_wikiId != wikiId ) and is_nil').sum()
+    # report['nil_mitigated_tp'] = data.eval('( NIL or top_Wikipedia_ID != Wikipedia_ID ) and is_nil').sum()
     # # not nil and correct linking --> false positive
-    # report['nil_mitigated_fp'] = data.eval('~NIL and top_wikiId == wikiId and is_nil').sum()
-    # report['nil_mitigated_tn'] = data.eval('~NIL and top_wikiId == wikiId and ~is_nil').sum()
-    # report['nil_mitigated_fn'] = data.eval('( NIL or top_wikiId != wikiId ) and ~is_nil').sum()
+    # report['nil_mitigated_fp'] = data.eval('~NIL and top_Wikipedia_ID == Wikipedia_ID and is_nil').sum()
+    # report['nil_mitigated_tn'] = data.eval('~NIL and top_Wikipedia_ID == Wikipedia_ID and ~is_nil').sum()
+    # report['nil_mitigated_fn'] = data.eval('( NIL or top_Wikipedia_ID != Wikipedia_ID ) and ~is_nil').sum()
     # report['nil_mitigated_precision'] = report['nil_mitigated_tp'] / (report['nil_mitigated_tp'] + report['nil_mitigated_fp'])
     # report['nil_mitigated_recall'] = report['nil_mitigated_tp'] / (report['nil_mitigated_tp'] + report['nil_mitigated_fn'])
     # report['nil_mitigated_f1'] = 2 * report['nil_mitigated_precision'] * report['nil_mitigated_recall'] / (report['nil_mitigated_precision'] + report['nil_mitigated_recall'])
@@ -438,7 +468,7 @@ def run_batch(batch, data, add_correct, hitl, no_add, save_path, prepare_for_nil
 
     keysGold = [str(x) for x in merged['mentions_id']]
     # valuesGold= [set([x]) for x in merged['y_wikiurl_dump']]
-    valuesGold= [set([x]) for x in merged['wikiId']]
+    valuesGold= [set([x]) for x in merged['Wikipedia_ID']]
     ldict = dict(zip(keysGold, valuesGold))
     report['nil_clustering_bcubed_precision'] = bcubed.precision(cdict, ldict)
     report['nil_clustering_bcubed_recall'] = bcubed.recall(cdict, ldict)
@@ -447,20 +477,21 @@ def run_batch(batch, data, add_correct, hitl, no_add, save_path, prepare_for_nil
 
     overall_correct = 0
     # not nil are corrected when linked to the correct entity and labeled as not-NIL
-    overall_to_link_correct = data.eval('~NIL and ~is_nil and wikiId == top_wikiId').sum()
+    overall_to_link_correct = data.eval('~NIL and ~is_nil and Wikipedia_ID == top_Wikipedia_ID').sum()
     report['overall_to_link_correct'] = overall_to_link_correct / (data.eval('~NIL').sum() + sys.float_info.min)
     overall_correct += overall_to_link_correct
     # nil not yet added to the kb are correct if labeled as NIL
-    should_be_nil = data[data['NIL'] & ~data['wikiId'].isin(prev_added_entities.index)]
-    should_be_nil_correct = should_be_nil.eval('is_nil').sum()
-    report['should_be_nil_correct'] = should_be_nil_correct / (should_be_nil.shape[0] + sys.float_info.min)
-    overall_correct += should_be_nil_correct
+    should_be_nil = data[should_be_nil_bool]
+    report['should_be_nil_correct'] = should_be_nil.eval('is_nil').sum()
+    report['should_be_nil_total'] = should_be_nil.shape[0]
+    report['should_be_nil_correct_normalized'] = report['should_be_nil_correct'] / (report['should_be_nil_total'] + sys.float_info.min)
+    overall_correct += report['should_be_nil_correct']
     # nil previously added should be linked to the prev added entity (and not nil)
-    should_be_linked_to_prev_added = data[data['NIL'] & data['wikiId'].isin(prev_added_entities.index)]
+    should_be_linked_to_prev_added = data[data['NIL'] & data['Wikipedia_ID'].isin(prev_added_entities.index)]
     should_be_linked_to_prev_added_total = should_be_linked_to_prev_added.shape[0]
     should_be_linked_to_prev_added = should_be_linked_to_prev_added.query('~is_nil').copy()
     ## check if linked to a cluster containing at least half coherent mentions
-    ### check if the wikiId matches the majority of the wikiIds in the cluster?
+    ### check if the Wikipedia_ID matches the majority of the Wikipedia_IDs in the cluster?
     should_be_linked_to_prev_added_correct = 0
     if should_be_linked_to_prev_added.shape[0] > 0:
         should_be_linked_to_prev_added[['top_candidate_id', 'top_candidate_indexer']] = \
@@ -481,32 +512,35 @@ def run_batch(batch, data, add_correct, hitl, no_add, save_path, prepare_for_nil
 
         if should_be_linked_to_prev_added.shape[0] > 0:
             # the majority of the cluster is correct
-            should_be_linked_to_prev_added_correct = should_be_linked_to_prev_added.eval('wikiId == mode').sum()
+            should_be_linked_to_prev_added_correct = should_be_linked_to_prev_added.eval('Wikipedia_ID == mode').sum()
             # half of the cluster is correct
             def helper_half_correct(row):
-                return len(row['modes']) == 2 and row['wikiId'] in row['modes']
+                return len(row['modes']) == 2 and row['Wikipedia_ID'] in row['modes']
             should_be_linked_to_prev_added_correct += \
                 should_be_linked_to_prev_added.apply(helper_half_correct, axis=1).sum()
             overall_correct += should_be_linked_to_prev_added_correct
 
-    report['should_be_linked_to_prev_added_correct'] = should_be_linked_to_prev_added_correct / (should_be_linked_to_prev_added_total + sys.float_info.min)
+    report['should_be_linked_to_prev_added_correct'] = should_be_linked_to_prev_added_correct
+    report['should_be_linked_to_prev_added_total'] = should_be_linked_to_prev_added_total
+    report['should_be_linked_to_prev_added_correct_normalized'] = should_be_linked_to_prev_added_correct / (should_be_linked_to_prev_added_total + sys.float_info.min)
 
     report['overall_correct'] = overall_correct
+    report['overall_total'] = overall_correct
     report['overall_accuracy'] = overall_correct / data.shape[0]
 
     #     ### Consider also previously added entities ?
-    # report['no_correct_links'] = data.eval('top_wikiId == wikiId').sum()
+    # report['no_correct_links'] = data.eval('top_Wikipedia_ID == Wikipedia_ID').sum()
     # report['no_correct_links_normalized'] = report['no_correct_links'] / data.shape[0]
     # # no nil
-    # report['no_correct_links_no_nil'] = data.eval('~NIL and top_wikiId == wikiId').sum()
+    # report['no_correct_links_no_nil'] = data.eval('~NIL and top_Wikipedia_ID == Wikipedia_ID').sum()
     # report['no_correct_links_no_nil_normalized'] = report['no_correct_links_no_nil'] / data.eval('~NIL').sum()
     # # considers nil
-    # report['no_correct_links_overall'] = data.eval('( NIL and is_nil ) or ( top_wikiId == wikiId and ~is_nil )').sum()
+    # report['no_correct_links_overall'] = data.eval('( NIL and is_nil ) or ( top_Wikipedia_ID == Wikipedia_ID and ~is_nil )').sum()
     # report['no_correct_links_overall_normalized'] = report['no_correct_links_overall'] / data.shape[0]
     # data_not_nil = data.query('~NIL')
     # if data_not_nil.shape[0] > 0:
     #     # how many are correct among the not NIL ones (gold)
-    #     report['no_correct_links_not_nil'] = data_not_nil.eval('top_wikiId == wikiId').sum()
+    #     report['no_correct_links_not_nil'] = data_not_nil.eval('top_Wikipedia_ID == Wikipedia_ID').sum()
     #     report['no_correct_links_not_nil_normalized'] = report['no_correct_links_not_nil'] / data_not_nil.shape[0]
     # else:
     #     report['no_correct_links_not_nil'] = -1
@@ -517,15 +551,15 @@ def run_batch(batch, data, add_correct, hitl, no_add, save_path, prepare_for_nil
     # ## NIL prediction (consider added entities)
     # ### NIL mentions referring to previously added entity should be not NIL now
     # ### --> previoulsy identified NIL entities are expected to be linked
-    # newly_added = data.join(prev_added_entities, how='inner', on='wikiId', rsuffix='_y')
-    # report['no_correct_links_newly_added'] = newly_added.eval('top_wikiId == wikiId').sum()
+    # newly_added = data.join(prev_added_entities, how='inner', on='Wikipedia_ID', rsuffix='_y')
+    # report['no_correct_links_newly_added'] = newly_added.eval('top_Wikipedia_ID == Wikipedia_ID').sum()
     # report['no_correct_links_newly_added_normalized'] = report['no_correct_links_newly_added'] / newly_added.shape[0]
     # #### consider the ones linked to a cluster with no id (with multiple modes)
-    # multi_modes = newly_added[newly_added['top_wikiId'].isna()]
+    # multi_modes = newly_added[newly_added['top_Wikipedia_ID'].isna()]
     # if multi_modes.shape[0] > 0:
     #     multi_modes['top_linking_id'] = multi_modes.apply(lambda x: x['candidates'][0]['id'], axis=1)
     #     multi_modes = multi_modes.join(prev_clusters, how='left', on='top_linking_id')
-    #     report['no_approximately_corrected_links'] = multi_modes.apply(lambda x: x['wikiId'] in x['modes']).sum()
+    #     report['no_approximately_corrected_links'] = multi_modes.apply(lambda x: x['Wikipedia_ID'] in x['modes']).sum()
     #     report['no_approximately_corrected_links_normalized'] = report['no_approximately_corrected_links'] / multi_modes.shape[0]
     # else:
     #     report['no_approximately_corrected_links'] = -1

@@ -1,12 +1,9 @@
 import json
 import argparse
 import numpy as np
-import torch
 import base64
 import pandas as pd
-import sys
 import psycopg
-import io
 from tqdm import tqdm
 import gzip
 import itertools
@@ -54,11 +51,7 @@ def ents_generator(args):
 
     fin.close()
 
-def load_models(args):
-    return torch.load(args.entity_encoding)
-
-def populate(entity_encodings, connection, table_name):
-    assert entity_encodings[0].numpy().dtype == 'float32'
+def populate(connection, table_name):
 
     total = args.total
 
@@ -111,11 +104,8 @@ if __name__ == '__main__':
 
     connection = psycopg.connect(args.postgres)
 
-    print('Loading entities...')
-    entity_encodings = load_models(args)
-
     print('Populating postgres...')
-    populate(entity_encodings, connection, args.table_name)
+    populate(connection, args.table_name)
 
     connection.close()
 
