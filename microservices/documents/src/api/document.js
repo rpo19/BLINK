@@ -2,6 +2,7 @@ import { Router } from 'express';
 import { DocumentController } from '../controllers/document';
 import { asyncRoute } from '../utils/async-route';
 import { HTTPError, HTTP_ERROR_CODES } from '../utils/http-error';
+import { Document } from '../models/document';
 
 
 const route = Router();
@@ -36,4 +37,23 @@ export default (app) => {
     }
     return res.json(document).status(200);
   }));
+
+  /**
+   * Get document by id
+   */
+     route.put('/', asyncRoute(async (req, res, next) => {
+
+      // find document by id
+      const document = new Document();
+      document.text = req.body.text;
+      document.annotation = req.body.annotation;
+
+      document.preview = req.body.preview || document.text.split(0,300);
+
+      document.title = req.body.title || document.text.split(0,12);
+
+      const output = await document.save();
+
+      return res.json(output).status(200);
+    }));
 };
