@@ -243,7 +243,30 @@ async def run(input: Input):
 
     data_n_dates['top_url'] = data_n_dates['candidates'].apply(lambda x: x[0]['url'] if isinstance(x, list) else None)
 
-    data_n_dates['normalized_date'] = data_n_dates['normalized_date'].fillna("")
+    data_n_dates['label'] = data_n_dates['label'].fillna("unknown")
+    data_n_dates['label_id'] = data_n_dates['label_id'].fillna(-1)
+    data_n_dates['context_left'] = data_n_dates['context_left'].fillna("")
+    data_n_dates['context_right'] = data_n_dates['context_right'].fillna("")
+    data_n_dates['mention'] = data_n_dates['mention'].fillna("")
+    data_n_dates['start_pos'] = data_n_dates['start_pos'].fillna(0)
+    data_n_dates['end_pos'] = data_n_dates['end_pos'].fillna(0)
+    data_n_dates['start_pos_original'] = data_n_dates['start_pos_original'].fillna(0)
+    data_n_dates['end_pos_original'] = data_n_dates['end_pos_original'].fillna(0)
+    data_n_dates['sent_idx'] = data_n_dates['sent_idx'].fillna(0)
+    data_n_dates['ner_type'] = data_n_dates['ner_type'].fillna("")
+    if 'normalized_date' in data_n_dates.columns:
+        data_n_dates['normalized_date'] = data_n_dates['normalized_date'].fillna("")
+    else:
+        data_n_dates['normalized_date'] = ""
+    data_n_dates['encoding'] = data_n_dates['encoding'].fillna("")
+    data_n_dates['candidates'] = data_n_dates['candidates'].fillna("")
+    data_n_dates['is_nil'] = data_n_dates['is_nil'].fillna(False)
+    data_n_dates['nil_features'] = data_n_dates['nil_features'].fillna("")
+    data_n_dates['nil_score'] = data_n_dates['nil_score'].fillna(1)
+    data_n_dates['nil_score_cross'] = data_n_dates['nil_score_cross'].fillna(1)
+    data_n_dates['top_title'] = data_n_dates['top_title'].fillna("")
+    data_n_dates['top_wikipedia_id'] = data_n_dates['top_wikipedia_id'].fillna(-1)
+    data_n_dates['top_url'] = data_n_dates['top_url'].fillna("")
 
     outjson = data_n_dates[['context_left', 'context_right', 'mention',
                          'start_pos_original', 'end_pos_original', 'sent_idx',
