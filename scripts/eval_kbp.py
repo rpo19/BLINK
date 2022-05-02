@@ -31,9 +31,9 @@ nilcluster = 'http://localhost:30305/api/nilcluster'
 ###
 
 ### TODO make configurable
-context_right = 'right_context_text'
-context_left = 'left_context_text'
-mention = 'word'
+context_right = 'context_right'
+context_left = 'context_left'
+mention = 'mention'
 ###
 
 # wikipedia_id = mode(cluster.wikipedia_ids)
@@ -95,7 +95,7 @@ def prepare_for_nil_prediction_train(df):
     df['top_title'] = df['candidates'].apply(lambda x: x[0]['title'])
     df[['scores', 'nns']] = df.apply(lambda x: {'scores': [i['score'] for i in x['candidates'] if i['wikipedia_id'] > 0], 'nns': [i['wikipedia_id'] for i in x['candidates'] if i['wikipedia_id'] > 0]}, result_type='expand', axis=1)
     #df['nns'] = df['candidates'].apply(lambda x: [i['wikipedia_id'] for i in x])
-    df['labels'] = df.eval('~NIL and wikiId == top_id').astype(int)
+    df['labels'] = df.eval('~NIL and Wikipedia_ID == top_id').astype(int)
 
     stats = df.apply(_bi_get_stats, axis=1, result_type='expand')
     df[stats.columns] = stats
@@ -172,18 +172,18 @@ def run_batch(batch, data, add_correct, hitl, no_add, save_path, prepare_for_nil
     # ### Encoding
     print('Encoding entities...')
     res_biencoder = requests.post(biencoder_mention,
-            json=data.rename(columns={
-                mention: 'mention',
-                context_left: 'context_left',
-                context_right: 'context_right'
-                }).to_dict(orient='records'))
+            json=data[[
+                'mention',
+                'context_left',
+                'context_right'
+                ]].to_dict(orient='records'))
 
     if res_biencoder.ok:
         data['encoding'] = res_biencoder.json()['encodings']
     else:
         print('Biencoder ERROR')
         print(res_biencoder)
-        sys.exit(1)
+        raise Exception('Biencoder ERROR')
 
     print('Encoded {} entities.'.format(data.shape[0]))
 
@@ -214,8 +214,6 @@ def run_batch(batch, data, add_correct, hitl, no_add, save_path, prepare_for_nil
         batch_basename = os.path.splitext(os.path.basename(batch))[0]
         outdata = os.path.join(save_path, '{}_outdata.pickle'.format(batch_basename))
         data.to_pickle(outdata)
-        outclusters = os.path.join(save_path, '{}_outclusters.pickle'.format(batch_basename))
-        clusters.to_pickle(outclusters)
 
         return {}
 
@@ -553,16 +551,19 @@ def explode_nil(row, column='nil_prediction', label=''):
 @click.option('--no-add', is_flag=True, default=False, help='Do not add new entities to the KB.')
 # @click.option('--cross', is_flag=True, default=False, help='Use also the crossencoder (implies --no-add).')
 @click.option('--save-path', default=None, type=str, help='Folder in which to save data.')
-@click.option('--reset', is_flag=True, default=True, help='Reset the RW index before starting.')
+@click.option('--no-reset', is_flag=True, default=False, help='Reset the RW index before starting.')
 @click.option('--report', default=None, help='File in which to write the report in JSON.')
 @click.option('--no-incremental', is_flag=True, default=False, help='Run the evaluation merging the batches')
-@click.opyion('--prepare-for-nil-pred', is_flag=True, default=False, help='Prepare data for training NIL prediction. Combine with --savve-path.')
-@click.argument('batches', nargs=-1)
-def main(add_correct, hitl, no_add, save_path, reset, report, batches, no_incremental, prepare_for_nil_pred):
+@click.option('--prepare-for-nil-pred', is_flag=True, default=False, help='Prepare data for training NIL prediction. Combine with --save-path.')
+@click.argument('batches', nargs=-1, required=True)
+def main(add_correct, hitl, no_add, save_path, no_reset, report, batches, no_incremental, prepare_for_nil_pred):
+    print('Batches', batches)
     outreports = []
 
-    if prepare_for_nil_pred and not save_path:
-        print('--prepare-for-nil-prediction requires --save-path')
+    reset = not no_reset
+
+    if prepare_for_nil_pred and (not save_path or report is not None):
+        print('--prepare-for-nil-prediction requires --save-path and no --report')
         sys.exit(1)
 
     # check batch files exist
