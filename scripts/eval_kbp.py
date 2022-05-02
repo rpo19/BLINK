@@ -14,6 +14,8 @@ from pprint import pprint
 import bcubed
 from sklearn.metrics import classification_report
 import pandas as pd
+import statistics
+import textdistance
 
 ### TODO move all them behind a single proxy and set configurable addresses
 biencoder = 'http://localhost:30300/api/blink/biencoder' # mention # entity
@@ -47,6 +49,63 @@ def vector_decode(s, dtype=np.float32):
     buffer = base64.b64decode(s)
     v = np.frombuffer(buffer, dtype=dtype)
     return v
+
+def _bc_get_stats(x, remove_correct=False, scores_col='scores', nns_col='nns', labels_col='labels', top_k=100):
+    scores = x[scores_col]
+    nns = x[nns_col]
+    if isinstance(scores, str):
+        scores = np.array(json.loads(scores))
+    if isinstance(nns, str):
+        nns = np.array(json.loads(nns))
+
+    assert len(scores) == len(nns)
+    scores = scores.copy()
+
+    sort_scores_i = np.argsort(scores)[::-1]
+    scores = np.array(scores)
+    scores = scores[sort_scores_i][:top_k]
+
+    nns = nns.copy()
+    nns = np.array(nns)
+    nns = nns[sort_scores_i][:top_k]
+
+    correct = None
+    if x[labels_col] in nns:
+        # found correct entity
+        i_correct = list(nns).index(x[labels_col])
+        correct = scores[i_correct]
+
+    _stats = {
+        "correct": correct,
+        "max": max(scores),
+        "second": sorted(scores, reverse=True)[1],
+        "min": min(scores),
+        "mean": statistics.mean(scores),
+        "median": statistics.median(scores),
+        "stdev": statistics.stdev(scores)
+    }
+    return _stats
+
+
+def _bi_get_stats(x, remove_correct=False, top_k=100):
+    return _bc_get_stats(x, remove_correct=remove_correct, scores_col='scores', top_k=top_k)
+
+def prepare_for_nil_prediction_train(df):
+    df['top_id'] = df['candidates'].apply(lambda x: x[0]['wikipedia_id'])
+    df['top_title'] = df['candidates'].apply(lambda x: x[0]['title'])
+    df[['scores', 'nns']] = df.apply(lambda x: {'scores': [i['score'] for i in x['candidates'] if i['wikipedia_id'] > 0], 'nns': [i['wikipedia_id'] for i in x['candidates'] if i['wikipedia_id'] > 0]}, result_type='expand', axis=1)
+    #df['nns'] = df['candidates'].apply(lambda x: [i['wikipedia_id'] for i in x])
+    df['labels'] = df.eval('~NIL and wikiId == top_id').astype(int)
+
+    stats = df.apply(_bi_get_stats, axis=1, result_type='expand')
+    df[stats.columns] = stats
+
+    levenshtein = textdistance.Levenshtein(qval=None)
+    jaccard = textdistance.Jaccard(qval=None)
+    df['levenshtein'] = df.apply(lambda x: levenshtein.normalized_similarity(x['mention'].lower(), x['top_title'].lower()), axis=1)
+    df['jaccard'] = df.apply(lambda x: jaccard.normalized_similarity(x['mention'].lower(), x['top_title'].lower()), axis=1)
+
+    return df
 
 def prepare_for_nil_prediction(x):
     c = x['candidates']
@@ -92,7 +151,7 @@ def get_new_cand(x):
             candidates.insert(0, _cand)
             return candidates
 
-def run_batch(batch, data, add_correct, hitl, no_add, save_path,
+def run_batch(batch, data, add_correct, hitl, no_add, save_path, prepare_for_nil_prediction_train_flag,
         biencoder=biencoder,
         biencoder_mention=biencoder_mention,
         biencoder_entity=biencoder_entity,
@@ -147,6 +206,19 @@ def run_batch(batch, data, add_correct, hitl, no_add, save_path,
         print('No candidates received.')
 
     data['candidates'] = candidates
+
+    if prepare_for_nil_prediction_train_flag:
+        data = prepare_for_nil_prediction_train(data)
+
+        os.makedirs(save_path, exist_ok=True)
+        batch_basename = os.path.splitext(os.path.basename(batch))[0]
+        outdata = os.path.join(save_path, '{}_outdata.pickle'.format(batch_basename))
+        data.to_pickle(outdata)
+        outclusters = os.path.join(save_path, '{}_outclusters.pickle'.format(batch_basename))
+        clusters.to_pickle(outclusters)
+
+        return {}
+
 
     data[['is_nil', 'nil_features']] = data.apply(prepare_for_nil_prediction, axis=1, result_type='expand')
 
@@ -484,9 +556,14 @@ def explode_nil(row, column='nil_prediction', label=''):
 @click.option('--reset', is_flag=True, default=True, help='Reset the RW index before starting.')
 @click.option('--report', default=None, help='File in which to write the report in JSON.')
 @click.option('--no-incremental', is_flag=True, default=False, help='Run the evaluation merging the batches')
+@click.opyion('--prepare-for-nil-pred', is_flag=True, default=False, help='Prepare data for training NIL prediction. Combine with --savve-path.')
 @click.argument('batches', nargs=-1)
-def main(add_correct, hitl, no_add, save_path, reset, report, batches, no_incremental):
+def main(add_correct, hitl, no_add, save_path, reset, report, batches, no_incremental, prepare_for_nil_pred):
     outreports = []
+
+    if prepare_for_nil_pred and not save_path:
+        print('--prepare-for-nil-prediction requires --save-path')
+        sys.exit(1)
 
     # check batch files exist
     for batch in batches:
@@ -508,13 +585,13 @@ def main(add_correct, hitl, no_add, save_path, reset, report, batches, no_increm
         print('Loading and combining batches')
         datas = list(map(lambda x: pd.read_json(x, lines=True), batches))
         data = pd.concat(datas, ignore_index=True)
-        outreport = run_batch("no_incremental", data, add_correct, hitl, no_add, save_path)
+        outreport = run_batch("no_incremental", data, add_correct, hitl, no_add, save_path, prepare_for_nil_pred)
         outreports.append(outreport)
     else:
         for batch in tqdm(batches):
             print('Loading batch...', batch)
             data = pd.read_json(batch, lines=True)
-            outreport = run_batch(batch, data, add_correct, hitl, no_add, save_path)
+            outreport = run_batch(batch, data, add_correct, hitl, no_add, save_path, prepare_for_nil_pred)
             outreports.append(outreport)
 
     if report:
