@@ -1,4 +1,4 @@
-version: "3"
+version: "3.3"
 services:
 
   tint:
@@ -44,5 +44,91 @@ services:
       - 127.0.0.1:30900:30900
     volumes:
       - ./documents/.env:/app/.env
-      # - ./documents:/app
       - ./documents/src:/app/src
+
+  biencoder:
+    build:
+      context: ./biencoder
+      dockerfile: Dockerfile
+    volumes:
+      - ${LOCAL_WORKSPACE_FOLDER}/microservices/data:/data
+      - ${LOCAL_WORKSPACE_FOLDER}/microservices/models:/home/app/models
+    expose:
+      - 30300
+    ports:
+      - "127.0.0.1:30300:30300"
+    environment:
+      - PYTHONPATH=/home/app
+      - TORCH_CUDA_ARCH_LIST=8.6
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - capabilities: [ gpu ]
+    command: python main.py --host 127.0.0.1 --port 30300 --biencoder_model /data/pytorch_model.bin --biencoder_config  /data/config.json
+
+  indexer:
+    build: 
+        context: ./indexer
+        dockerfile: Dockerfile
+    volumes:
+    - ${LOCAL_WORKSPACE_FOLDER}/microservices/data:/data
+    - ${LOCAL_WORKSPACE_FOLDER}/microservices/models:/home/app/models
+    user: root
+    expose:
+      - 30301
+    ports:
+      - 127.0.0.1:30301:30301
+    command: python main.py --host 127.0.0.1 --port 30301 --index flat:/home/app/models/flat-ita-50k-index.pkl:6:rw --postgres 'postgres://postgres:postgres@db:5432/postgres' --vector-size 768 --language it
+
+  nilcluster:
+    build: 
+        context: ./nilcluster
+        dockerfile: Dockerfile
+    expose:
+      - 30305
+    ports:
+      - 30305:30305
+    environment:
+      - PYTHONPATH=/path/to/EntityClustering
+    command: python -m microservices.nilcluster --host 127.0.0.1 --port 30305
+    
+  nilpredictor:
+    build: 
+        context: ./nilpredictor
+        dockerfile: Dockerfile
+    expose:
+      - 30303
+    ports:
+      - 30303:30303
+    command: python -m microservices.nilpredictor --host 127.0.0.1 --port 30303 --nil-bi-model output/feature_ablation_study_ita/max_leve_model.pickle --nil-bi-features 'max_bi,levenshtein'
+
+  db:
+    image: postgres:14
+    environment:
+      POSTGRES_PASSWORD: postgres
+    volumes:
+      - ./data:/var/lib/postgresql/data
+      - "./init.sql:/docker-entrypoint-initdb.d/init.sql"
+    ports:
+      - 127.0.0.1:5432:5432
+    # not used
+    # recognition:
+    #   build: 
+    #       context: ./recognition
+    #       dockerfile: Dockerfile
+    #   expose:
+    #     - 30303
+    #   ports:
+    #     - 30303:30303
+    #   command: python -m microservices.nilpredictor --host 127.0.0.1 --port 30303 --nil-bi-model output/feature_ablation_study_ita/max_leve_model.pickle --nil-bi-features 'max_bi,levenshtein'
+    # spacyner:
+    #   build: 
+    #       context: ./spacyner
+    #       dockerfile: Dockerfile
+    #   expose:
+    #     - 30304
+    #   ports:
+    #     - 30304:30304
+    #   command: python -m microservices.spacyner --host 127.0.0.1 --port 30304 --model it_core_news_sm
+
