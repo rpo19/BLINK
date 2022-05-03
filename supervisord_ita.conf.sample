@@ -32,6 +32,9 @@ username = rpozzi
 password = Xaith3ahS8gaeSh8miejei5aingahgep
 prompt = kbp
 
+[program:helper]
+command=/home/rpozzi/miniconda3/envs/blink37/bin/python -m microservices.pipelinehelper --api-baseurl http://127.0.0.1/ita --port 30615
+
 [program:biencoder]
 command=/home/datalake_giustizia/datalake_giustizia/rpozzi/miniconda3/envs/blink37_2/bin/python -m microservices.biencoder --host 127.0.0.1 --port 30600 --biencoder_model models/ita/wiki/biencoder/epoch_3/pytorch_model.bin --biencoder_config models/ita/wiki/biencoder/epoch_3/config.json
 
