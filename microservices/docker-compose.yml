@@ -28,11 +28,21 @@ services:
     image: mongo:4.4.6 # mongo 5 requires cpu supports AVX
     environment:
       MONGO_INITDB_ROOT_USERNAME: root
-      MONGO_INITDB_ROOT_PASSWORD: $MONGO_PASSWORD
+      MONGO_INITDB_ROOT_PASSWORD: $MONGO_ROOT_PASSWORD
       MONGO_INITDB_DATABASE: main
+      MONGO_INITDB_USERNAME: usr
+      MONGO_INITDB_PASSWORD: $MONGO_PASSWORD
     ports:
       - 127.0.0.1:27017:27017
     volumes:
       - ./mongo/data:/data/db
+      - ./mongo/initdb.d:/docker-entrypoint-initdb.d/
 
-  # TODO
+  documents:
+    build: documents
+    ports:
+      - 127.0.0.1:30900:30900
+    volumes:
+      - ./documents/.env:/app/.env
+      # - ./documents:/app
+      - ./documents/src:/app/src

@@ -14,6 +14,13 @@ export default (app) => {
   /**
    * Get all documents
    */
+   route.get('/hello', asyncRoute(async (req, res) => {
+    return res.json({'res': 'hello'}).status(200);
+  }));
+
+  /**
+   * Get all documents
+   */
   route.get('/', asyncRoute(async (req, res) => {
     // qui ci sarà la findAll di mongodb, guardare DocumentController per più info
     const documents = await DocumentController.findAll();
@@ -44,16 +51,19 @@ export default (app) => {
      route.put('/', asyncRoute(async (req, res, next) => {
 
       // find document by id
-      const document = new Document();
-      document.text = req.body.text;
-      document.annotation = req.body.annotation;
 
-      document.preview = req.body.preview || document.text.split(0,300);
+      const preview =  req.body.preview || document.text.split(0,300);
+      const title = req.body.title || document.text.split(0,12);
 
-      document.title = req.body.title || document.text.split(0,12);
+      const document = new Document({
+        text: req.body.text,
+        annotation: req.body.annotation,
+        preview: preview,
+        title: title
+      });
 
-      const output = await document.save();
+      // const output = await document.save();
 
-      return res.json(output).status(200);
+      return res.json({'res':'aa'}).status(200);
     }));
 };
