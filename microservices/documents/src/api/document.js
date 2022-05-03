@@ -2,7 +2,9 @@ import { Router } from 'express';
 import { DocumentController } from '../controllers/document';
 import { asyncRoute } from '../utils/async-route';
 import { HTTPError, HTTP_ERROR_CODES } from '../utils/http-error';
-import { Document } from '../models/document';
+import { Document, documentDTO } from '../models/document';
+import { validateRequest } from 'zod-express-middleware';
+import { z } from 'zod';
 
 
 const route = Router();
@@ -14,8 +16,8 @@ export default (app) => {
   /**
    * Get all documents
    */
-   route.get('/hello', asyncRoute(async (req, res) => {
-    return res.json({'res': 'hello'}).status(200);
+  route.get('/hello', asyncRoute(async (req, res) => {
+    return res.json({ 'res': 'hello' }).status(200);
   }));
 
   /**
@@ -48,22 +50,15 @@ export default (app) => {
   /**
    * Get document by id
    */
-     route.put('/', asyncRoute(async (req, res, next) => {
-
-      // find document by id
-
-      const preview =  req.body.preview || document.text.split(0,300);
-      const title = req.body.title || document.text.split(0,12);
-
-      const document = new Document({
-        text: req.body.text,
-        annotation: req.body.annotation,
-        preview: preview,
-        title: title
-      });
-
-      // const output = await document.save();
-
-      return res.json({'res':'aa'}).status(200);
-    }));
+  route.post('/', validateRequest({
+    body: z.object({
+      text: z.string(),
+      preview: z.string().optional(),
+      title: z.string().optional()
+    }),
+  }), asyncRoute(async (req, res, next) => {
+    const newDocument = documentDTO(req.body);
+    const doc = await newDocument.save();
+    return res.json(doc).status(200);
+  }));
 };
