@@ -20,7 +20,7 @@ indexer_add = f'{indexer}/add'
 indexer_reset = f'{indexer}/reset/rw'
 nilpredictor = '/api/nilprediction'
 nilcluster = '/api/nilcluster'
-mongo = '/api/mongo'
+mongo = '/api/mongo/document'
 ###
 
 nil_threshold = 0.5
