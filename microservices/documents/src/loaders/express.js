@@ -1,5 +1,6 @@
 import express from 'express';
 import api from '../api';
+import { authMiddleware } from '../middlewares/auth';
 import { HTTPError, HTTP_ERROR_CODES, transformHTTPError } from '../utils/http-error';
 
 export const expressLoader = () => {
@@ -11,7 +12,7 @@ export const expressLoader = () => {
   /**
    * All api endpoints are exposed under /api
    */
-  app.use('/api', api());
+  app.use('/api', authMiddleware, api());
 
   /**
    * Error handler
