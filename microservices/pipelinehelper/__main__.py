@@ -176,24 +176,29 @@ async def run(input: Input):
     print('clustering')
     nil_mentions = data.query('is_nil == True')
 
-    res_nilcluster = requests.post(
-        args.baseurl + nilcluster, json={
-            'ids': nil_mentions.index.tolist(),
-            'mentions': nil_mentions[mention].values.tolist(),
-            'encodings': nil_mentions['encoding'].values.tolist()
-        })
-
-    if not res_nilcluster.ok:
-        print('NIL cluster ERROR')
-        raise Exception('NIL cluster ERROR')
+    if nil_mentions.shape[0] == 0:
+        # no NIL: skipping clustering
+        print('Skipping clustering')
+        clusters = []
     else:
-        print('OK')
+        res_nilcluster = requests.post(
+            args.baseurl + nilcluster, json={
+                'ids': nil_mentions.index.tolist(),
+                'mentions': nil_mentions[mention].values.tolist(),
+                'encodings': nil_mentions['encoding'].values.tolist()
+            })
 
-    clusters = pd.DataFrame(res_nilcluster.json())
+        if not res_nilcluster.ok:
+            print('NIL cluster ERROR')
+            raise Exception('NIL cluster ERROR')
+        else:
+            print('OK')
 
-    clusters = clusters.sort_values(by='nelements', ascending=False)
+        clusters = pd.DataFrame(res_nilcluster.json())
 
-    if input.populate:
+        clusters = clusters.sort_values(by='nelements', ascending=False)
+
+    if input.populate and clusters:
         # populate with new entities
         print('Populating rw index with new entities')
 
@@ -228,15 +233,15 @@ async def run(input: Input):
             'top_wikipedia_id': x['candidates'][0]['wikipedia_id']
         }, axis=1, result_type='expand')
 
-    data_n_dates = pd.concat([data, dates]).sort_values(by='start_pos_original')
+    data_n_dates = pd.concat([data, dates]).sort_values(by='start_pos')
 
     # remove intersection entities # TODO improve
     prev = 0
     to_del = []
     for i,row in data_n_dates.iterrows():
-        if prev > row['start_pos_original']:
+        if prev > row['start_pos']:
             to_del.append(i)
-        prev = row['end_pos_original']
+        prev = row['end_pos']
 
     data_n_dates = data_n_dates[~data_n_dates.index.isin(to_del)]
     print('deleted {} rows from data_n_dates'.format(len(to_del)))
@@ -250,8 +255,6 @@ async def run(input: Input):
     data_n_dates['mention'] = data_n_dates['mention'].fillna("")
     data_n_dates['start_pos'] = data_n_dates['start_pos'].fillna(0)
     data_n_dates['end_pos'] = data_n_dates['end_pos'].fillna(0)
-    data_n_dates['start_pos_original'] = data_n_dates['start_pos_original'].fillna(0)
-    data_n_dates['end_pos_original'] = data_n_dates['end_pos_original'].fillna(0)
     data_n_dates['sent_idx'] = data_n_dates['sent_idx'].fillna(0)
     data_n_dates['ner_type'] = data_n_dates['ner_type'].fillna("")
     if 'normalized_date' in data_n_dates.columns:
@@ -269,13 +272,15 @@ async def run(input: Input):
     data_n_dates['top_url'] = data_n_dates['top_url'].fillna("")
 
     outjson = data_n_dates[['context_left', 'context_right', 'mention',
-                         'start_pos_original', 'end_pos_original', 'sent_idx',
+                         'start_pos', 'end_pos', 'sent_idx',
                          'ner_type', 'normalized_date', 'candidates',
                          'top_title', 'top_wikipedia_id', 'top_url']].to_dict(orient='records')
 
     if input.save:
         # TODO save in mongo
         pass
+
+    # TODO return also cluster?
 
     return outjson
 

@@ -5,12 +5,11 @@ import uvicorn
 from typing import Union, List
 import spacy
 import sys
-import preprocess
 import itertools
 import json
 import requests
 # from multiprocessing import Pool
-from .entity import EntityMention
+from entity import EntityMention
 
 class Item(BaseModel):
     text: Union[List[str], str]
@@ -24,45 +23,34 @@ async def encode_mention(item: Item):
 
     if isinstance(item.text, str):
         text = item.text
-        text, mapping, mapping_back = preprocess.preprocess(text)
         input_sentences = nlp(text).sents
         process_sent = lambda x: (x, x.text)
-        get_mapping_back = itertools.repeat(mapping_back)
     else:
         input_sentences = item.text
-        input_sentences, mapping, mapping_back = tuple(zip(*map(lambda x: preprocess.preprocess(x), input_sentences)))
         process_sent = lambda x: (nlp(x), x)
-        get_mapping_back = mapping_back
 
-    for i, sentence, _mapping_back in zip(itertools.count(), input_sentences, get_mapping_back):
+    for i, sentence in zip(itertools.count(), input_sentences):
         doc, sentence = process_sent(sentence)
 
         if hasattr(doc, 'start_char') and hasattr(doc, 'end_char'):
             sent_start_pos = doc.start_char
             sent_end_pos = doc.end_char
-            sent_start_pos_original, sent_end_pos_original = preprocess.mapSpan((sent_start_pos, sent_end_pos), _mapping_back)
             sentences.append({
                     'text': sentence,
                     'start_pos': sent_start_pos,
                     'end_pos': sent_end_pos,
-                    'start_pos_original': sent_start_pos_original,
-                    'end_pos_original': sent_end_pos_original
                 })
         else:
             sent_start_pos = 0
             sent_end_pos = len(sentence)
-            sent_start_pos_original, sent_end_pos_original = preprocess.mapSpan((sent_start_pos, sent_end_pos), _mapping_back)
             sentences.append({
                     'start_pos': sent_start_pos,
                     'text': sentence,
                     'end_pos': sent_end_pos,
-                    'start_pos_original': sent_start_pos_original,
-                    'end_pos_original': sent_end_pos_original
                 })
 
         # spacy ents # pos are already ok
         for ent in doc.ents:
-            start_pos_original, end_pos_original = preprocess.mapSpan((ent.start_char, ent.end_char), _mapping_back)
             sample = {
                 'label': 'unknown',
                 'label_id': -1,
@@ -71,8 +59,6 @@ async def encode_mention(item: Item):
                 'mention': ent.text,
                 'start_pos': ent.start_char,
                 'end_pos': ent.end_char,
-                'start_pos_original': start_pos_original,
-                'end_pos_original': end_pos_original,
                 'sent_idx': i,
                 'ner_type': ent.label_
             }
@@ -86,7 +72,6 @@ async def encode_mention(item: Item):
                 # only dates
                 start_pos = sent_start_pos + ent.begin
                 end_pos = sent_start_pos + ent.end
-                start_pos_original, end_pos_original = preprocess.mapSpan((start_pos, end_pos), _mapping_back)
                 sample = {
                     'label': 'unknown',
                     'label_id': -1,
@@ -96,8 +81,6 @@ async def encode_mention(item: Item):
                     # tint pos starts from the beginning of the sentence: to fix
                     'start_pos': start_pos,
                     'end_pos': end_pos,
-                    'start_pos_original': start_pos_original,
-                    'end_pos_original': end_pos_original,
                     'sent_idx': i,
                     'ner_type': ent.type_,
                     'normalized_date': ent.attrs['normalized_date']
@@ -111,9 +94,6 @@ async def encode_mention(item: Item):
     return {
         'ents': samples,
         'sentences': sentences,
-        'preprocess': {
-            'mapping': mapping
-        }
     }
 
 def nlp_tint(text):
@@ -123,7 +103,7 @@ def nlp_tint(text):
     # tint_async = pool.apply_async(tint, (x, args.tint))
     # res_tint = tint_async.get()
 
-    ents, res = tint(text, args.tint)
+    ents, res = tint(text, baseurl=args.tint)
 
     if res.ok:
         ents = EntityMention.group_from_tint(ents, '', False, doc=text)

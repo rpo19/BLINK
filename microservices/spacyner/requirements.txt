@@ -1,1 +1,5 @@
 spacy
+fastapi
+uvicorn
+requests
+pandas

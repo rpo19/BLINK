@@ -22,8 +22,8 @@ services:
     image: nginx
     volumes:
       - ./nginx/nginx.conf:/etc/nginx/conf.d/default.conf
-    network_mode: host
-
+    ports:
+      - 127.0.0.1:80:80
   mongo:
     image: mongo:4.4.6 # mongo 5 requires cpu supports AVX
     environment:
@@ -54,7 +54,7 @@ services:
     volumes:
       - ${LOCAL_WORKSPACE_FOLDER}/models:/home/app/models
     ports:
-      - 30300:30300
+      - 30300:80
     environment:
       - PYTHONPATH=/home/app
     deploy:
@@ -62,7 +62,7 @@ services:
         reservations:
           devices:
             - capabilities: [ gpu ]
-    command: python main.py --host 0.0.0.0 --port 30300 --biencoder_model models/itabig/biencoder_hard_for_real/epoch_0/pytorch_model.bin --biencoder_config models/itabig/biencoder_hard_for_real/epoch_0/config.json
+    command: python main.py --host 0.0.0.0 --port 80 --biencoder_model models/itabig/biencoder_hard_for_real/epoch_0/pytorch_model.bin --biencoder_config models/itabig/biencoder_hard_for_real/epoch_0/config.json
 
   indexer:
     image: rpozzi/ibkp_indexer
@@ -72,8 +72,8 @@ services:
     volumes:
       - ${LOCAL_WORKSPACE_FOLDER}/models:/home/app/models
     ports:
-      - 127.0.0.1:30301:30301
-    command: python main.py --host 0.0.0.0 --port 30301 --index hnsw:models/faiss_hnsw_itahard_index_130.pkl:130:r,flat:models/flat_kbp_133.pkl:133:rw --postgres 'postgres://postgres:$POSTGRES_PASSWORD@postgres:5432/postgres' --vector-size 768 --language it
+      - 127.0.0.1:30301:80
+    command: python main.py --host 0.0.0.0 --port 80 --index hnsw:models/faiss_hnsw_itahard_index_130.pkl:130:r,flat:models/flat_kbp_133.pkl:133:rw --postgres 'postgres://postgres:$POSTGRES_PASSWORD@postgres:5432/postgres' --vector-size 768 --language it
 
   nilcluster:
     image: rpozzi/ibkp_nilcluster
@@ -83,10 +83,10 @@ services:
     volumes:
       - ${LOCAL_WORKSPACE_FOLDER}/models:/home/app/models
     ports:
-      - 127.0.0.1:30305:30305
+      - 127.0.0.1:30305:80
     environment:
       - PYTHONPATH=/path/to/EntityClustering
-    command: python __main__.py --host 0.0.0.0 --port 30305
+    command: python __main__.py --host 0.0.0.0 --port 80
 
   nilpredictor:
     image: rpozzi/ibkp_nilpredictor
@@ -96,8 +96,14 @@ services:
     volumes:
       - ${LOCAL_WORKSPACE_FOLDER}/models:/home/app/models
     ports:
-      - 127.0.0.1:30303:30303
-    command: python __main__.py --host 0.0.0.0 --port 30303 --nil-bi-model models/nilp_bi_max_levenshtein_jaccard_model.pickle --nil-bi-features 'max_bi,levenshtein,jaccard'
+      - 127.0.0.1:30303:80
+    command: python __main__.py --host 0.0.0.0 --port 80 --nil-bi-model models/nilp_bi_max_levenshtein_jaccard_model.pickle --nil-bi-features 'max_bi,levenshtein,jaccard'
+
+  pipeline:
+    build: pipelinehelper
+    ports:
+      - 127.0.0.1:30315:80
+    command: python __main__.py --host 0.0.0.0 --port 80 --api-baseurl http://nginx
 
     # not used
     # recognition:
@@ -107,15 +113,15 @@ services:
     #   expose:
     #     - 30303
     #   ports:
-    #     - 30303:30303
-    #   command: python -m microservices.nilpredictor --host 0.0.0.0 --port 30303 --nil-bi-model output/feature_ablation_study_ita/max_leve_model.pickle --nil-bi-features 'max_bi,levenshtein'
-    # spacyner:
-    #   build:
-    #       context: ./spacyner
-    #       dockerfile: Dockerfile
-    #   expose:
-    #     - 30304
-    #   ports:
-    #     - 30304:30304
-    #   command: python -m microservices.spacyner --host 0.0.0.0 --port 30304 --model it_core_news_sm
+    #     - 30303:80
+    #   command: python -m microservices.nilpredictor --host 0.0.0.0 --port 80 --nil-bi-model output/feature_ablation_study_ita/max_leve_model.pickle --nil-bi-features 'max_bi,levenshtein'
+  spacyner:
+    build:
+        context: ./spacyner
+        dockerfile: Dockerfile
+        args:
+          SPACY_MODEL: $SPACY_MODEL
+    ports:
+      - 30304:80
+    command: python __main__.py --host 0.0.0.0 --port 80 --model $SPACY_MODEL --tint http://tint:8012/tint
 
