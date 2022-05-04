@@ -1,6 +1,6 @@
 import express from 'express';
 import api from '../api';
-import { transformHTTPError } from '../utils/http-error';
+import { HTTPError, HTTP_ERROR_CODES, transformHTTPError } from '../utils/http-error';
 
 export const expressLoader = () => {
   const app = express();
@@ -17,6 +17,18 @@ export const expressLoader = () => {
    * Error handler
    */
   app.use((error, req, res, next) => {
+    console.log(error);
+
+    if (!(error instanceof HTTPError)) {
+      // exception not thrown manually, just trhow INTERNAL_SERVER_ERROR
+      const err = new HTTPError({
+        code: HTTP_ERROR_CODES.INTERNAL_SERVER_ERROR,
+        message: 'Something went wrong when processing the request.'
+      })
+      return res.status(err.code).json({
+        ...transformHTTPError(err)
+      })
+    }
     res.status(error.code).json({ ...transformHTTPError(error) })
   })
 
