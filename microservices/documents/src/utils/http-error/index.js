@@ -18,7 +18,6 @@ export const transformHTTPError = (error) => {
       message: error.message,
       httpStatus: error.code,
       error: error.cause,
-      stack: error.stack
     }
   }
 }

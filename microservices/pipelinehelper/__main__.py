@@ -19,6 +19,7 @@ indexer_add = f'{indexer}/add'
 indexer_reset = f'{indexer}/reset/rw'
 nilpredictor = '/api/nilprediction'
 nilcluster = '/api/nilcluster'
+mongo = '/api/mongo'
 ###
 
 nil_threshold = 0.5
@@ -277,8 +278,13 @@ async def run(input: Input):
                          'top_title', 'top_wikipedia_id', 'top_url']].to_dict(orient='records')
 
     if input.save:
-        # TODO save in mongo
-        pass
+        #save in mongo
+        #it returns the saved document
+        requests.post(
+          args.baseurl + mongo, json={
+            'text': input.text, 
+            'annotation': outjson
+          })
 
     # TODO return also cluster?
 
