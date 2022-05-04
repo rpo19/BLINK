@@ -10,7 +10,7 @@ import itertools
 import json
 import requests
 # from multiprocessing import Pool
-from .entity import EntityMention
+from entity import EntityMention
 
 class Item(BaseModel):
     text: Union[List[str], str]

@@ -1,1 +1,8 @@
 spacy
+fastapi
+uvicorn
+sklearn
+scikit-learn
+scikit-learn-extra
+pandas
+preprocess

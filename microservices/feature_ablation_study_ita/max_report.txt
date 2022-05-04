@@ -1,0 +1,34 @@
+|    |     y |
+|---:|------:|
+|  0 | 21255 |
+|  1 | 21255 |
+|          |   train |   test |
+|:---------|--------:|-------:|
+| original |   50000 |  10000 |
+| notna    |   50000 |  10000 |
+| actual   |   42510 |  10000 |
+              precision    recall  f1-score   support
+
+           0       0.51      0.59      0.55      4199
+           1       0.67      0.59      0.63      5801
+
+    accuracy                           0.59     10000
+   macro avg       0.59      0.59      0.59     10000
+weighted avg       0.60      0.59      0.60     10000
+
+-- Performances over test set: data/ita/nil/valid.pickle --
+baseline: 0.5801
+acc: 0.3449
+acc adjusted: 0.3449
+-- Oracle HITL evaluation when y_pred in [0.25, 0.75]
+Ratio to human validator: 0.0351
+              precision    recall  f1-score   support
+
+           0       0.78      0.82      0.80       159
+           1       0.84      0.81      0.82       192
+
+    accuracy                           0.81       351
+   macro avg       0.81      0.81      0.81       351
+weighted avg       0.81      0.81      0.81       351
+
+acc oracle: 0.4415954415954416
