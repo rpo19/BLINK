@@ -22,8 +22,16 @@ services:
     image: nginx
     volumes:
       - ./nginx/nginx.conf:/etc/nginx/conf.d/default.conf
+      - ./nginx/usersfile:/usersfile
     ports:
       - 127.0.0.1:80:80
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.pipeline.rule=Host(`titan-inside.disco.unimib.it`)"
+      - "traefik.http.routers.pipeline.entrypoints=websecure"
+      - "traefik.http.routers.pipeline.tls.certresolver=myresolver"
+      - "traefik.http.routers.pipeline.tls=true"
+
   mongo:
     image: mongo:4.4.6 # mongo 5 requires cpu supports AVX
     environment:
@@ -124,4 +132,15 @@ services:
     ports:
       - 30304:80
     command: python __main__.py --host 0.0.0.0 --port 80 --model $SPACY_MODEL --tint http://tint:8012/tint
+
+  traefik:
+    image: "traefik:v2.4"
+    # command:
+      # - "--log.level=DEBUG"
+    ports:
+      - 0.0.0.0:443:443
+    volumes:
+      - "./traefik/traefik.yml:/etc/traefik/traefik.yml"
+      - "./traefik/letsencrypt:/letsencrypt"
+      - "/var/run/docker.sock:/var/run/docker.sock:ro"
 
