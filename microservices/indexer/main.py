@@ -9,24 +9,24 @@ from blink.indexer.faiss_indexer import DenseFlatIndexer, DenseHNSWFlatIndexer
 import json
 import psycopg
 import os
-from annoy import AnnoyIndex
+# from annoy import AnnoyIndex
 
 class _Index:
     def __init__(self, n):
         self.ntotal = n
-class AnnoyWrapper:
-    def __init__(self, annoyIndex):
-        self._index = annoyIndex
-        self.index = _Index(self._index.get_n_items())
-        self.index_type = 'annoy'
-    def search_knn(self, encodings, top_k):
-        candidates = []
-        scores = []
-        for v in encodings:
-            _c, _s = self._index.get_nns_by_vector(v, top_k, include_distances=True)
-            candidates.append(_c)
-            scores.append(_s)
-        return scores, candidates
+# class AnnoyWrapper:
+#     def __init__(self, annoyIndex):
+#         self._index = annoyIndex
+#         self.index = _Index(self._index.get_n_items())
+#         self.index_type = 'annoy'
+#     def search_knn(self, encodings, top_k):
+#         candidates = []
+#         scores = []
+#         for v in encodings:
+#             _c, _s = self._index.get_nns_by_vector(v, top_k, include_distances=True)
+#             candidates.append(_c)
+#             scores.append(_s)
+#         return scores, candidates
 
 def vector_encode(v):
     s = base64.b64encode(v).decode()
@@ -225,10 +225,10 @@ def load_models(args):
             elif index_type == "hnsw":
                 indexer = DenseHNSWFlatIndexer(1)
                 indexer.deserialize_from(index_path)
-            elif index_type == 'annoy':
-                _annoy_idx = AnnoyIndex(args.vector_size, 'dot')
-                _annoy_idx.load(index_path)
-                indexer = AnnoyWrapper(_annoy_idx)
+            # elif index_type == 'annoy':
+            #     _annoy_idx = AnnoyIndex(args.vector_size, 'dot')
+            #     _annoy_idx.load(index_path)
+            #     indexer = AnnoyWrapper(_annoy_idx)
             else:
                 raise ValueError("Error! Unsupported indexer type! Choose from flat,hnsw.")
         else:

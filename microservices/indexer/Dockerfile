@@ -5,17 +5,9 @@ FROM pytorch/pytorch:1.11.0-cuda11.3-cudnn8-runtime
 # Upgrade PIP
 RUN python3 -m pip install --upgrade pip
 
-# Install IPython kernel
-RUN python3 -m pip install ipykernel && \
-    python3 -m ipykernel install --user
-    
 # Install utils
 RUN apt-get update && \
-    apt-get -y install --no-install-recommends \
-        sudo git zsh curl wget \
-        gcc g++ build-essential cmake build-essential \
-        unzip libjpeg-dev libpng-dev libpq-dev \
-        imagemagick gnuplot gnuplot-x11 libssl-dev libzmq3-dev graphviz
+    apt-get -y install --no-install-recommends gcc
 
 WORKDIR /home/app
 

@@ -30,5 +30,5 @@ pandas
 uvicorn
 fastapi
 # supervisor
-psycopg
-annoy
+psycopg[binary]
+# annoy

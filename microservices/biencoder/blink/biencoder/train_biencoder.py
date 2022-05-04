@@ -36,6 +36,9 @@ from blink.biencoder.zeshel_utils import DOC_PATH, WORLDS, world_to_id
 from blink.common.optimizer import get_bert_optimizer
 from blink.common.params import BlinkParser
 
+import base64
+import requests
+
 
 logger = None
 
@@ -107,6 +110,9 @@ def get_scheduler(params, optimizer, len_train_data, logger):
     logger.info(" Num warmup steps = %d", num_warmup_steps)
     return scheduler
 
+def vector_encode(v):
+    s = base64.b64encode(v).decode()
+    return s
 
 def main(params):
     model_output_path = params["output_path"]
@@ -148,7 +154,8 @@ def main(params):
 
     # Load train data
     # TODO get 9M randomly at every epoch?
-    train_samples = utils.read_dataset("train", params["data_path"], compression='gzip', max=9000000)
+    train_samples = utils.read_dataset("train", params["data_path"], compression='gzip',
+        max=params['max_dataset'], sample=params['sample_dataset'], seed=params['sample_dataset_seed'])
     logger.info("Read %d train samples." % len(train_samples))
 
     train_dataloader = data.process_mention_data_iter(
@@ -163,7 +170,7 @@ def main(params):
         batch_size=train_batch_size,
         label_key="descr",
         title_key='href',
-        label_idx_key='label',
+        label_idx_key='target',
         start_from_instance=params["start_from_instance"]
     )
 
@@ -240,8 +247,36 @@ def main(params):
 
         for step, batch in enumerate(iter_):
             batch = tuple(t.to(device) for t in batch)
-            context_input, candidate_input, _ = batch
-            loss, _ = reranker(context_input, candidate_input)
+            context_input, candidate_input, label_input = batch
+
+            # if params['hard_negatives']:
+            #     with torch.no_grad():
+            #         context_input = context_input.to(reranker.device)
+            #         context_encoding = reranker.encode_context(context_input).numpy()
+            #         context_encoding = np.ascontiguousarray(context_encoding)
+            #     encodings = [vector_encode(e) for e in encodings]
+
+            #     body = {
+            #         'encodings': encodings,
+            #         'top_k': 2 # to ensure there is also a negative
+            #     }
+            #     res_indexer = requests.post(params['indexer_url'], json=body)
+            #     # TODO do not risk to compromise the entire training for a single failure here
+            #     assert res_indexer.ok
+            #     candidates = res_indexer.json()
+
+            #     # TODO remove: dataset with hard negatives is created in advance
+
+            # if hard negs pass label_input
+            if params['hard_negatives']:
+                # n -> n,1
+                label_input = torch.reshape(label_input, (label_input.shape[0],))
+                # label_input = label_input.type(torch.float)
+                # label_input.to(reranker.device)
+                context_input = context_input[label_input == 1]
+                loss, _ = reranker(context_input, candidate_input, random_negs=False)
+            else:
+                loss, _ = reranker(context_input, candidate_input)
 
             # if n_gpu > 1:
             #     loss = loss.mean() # mean() to average on multi-gpu.
@@ -284,7 +319,7 @@ def main(params):
 
                 output_eval_file = os.path.join(epoch_output_folder_path, "eval_results.txt")
                 with open(output_eval_file, 'w') as fd:
-                    json.dump(results, fd)  
+                    json.dump(results, fd)
                 # reset dataloader TODO improve
                 valid_dataloader = data.process_mention_data_iter(
                     valid_samples,
@@ -315,7 +350,7 @@ def main(params):
             batch_size=train_batch_size,
             label_key="descr",
             title_key='href',
-            label_idx_key='label',
+            label_idx_key='target',
         )
 
         logger.info("***** Saving fine - tuned model *****")
@@ -379,6 +414,30 @@ if __name__ == "__main__":
     parser = BlinkParser(add_model_args=True)
     parser.add_training_args()
     parser.add_eval_args()
+    parser.add_argument(
+        "--max-dataset", default=None, type=int, dest='max_dataset',
+        help="Limit the dataset to this size."
+    )
+    parser.add_argument(
+        "--sample-dataset", default=None, type=int, dest='sample_dataset',
+        help="Sample the dataset to this size."
+    )
+    parser.add_argument(
+        "--sample-dataset-seed", default=None, type=int, dest='sample_dataset_seed',
+        help="Sample with this seed."
+    )
+    parser.add_argument(
+        #TODO int for how many hard negatives?
+        "--hard-negatives", action="store_true", help="Whether to use hard-negatives.",
+        dest='hard_negatives', default=False
+    )
+    parser.add_argument(
+        "--indexer-url",
+        default=None,
+        type=str,
+        help="The url of the indexer from where to extract hard negatives.",
+        dest='indexer_url'
+    )
 
     # args = argparse.Namespace(**params)
     args = parser.parse_args()
