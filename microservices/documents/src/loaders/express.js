@@ -2,12 +2,15 @@ import express from 'express';
 import api from '../api';
 import { authMiddleware } from '../middlewares/auth';
 import { HTTPError, HTTP_ERROR_CODES, transformHTTPError } from '../utils/http-error';
+import logger from 'morgan';
 
 export const expressLoader = () => {
   const app = express();
 
   app.use(express.urlencoded({ extended: true }))
   app.use(express.json())
+
+  app.use(logger('dev'))
 
   /**
    * All api endpoints are exposed under /api
