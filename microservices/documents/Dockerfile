@@ -3,7 +3,7 @@ FROM node:alpine
 
 RUN npm install -g pnpm
 
-# Create the directory on the node image 
+# Create the directory on the node image
 # where our Next.js app will live
 RUN mkdir -p /app
 
@@ -21,7 +21,7 @@ RUN pnpm install
 COPY . /app
 
 # Ensure port 3000 is accessible to our system
-EXPOSE 3000
+EXPOSE 3001
 
-# Run yarn dev, as we would via the command line 
+# Run yarn dev, as we would via the command line
 CMD ["pnpm", "dev"]

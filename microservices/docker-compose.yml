@@ -49,7 +49,7 @@ services:
   documents:
     build: documents
     ports:
-      - 127.0.0.1:30900:30900
+      - 127.0.0.1:30900:3001
     volumes:
       - ./documents/.env:/app/.env
       - ./documents/src:/app/src
@@ -112,6 +112,9 @@ services:
     ports:
       - 127.0.0.1:30315:80
     command: python __main__.py --host 0.0.0.0 --port 80 --api-baseurl http://nginx
+    environment:
+      AUTH_USER: pipeline
+      AUTH_PASSWORD: $PIPELINE_PASSWORD
 
     # not used
     # recognition:

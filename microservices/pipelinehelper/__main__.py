@@ -6,6 +6,7 @@ from typing import List, Optional
 import argparse
 import requests
 import numpy as np
+import os
 
 ###
 ner = '/api/ner'
@@ -70,8 +71,10 @@ def prepare_for_nil_prediction(x):
 async def run(input: Input):
     # NER
 
+    global auth
+
     res_ner = requests.post(
-        args.baseurl + ner, json={'text': input.text})
+        args.baseurl + ner, json={'text': input.text}, auth = auth)
 
     if res_ner.ok:
         sentences = res_ner.json()['sentences']
@@ -107,7 +110,8 @@ async def run(input: Input):
                 'mention',
                 'context_left',
                 'context_right'
-                ]].to_dict(orient='records'))
+                ]].to_dict(orient='records'),
+                auth = auth)
 
     if res_biencoder.ok:
         data['encoding'] = res_biencoder.json()['encodings']
@@ -125,7 +129,7 @@ async def run(input: Input):
         'top_k': 10
     }
     res_indexer = requests.post(
-        args.baseurl + indexer_search, json=body)
+        args.baseurl + indexer_search, json=body, auth = auth)
 
     if res_indexer.ok:
         candidates = res_indexer.json()
@@ -151,7 +155,7 @@ async def run(input: Input):
 
     if not_yet_nil.shape[0] > 0:
         res_nilpredictor = requests.post(
-            args.baseurl + nilpredictor, json=not_yet_nil['nil_features'].values.tolist())
+            args.baseurl + nilpredictor, json=not_yet_nil['nil_features'].values.tolist(), auth = auth)
         if res_nilpredictor.ok:
             # TODO use cross if available
             nil_scores_bi = np.array(res_nilpredictor.json()['nil_score_bi'])
@@ -187,7 +191,7 @@ async def run(input: Input):
                 'ids': nil_mentions.index.tolist(),
                 'mentions': nil_mentions[mention].values.tolist(),
                 'encodings': nil_mentions['encoding'].values.tolist()
-            })
+            }, auth = auth)
 
         if not res_nilcluster.ok:
             print('NIL cluster ERROR')
@@ -217,7 +221,7 @@ async def run(input: Input):
 
         data_new = clusters[['title', 'center']].rename(columns={'center': 'encoding', 'mode': 'wikipedia_id'})
         new_indexed = requests.post(
-            args.baseurl + indexer_add, json=data_new.to_dict(orient='records'))
+            args.baseurl + indexer_add, json=data_new.to_dict(orient='records'), auth = auth)
 
         if not new_indexed.ok:
             print('error adding new entities')
@@ -278,19 +282,29 @@ async def run(input: Input):
                          'top_title', 'top_wikipedia_id', 'top_url']].to_dict(orient='records')
 
     if input.save:
+        print('Saving')
         #save in mongo
         #it returns the saved document
         requests.post(
           args.baseurl + mongo, json={
-            'text': input.text, 
+            'text': input.text,
             'annotation': outjson
-          })
+          }, auth = auth)
 
     # TODO return also cluster?
 
     return outjson
 
 if __name__ == '__main__':
+
+    user = os.environ.get('AUTH_USER', None)
+    password = os.environ.get('AUTH_PASSWORD', None)
+
+    if user:
+        auth =(user, password)
+    else:
+        auth = None
+
     parser = argparse.ArgumentParser()
 
     parser.add_argument(
