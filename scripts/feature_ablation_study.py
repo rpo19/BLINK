@@ -24,7 +24,9 @@ import click
 @click.option('--test-path', required=True, help='Test dataset in pickle.')
 @click.option('--output-path', required=True, help='output folder in which to save models and reports.')
 @click.option('--only', type=str, default=None, help='Comma separated list of models to train (only these one are trained).')
-def main(train_path, test_path, output_path, only):
+@click.option('--label-key', type=str, default="label", help='Gold label to wikipedia entity id.')
+@click.option('--title-key', type=str, default="title", help='Gold label to wikipedia entity title.')
+def main(train_path, test_path, output_path, only, label_key, title_key):
     if only is not None:
         print('Only', only)
 
@@ -567,13 +569,16 @@ def main(train_path, test_path, output_path, only):
         test_df['y_pred_round'] = y_pred_round
         test_df['y_pred'] = y_pred
 
-        bi_baseline = test_df.query('Wikipedia_ID == top_id or Wikipedia_title == top_title').shape[0]
+        bi_baseline = test_df.query(f'{label_key} == top_id or {title_key} == top_title').shape[0]
 
-        bi_acc = test_df.query('(y_pred_round == 1 and (Wikipedia_ID == top_id or Wikipedia_title == top_title)) or (NIL and y_pred_round == 0)').shape[0]
+        if 'NIL' not in test_df.columns:
+            test_df['NIL'] = ~test_df['labels'].astype(bool)
+
+        bi_acc = test_df.query(f'(y_pred_round == 1 and ({label_key} == top_id or {title_key} == top_title)) or (NIL and y_pred_round == 0)').shape[0]
 
         bi_acc_correcting_nel = test_df.query(
-            '(y_pred_round == 1 and (Wikipedia_ID == top_id or Wikipedia_title == top_title))'
-            ' or (Wikipedia_ID != top_id and y_pred_round == 0)').shape[0]
+            f'(y_pred_round == 1 and ({label_key} == top_id or {title_key} == top_title))'
+            f' or ({label_key} != top_id and y_pred_round == 0)').shape[0]
 
         _classification_report = classification_report(y_test, y_pred_round)
 
@@ -593,7 +598,7 @@ def main(train_path, test_path, output_path, only):
 
         test_df_oracle = test_df.query(f'y_pred <= {tl} or y_pred >= {th}')
 
-        bi_acc_oracle = test_df_oracle.query('(y_pred_round == 1 and (Wikipedia_ID == top_id or Wikipedia_title == top_title)) or (NIL and y_pred_round == 0)').shape[0]
+        bi_acc_oracle = test_df_oracle.query(f'(y_pred_round == 1 and ({label_key} == top_id or {title_key} == top_title)) or (NIL and y_pred_round == 0)').shape[0]
 
         _f1_0 = f1_score(y_test, y_pred_round, pos_label=0)
         _f1_1 = f1_score(y_test, y_pred_round, pos_label=1)

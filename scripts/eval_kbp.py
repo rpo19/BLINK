@@ -32,6 +32,8 @@ nilcluster = 'http://localhost:30305/api/nilcluster'
 context_right = 'context_right'
 context_left = 'context_left'
 mention = 'mention'
+# wiki_id = 'Wikipedia_ID'
+wiki_id = 'label'
 ###
 
 # wikipedia_id = mode(cluster.wikipedia_ids)
@@ -93,7 +95,15 @@ def prepare_for_nil_prediction_train(df):
     df['top_title'] = df['candidates'].apply(lambda x: x[0]['title'])
     df[['scores', 'nns']] = df.apply(lambda x: {'scores': [i['score'] for i in x['candidates'] if i['wikipedia_id'] > 0], 'nns': [i['wikipedia_id'] for i in x['candidates'] if i['wikipedia_id'] > 0]}, result_type='expand', axis=1)
     #df['nns'] = df['candidates'].apply(lambda x: [i['wikipedia_id'] for i in x])
-    df['labels'] = df.eval('~NIL and Wikipedia_ID == top_id').astype(int)
+    if 'NIL' in df.columns:
+        df['labels'] = df.eval('~NIL and {} == top_id'.format(wiki_id)).astype(int)
+    else:
+        df['labels'] = df.eval('{} == top_id'.format(wiki_id)).astype(int)
+
+    print('Prepare NIL train:')
+    # print('NIL', df.eval('~labels').sum())
+    # print('not NIL', df.eval('labels').sum())
+    print(df['labels'].value_counts())
 
     stats = df.apply(_bi_get_stats, axis=1, result_type='expand')
     df[stats.columns] = stats
@@ -135,7 +145,7 @@ def prepare_for_nil_prediction(x):
 
 def get_new_cand(x):
             url = x['y_wikiurl_dump']
-            curid = x['Wikipedia_ID']
+            curid = x[wiki_id]
             candidates = x['candidates']
             score = candidates[0]['score'] + 1
             _cand = {
@@ -266,8 +276,8 @@ def run_batch(batch, data, add_correct, hitl, no_add, save_path, prepare_for_nil
     prev_added_entities = added_entities.copy()
 
     # TODO consider correcting added_entities?
-    added_entities = pd.concat([added_entities, pd.DataFrame(data.query('is_nil')['Wikipedia_ID'].unique(), columns=['Wikipedia_ID'])]).drop_duplicates()
-    added_entities.set_index('Wikipedia_ID', drop=False, inplace=True)
+    added_entities = pd.concat([added_entities, pd.DataFrame(data.query('is_nil')[wiki_id].unique(), columns=[wiki_id])]).drop_duplicates()
+    added_entities.set_index(wiki_id, drop=False, inplace=True)
 
     # ## Entity Clustering
     print('clustering')
@@ -295,7 +305,7 @@ def run_batch(batch, data, add_correct, hitl, no_add, save_path, prepare_for_nil
         # inject url into cluster (most frequent one) # even NIL mentions still have the gold url
         def _helper(x):
             x = x['mentions_id']
-            modes = data.loc[x, 'Wikipedia_ID'].mode()
+            modes = data.loc[x, wiki_id].mode()
             if len(modes) > 1:
                 mode = None
             else:
@@ -331,7 +341,7 @@ def run_batch(batch, data, add_correct, hitl, no_add, save_path, prepare_for_nil
         # title nelements mentions_id mentions center
 
         correct_clusters = pd.DataFrame(columns=['title', 'nelements', 'mentions_id', 'mentions', 'center', 'original_url', 'original_id'])
-        for k,v in data.query('NIL').groupby('Wikipedia_ID').groups.items():
+        for k,v in data.query('NIL').groupby(wiki_id).groups.items():
             df_mentions = data.iloc[v]
             df_mentions['embedding'] = df_mentions['encoding'].apply(vector_decode)
             c = Cluster()
@@ -380,7 +390,7 @@ def run_batch(batch, data, add_correct, hitl, no_add, save_path, prepare_for_nil
     def eval_linking_helper(x):
         candidate_ids = [i['wikipedia_id'] for i in x['candidates']]
         try:
-            return candidate_ids.index(x['Wikipedia_ID']) + 1 # starting from recall@1
+            return candidate_ids.index(x[wiki_id]) + 1 # starting from recall@1
         except ValueError:
             return -1
 
@@ -392,7 +402,7 @@ def run_batch(batch, data, add_correct, hitl, no_add, save_path, prepare_for_nil
         report[f'linking_recall@{i}'] = not_nil.eval(f'linking_found_at > 0 and linking_found_at <= {i}').sum() / not_nil.shape[0]
 
     ## NIL prediction
-    should_be_nil_bool = data['NIL'] & ~data['Wikipedia_ID'].isin(prev_added_entities.index)
+    should_be_nil_bool = data['NIL'] & ~data[wiki_id].isin(prev_added_entities.index)
     data['should_be_nil'] = should_be_nil_bool
     # report['nil_tp'] = data.eval('NIL and is_nil').sum()
     # report['nil_fp'] = data.eval('~NIL and is_nil').sum()
@@ -468,7 +478,7 @@ def run_batch(batch, data, add_correct, hitl, no_add, save_path, prepare_for_nil
 
     keysGold = [str(x) for x in merged['mentions_id']]
     # valuesGold= [set([x]) for x in merged['y_wikiurl_dump']]
-    valuesGold= [set([x]) for x in merged['Wikipedia_ID']]
+    valuesGold= [set([x]) for x in merged[wiki_id]]
     ldict = dict(zip(keysGold, valuesGold))
     report['nil_clustering_bcubed_precision'] = bcubed.precision(cdict, ldict)
     report['nil_clustering_bcubed_recall'] = bcubed.recall(cdict, ldict)
@@ -487,7 +497,7 @@ def run_batch(batch, data, add_correct, hitl, no_add, save_path, prepare_for_nil
     report['should_be_nil_correct_normalized'] = report['should_be_nil_correct'] / (report['should_be_nil_total'] + sys.float_info.min)
     overall_correct += report['should_be_nil_correct']
     # nil previously added should be linked to the prev added entity (and not nil)
-    should_be_linked_to_prev_added = data[data['NIL'] & data['Wikipedia_ID'].isin(prev_added_entities.index)]
+    should_be_linked_to_prev_added = data[data['NIL'] & data[wiki_id].isin(prev_added_entities.index)]
     should_be_linked_to_prev_added_total = should_be_linked_to_prev_added.shape[0]
     should_be_linked_to_prev_added = should_be_linked_to_prev_added.query('~is_nil').copy()
     ## check if linked to a cluster containing at least half coherent mentions
@@ -515,7 +525,7 @@ def run_batch(batch, data, add_correct, hitl, no_add, save_path, prepare_for_nil
             should_be_linked_to_prev_added_correct = should_be_linked_to_prev_added.eval('Wikipedia_ID == mode').sum()
             # half of the cluster is correct
             def helper_half_correct(row):
-                return len(row['modes']) == 2 and row['Wikipedia_ID'] in row['modes']
+                return len(row['modes']) == 2 and row[wiki_id] in row['modes']
             should_be_linked_to_prev_added_correct += \
                 should_be_linked_to_prev_added.apply(helper_half_correct, axis=1).sum()
             overall_correct += should_be_linked_to_prev_added_correct
@@ -551,7 +561,7 @@ def run_batch(batch, data, add_correct, hitl, no_add, save_path, prepare_for_nil
     # ## NIL prediction (consider added entities)
     # ### NIL mentions referring to previously added entity should be not NIL now
     # ### --> previoulsy identified NIL entities are expected to be linked
-    # newly_added = data.join(prev_added_entities, how='inner', on='Wikipedia_ID', rsuffix='_y')
+    # newly_added = data.join(prev_added_entities, how='inner', on=wiki_id, rsuffix='_y')
     # report['no_correct_links_newly_added'] = newly_added.eval('top_Wikipedia_ID == Wikipedia_ID').sum()
     # report['no_correct_links_newly_added_normalized'] = report['no_correct_links_newly_added'] / newly_added.shape[0]
     # #### consider the ones linked to a cluster with no id (with multiple modes)
@@ -559,7 +569,7 @@ def run_batch(batch, data, add_correct, hitl, no_add, save_path, prepare_for_nil
     # if multi_modes.shape[0] > 0:
     #     multi_modes['top_linking_id'] = multi_modes.apply(lambda x: x['candidates'][0]['id'], axis=1)
     #     multi_modes = multi_modes.join(prev_clusters, how='left', on='top_linking_id')
-    #     report['no_approximately_corrected_links'] = multi_modes.apply(lambda x: x['Wikipedia_ID'] in x['modes']).sum()
+    #     report['no_approximately_corrected_links'] = multi_modes.apply(lambda x: x[wiki_id] in x['modes']).sum()
     #     report['no_approximately_corrected_links_normalized'] = report['no_approximately_corrected_links'] / multi_modes.shape[0]
     # else:
     #     report['no_approximately_corrected_links'] = -1
