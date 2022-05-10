@@ -279,7 +279,8 @@ async def run(input: Input):
     outjson = data_n_dates[['context_left', 'context_right', 'mention',
                          'start_pos', 'end_pos', 'sent_idx',
                          'ner_type', 'normalized_date', 'candidates',
-                         'top_title', 'top_wikipedia_id', 'top_url']].to_dict(orient='records')
+                         'top_title', 'top_wikipedia_id', 'top_url',
+                         'is_nil', 'nil_score']].to_dict(orient='records')
 
     if input.save:
         print('Saving')
