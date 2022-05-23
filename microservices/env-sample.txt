@@ -10,3 +10,4 @@ INDEXER_VECTOR_SIZE=1024
 BIENCODER_CONFIG=models/biencoder_model.bin
 BIENCODER_MODEL=models/biencoder_config.json
 NILPREDICTOR_ARGS=--nil-bi-model models/nilp_under_bi_max_levenshtein_jaccard_model.pickle --nil-bi-features 'max_bi,levenshtein,jaccard'
+TRAEFIK_HOST=example.com
