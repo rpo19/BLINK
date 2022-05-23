@@ -70,7 +70,7 @@ services:
         reservations:
           devices:
             - capabilities: [ gpu ]
-    command: python main.py --host 0.0.0.0 --port 80 --biencoder_model models/itabig/biencoder_hard_for_real/epoch_0/pytorch_model.bin --biencoder_config models/itabig/biencoder_hard_for_real/epoch_0/config.json
+    command: python main.py --host 0.0.0.0 --port 80 --biencoder_model $BIENCODER_MODEL --biencoder_config $BIENCODER_CONFIG
 
   indexer:
     image: rpozzi/ibkp_indexer
@@ -83,7 +83,7 @@ services:
       - 127.0.0.1:30301:80
     depends_on:
       - postgres
-    command: python main.py --host 0.0.0.0 --port 80 --index hnsw:models/faiss_hnsw_itahard_index_130.pkl:130:r,flat:models/flat_kbp_133.pkl:133:rw --postgres 'postgres://postgres:$POSTGRES_PASSWORD@postgres:5432/postgres' --vector-size 768 --language it
+    command: python main.py --host 0.0.0.0 --port 80 --index $INDEXER_INDEX --postgres 'postgres://postgres:$POSTGRES_PASSWORD@postgres:5432/postgres' --vector-size $INDEXER_VECTOR_SIZE --language $INDEXER_LANGUAGE
 
   nilcluster:
     image: rpozzi/ibkp_nilcluster
@@ -107,7 +107,7 @@ services:
       - ${LOCAL_WORKSPACE_FOLDER}/models:/home/app/models
     ports:
       - 127.0.0.1:30303:80
-    command: python __main__.py --host 0.0.0.0 --port 80 --nil-bi-model models/nilp_under_bi_max_levenshtein_jaccard_model.pickle --nil-bi-features 'max_bi,levenshtein,jaccard'
+    command: python __main__.py --host 0.0.0.0 --port 80 $NILPREDICTOR_ARGS
 
   pipeline:
     build: pipelinehelper
