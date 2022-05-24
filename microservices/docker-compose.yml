@@ -18,20 +18,6 @@ services:
     ports:
       - 127.0.0.1:5432:5432
 
-  nginx:
-    image: nginx
-    volumes:
-      - ./nginx/nginx.conf:/etc/nginx/conf.d/default.conf
-      - ./nginx/usersfile:/usersfile
-    ports:
-      - 127.0.0.1:80:80
-    labels:
-      - "traefik.enable=true"
-      - "traefik.http.routers.pipeline.rule=Host(`$TRAEFIK_HOST`)"
-      - "traefik.http.routers.pipeline.entrypoints=websecure"
-      - "traefik.http.routers.pipeline.tls.certresolver=myresolver"
-      - "traefik.http.routers.pipeline.tls=true"
-
   mongo:
     image: mongo:4.4.6 # mongo 5 requires cpu supports AVX
     environment:
@@ -113,7 +99,7 @@ services:
     build: pipelinehelper
     ports:
       - 127.0.0.1:30315:80
-    command: python __main__.py --host 0.0.0.0 --port 80 --api-baseurl http://nginx
+    command: python __main__.py --host 0.0.0.0 --port 80 --api-baseurl http://$LOCAL_IP
     environment:
       AUTH_USER: pipeline
       AUTH_PASSWORD: $PIPELINE_PASSWORD
@@ -138,14 +124,19 @@ services:
       - 30304:80
     command: python __main__.py --host 0.0.0.0 --port 80 --model $SPACY_MODEL --tint http://tint:8012/tint
 
-  traefik:
-    image: "traefik:v2.4"
-    # command:
-      # - "--log.level=DEBUG"
+  caddy:
+    image: caddy:2
+    restart: unless-stopped
     ports:
-      - 0.0.0.0:443:443
+      - "80:80"
+      - "443:443"
     volumes:
-      - "./traefik/traefik.yml:/etc/traefik/traefik.yml"
-      - "./traefik/letsencrypt:/letsencrypt"
-      - "/var/run/docker.sock:/var/run/docker.sock:ro"
-
+      - ./caddy/Caddyfile:/etc/caddy/Caddyfile
+      - ./caddy/pwdfile:/etc/caddy/pwdfile
+      - ./caddy/site:/srv
+      - ./caddy/data:/data
+      - ./caddy/config:/config
+    environment:
+      # fully qualified domain name
+      FQDN: "$FQDN"
+      LOCAL_IP: "$LOCAL_IP"
