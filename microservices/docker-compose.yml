@@ -2,6 +2,7 @@ version: "3.3"
 services:
 
   tint:
+    restart: $RESTART_POLICY
     build:
       context: tint
       dockerfile: Dockerfile
@@ -9,6 +10,7 @@ services:
       - 127.0.0.1:8012:8012
 
   postgres:
+    restart: $RESTART_POLICY
     image: postgres:14
     environment:
       POSTGRES_PASSWORD: $POSTGRES_PASSWORD
@@ -19,6 +21,7 @@ services:
       - 127.0.0.1:5432:5432
 
   mongo:
+    restart: $RESTART_POLICY
     image: mongo:4.4.6 # mongo 5 requires cpu supports AVX
     environment:
       MONGO_INITDB_ROOT_USERNAME: root
@@ -33,6 +36,7 @@ services:
       - ./mongo/initdb.d:/docker-entrypoint-initdb.d/
 
   documents:
+    restart: $RESTART_POLICY
     build: documents
     ports:
       - 127.0.0.1:30900:3001
@@ -41,6 +45,7 @@ services:
       - ./documents/src:/app/src
 
   biencoder:
+    restart: $RESTART_POLICY
     image: rpozzi/ibkp_biencoder
     # build:
     #   context: ./biencoder
@@ -59,6 +64,7 @@ services:
     command: python main.py --host 0.0.0.0 --port 80 --biencoder_model $BIENCODER_MODEL --biencoder_config $BIENCODER_CONFIG
 
   indexer:
+    restart: $RESTART_POLICY
     image: rpozzi/ibkp_indexer
     # build:
     #     context: ./indexer
@@ -72,6 +78,7 @@ services:
     command: python main.py --host 0.0.0.0 --port 80 --index $INDEXER_INDEX --postgres 'postgres://postgres:$POSTGRES_PASSWORD@postgres:5432/postgres' --vector-size $INDEXER_VECTOR_SIZE --language $INDEXER_LANGUAGE
 
   nilcluster:
+    restart: $RESTART_POLICY
     image: rpozzi/ibkp_nilcluster
     # build:
     #     context: ./nilcluster
@@ -85,6 +92,7 @@ services:
     command: python __main__.py --host 0.0.0.0 --port 80
 
   nilpredictor:
+    restart: $RESTART_POLICY
     image: rpozzi/ibkp_nilpredictor
     # build:
     #     context: ./nilpredictor
@@ -96,6 +104,7 @@ services:
     command: python __main__.py --host 0.0.0.0 --port 80 $NILPREDICTOR_ARGS
 
   pipeline:
+    restart: $RESTART_POLICY
     build: pipelinehelper
     ports:
       - 127.0.0.1:30315:80
@@ -115,6 +124,7 @@ services:
     #     - 30303:80
     #   command: python -m microservices.nilpredictor --host 0.0.0.0 --port 80 --nil-bi-model output/feature_ablation_study_ita/max_leve_model.pickle --nil-bi-features 'max_bi,levenshtein'
   spacyner:
+    restart: $RESTART_POLICY
     build:
         context: ./spacyner
         dockerfile: Dockerfile
@@ -125,8 +135,8 @@ services:
     command: python __main__.py --host 0.0.0.0 --port 80 --model $SPACY_MODEL --tint http://tint:8012/tint
 
   caddy:
+    restart: $RESTART_POLICY
     image: caddy:2
-    restart: unless-stopped
     ports:
       - "80:80"
       - "443:443"
