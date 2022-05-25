@@ -2,3 +2,4 @@ pwdfile
 config
 data
 site
+Caddyfile.d

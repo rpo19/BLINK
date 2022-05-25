@@ -1,3 +1,5 @@
+import /etc/caddy/Caddyfile.d/*
+
 (main) {
 	handle /api/blink/biencoder* {
 		reverse_proxy biencoder:80
