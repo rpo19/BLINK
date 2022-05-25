@@ -15,6 +15,7 @@ WORKDIR /app
 COPY package.json pnpm-lock.yaml /app/
 
 # Install dependencies in /app
+RUN pnpm config set auto-install-peers true
 RUN pnpm install
 
 # Copy the rest of our Next.js folder into /app
