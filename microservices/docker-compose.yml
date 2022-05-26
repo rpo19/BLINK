@@ -105,7 +105,6 @@ services:
         dockerfile: Dockerfile
     volumes:
       - ${LOCAL_WORKSPACE_FOLDER}/models:/home/app/models
-      - ./nilpredictor/main.py:/home/app/main.py
     environment:
       NILPREDICTOR_ARGS: $NILPREDICTOR_ARGS
     ports:

@@ -69,7 +69,7 @@ async def nilprediction_doc_api(doc: dict = Body(...)):
 
     for i, mention in enumerate(doc.annset('entities')):
         mention.features['linking']['nil_score'] = nil_results[score_label][i]
-        mention.features['is_nil'] = bool(nil_results[score_label][i] < args.threshold)
+        mention.features['linking']['is_nil'] = bool(nil_results[score_label][i] < args.threshold)
         if add_score_bi:
             mention.features['linking']['nil_score_bi'] = nil_results[score_label][i]
 
@@ -132,7 +132,6 @@ def run(input: List[Features]):
         nil_X.loc[i, index] = pd.Series(data=data, index=index, name=i)
 
     # run the model
-
     result = {}
 
     if nil_bi_model is not None:
