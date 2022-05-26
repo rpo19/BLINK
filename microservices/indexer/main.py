@@ -1,5 +1,5 @@
 import argparse
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Body
 from pydantic import BaseModel
 import uvicorn
 import numpy as np
@@ -9,6 +9,7 @@ from blink.indexer.faiss_indexer import DenseFlatIndexer, DenseHNSWFlatIndexer
 import json
 import psycopg
 import os
+from gatenlp import Document
 # from annoy import AnnoyIndex
 
 class _Index:
@@ -78,10 +79,50 @@ async def reset():
 
     return {'res': 'OK'}
 
+@app.post('/api/indexer/search/doc')
+# remember `content-type: application/json`
+async def search_from_doc_api(doc: dict = Body(...)):
+    return search_from_doc_topk(10, doc)
+
+@app.post('/api/indexer/search/doc/{top_k}')
+async def search_from_doc_topk_api(top_k: int, doc: dict = Body(...)):
+    return search_from_doc_topk(top_k, doc)
+
+def search_from_doc_topk(top_k, doc):
+    doc = Document.from_dict(doc)
+
+    encodings = []
+    for mention in doc.annset('entities'):
+        enc = mention.features['linking']['encoding']
+        encodings.append(enc)
+
+    all_candidates_4_sample_n = search(encodings, top_k)
+
+    for mention, cands in zip(doc.annset('entities'), all_candidates_4_sample_n):
+        if len(cands) == 0 or cands[0]['dummy'] == 1:
+            mention.features['is_nil'] = True
+        else:
+            top_cand = cands[0]
+            mention.features['linking']['score'] = top_cand['score']
+            mention.features['linking']['id'] = top_cand['wikipedia_id']
+            mention.features['linking']['title'] = top_cand['title']
+            mention.features['linking']['url'] = top_cand['url']
+            mention.features['linking']['candidates'] = cands
+
+    if not 'pipeline' in doc.features:
+        doc.features['pipeline'] = []
+    doc.features['pipeline'].append('indexer')
+
+    return doc.to_dict()
+
+
 @app.post('/api/indexer/search')
-async def search(input_: Input):
+async def search_api(input_: Input):
     encodings = input_.encodings
     top_k = input_.top_k
+    return search(encodings, top_k)
+
+def search(encodings, top_k):
     encodings = np.array([vector_decode(e) for e in encodings])
     all_candidates_4_sample_n = []
     for i in range(len(encodings)):

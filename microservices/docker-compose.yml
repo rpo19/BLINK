@@ -66,12 +66,13 @@ services:
 
   indexer:
     restart: $RESTART_POLICY
-    image: rpozzi/ibkp_indexer
-    # build:
-    #     context: ./indexer
-    #     dockerfile: Dockerfile
+    # image: rpozzi/blink_indexer
+    build:
+        context: ./indexer
+        dockerfile: Dockerfile
     volumes:
       - ${LOCAL_WORKSPACE_FOLDER}/models:/home/app/models
+      - ./indexer/main.py:/home/app/main.py
     ports:
       - 127.0.0.1:30301:80
     depends_on:
