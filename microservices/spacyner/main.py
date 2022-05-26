@@ -20,8 +20,6 @@ app = FastAPI()
 
 @app.post('/api/ner')
 async def encode_mention(item: Item):
-    samples = []
-    sentences = []
 
     doc = Document(item.text)
     sentence_set = doc.annset('sentences')
@@ -29,97 +27,44 @@ async def encode_mention(item: Item):
 
     spacy_out = spacy_pipeline(doc.text)
 
-    import pdb
-    pdb.set_trace()
-
     tint_out = nlp_tint(doc.text)
 
     # sentences
     for sent in spacy_out.sents:
         # TODO keep track of entities in this sentence?
-        sentence_set.add(sent.start_char, sent.end_char, "sentence")
+        sentence_set.add(sent.start_char, sent.end_char, "sentence", {
+            "source": "spacy",
+            "spacy_model":args.model
+        })
 
     for ent in spacy_out.ents:
         # TODO keep track of sentences
         # sentence_set.overlapping(ent.start_char, ent.end_char)
-        entity_set.add(ent.start_char, ent.end_char, ent.label_, {"ner": {"type": ent.label_, "score": 1.0}})
+        entity_set.add(ent.start_char, ent.end_char, ent.label_, {
+            "ner": {
+                "type": ent.label_,
+                "score": 1.0,
+                "source": "spacy",
+                "spacy_model": args.model
+                }})
 
     for ent in tint_out:
         if ent.type_ == 'DATE':
-            entity_set.add(ent.begin, ent.end, ent.type_, {"ner": {"type": ent.type_, "score": 1.0}})
+            entity_set.add(ent.begin, ent.end, ent.type_, {
+                "ner": {
+                    "type": ent.type_,
+                    "score": 1.0,
+                    "normalized_date": ent.attrs['normalized_date'],
+                    "source": "tint",
+                    }})
         else:
-            entity_set.add(ent.begin, ent.end, ent.type_, {"ner": {
-                "type": ent.type_,
-                "score": 1.0,
-                "normalized_date": ent.attrs['normalized_date']
-                }})
-
-    # for i, sentence in zip(itertools.count(), input_sentences):
-    #     doc, sentence = process_sent(sentence)
-
-    #     if hasattr(doc, 'start_char') and hasattr(doc, 'end_char'):
-    #         sent_start_pos = doc.start_char
-    #         sent_end_pos = doc.end_char
-    #         sentences.append({
-    #                 'text': sentence,
-    #                 'start_pos': sent_start_pos,
-    #                 'end_pos': sent_end_pos,
-    #             })
-    #     else:
-    #         sent_start_pos = 0
-    #         sent_end_pos = len(sentence)
-    #         sentences.append({
-    #                 'start_pos': sent_start_pos,
-    #                 'text': sentence,
-    #                 'end_pos': sent_end_pos,
-    #             })
-
-    #     # spacy ents # pos are already ok
-    #     for ent in doc.ents:
-    #         sample = {
-    #             'label': 'unknown',
-    #             'label_id': -1,
-    #             'context_left': sentence[:ent.start_char],
-    #             'context_right': sentence[ent.end_char:],
-    #             'mention': ent.text,
-    #             'start_pos': ent.start_char,
-    #             'end_pos': ent.end_char,
-    #             'sent_idx': i,
-    #             'ner_type': ent.label_
-    #         }
-
-    #         samples.append(sample)
-
-    #     # TODO make it async inside spacy
-    #     res_tint = nlp_tint(sentence)
-    #     for ent in res_tint:
-    #         if ent.type_ == 'DATE':
-    #             # only dates
-    #             start_pos = sent_start_pos + ent.begin
-    #             end_pos = sent_start_pos + ent.end
-    #             sample = {
-    #                 'label': 'unknown',
-    #                 'label_id': -1,
-    #                 'context_left': sentence[:ent.begin],
-    #                 'context_right': sentence[ent.end:],
-    #                 'mention': ent.text,
-    #                 # tint pos starts from the beginning of the sentence: to fix
-    #                 'start_pos': start_pos,
-    #                 'end_pos': end_pos,
-    #                 'sent_idx': i,
-    #                 'ner_type': ent.type_,
-    #                 'normalized_date': ent.attrs['normalized_date']
-    #             }
-
-    #             samples.append(sample)
-    #         else:
-    #             # TODO only dates for now
-    #             continue
-
-    # return {
-    #     'ents': samples,
-    #     'sentences': sentences,
-    # }
+            # entity_set.add(ent.begin, ent.end, ent.type_, {
+            #     "ner": {
+            #         "type": ent.type_,
+            #         "score": 1.0,
+            #         "source": "tint",
+            #     }})
+            pass
 
     return doc.to_dict()
 

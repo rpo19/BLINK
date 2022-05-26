@@ -133,7 +133,7 @@ services:
           SPACY_MODEL: $SPACY_MODEL
     ports:
       - 30304:80
-    command: python __main__.py --host 0.0.0.0 --port 80 --model $SPACY_MODEL --tint http://tint:8012/tint
+    # command: python __main__.py --host 0.0.0.0 --port 80 --model $SPACY_MODEL --tint http://tint:8012/tint
 
   caddy:
     restart: $RESTART_POLICY
