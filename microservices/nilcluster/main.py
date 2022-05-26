@@ -1,5 +1,5 @@
 import argparse
-from fastapi import FastAPI
+from fastapi import FastAPI, Body
 from pydantic import BaseModel
 import uvicorn
 from typing import List, Optional
@@ -9,6 +9,7 @@ from scipy.spatial.distance import cdist
 import numpy as np
 import base64
 from Packages.TimeEvolving import Cluster, compare_ecoding
+from gatenlp import Document
 
 def vector_encode(v):
     s = base64.b64encode(v).decode()
@@ -69,6 +70,14 @@ class Item(BaseModel):
     encodings: Optional[List[str]]
 
 app = FastAPI()
+
+@app.post('/api/nilcluster/doc')
+async def cluster_mention_from_doc(doc: dict = Body(...)):
+    doc = Document.from_dict(doc)
+
+    # select nil mentions
+    for mention in doc.annset('entities'):
+        if mention.features['linking']['is_nil']
 
 @app.post('/api/nilcluster')
 async def cluster_mention(item: Item):

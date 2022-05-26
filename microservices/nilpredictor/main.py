@@ -1,12 +1,13 @@
 import pickle
 import pandas as pd
-from fastapi import FastAPI
+from fastapi import FastAPI, Body
 from pydantic import BaseModel
 import uvicorn
 from typing import List, Optional
 import argparse
 import textdistance
 import statistics
+from gatenlp import Document
 
 # input: features
 # output: NIL score
@@ -38,9 +39,51 @@ class Features(BaseModel):
 
 app = FastAPI()
 
-@app.post('/api/nilprediction')
-async def run(input: List[Features]):
+@app.post('/api/nilprediction/doc')
+async def nilprediction_doc_api(doc: dict = Body(...)):
+    doc = Document.from_dict(doc)
 
+    input = []
+
+    for mention in doc.annset('entities'):
+        gt_features = mention.features['linking']
+        feat = Features()
+        if 'score' in gt_features:
+            if 'score_bi' in gt_features:
+                # bi
+                feat.max_bi = gt_features['score_bi']
+                # cross
+                feat.max_cross = gt_features['score']
+            else:
+                # bi only
+                feat.max_bi = gt_features['score']
+        feat.mention = doc.text[mention.start:mention.end]
+        feat.title = gt_features['title'] if 'title' in gt_features else None
+
+        input.append(feat)
+
+    nil_results = run(input)
+
+    score_label = 'nil_score_cross' if 'nil_score_cross' in nil_results else 'nil_score_bi'
+    add_score_bi = 'nil_score_cross' in nil_results
+
+    for i, mention in enumerate(doc.annset('entities')):
+        mention.features['linking']['nil_score'] = nil_results[score_label][i]
+        mention.features['is_nil'] = bool(nil_results[score_label][i] < args.threshold)
+        if add_score_bi:
+            mention.features['linking']['nil_score_bi'] = nil_results[score_label][i]
+
+    if not 'pipeline' in doc.features:
+        doc.features['pipeline'] = []
+    doc.features['pipeline'].append('nilprediction')
+
+    return doc.to_dict()
+
+@app.post('/api/nilprediction')
+async def nilprediction_api(input: List[Features]):
+    return run(input)
+
+def run(input: List[Features]):
     nil_X = pd.DataFrame()
 
     for i, features in enumerate(input):
@@ -86,7 +129,7 @@ async def run(input: List[Features]):
                 data.append(v)
                 index.append(i)
 
-        nil_X = nil_X.append(pd.Series(data=data, index=index, name=i))
+        nil_X.loc[i, index] = pd.Series(data=data, index=index, name=i)
 
     # run the model
 
@@ -165,6 +208,10 @@ if __name__ == '__main__':
 
     parser.add_argument(
         "--nil-features", type=str, default=None, help="features of the nil model (comma separated)",
+    )
+
+    parser.add_argument(
+        "--threshold", type=float, default="0.5", help="threshold below which mention is nil",
     )
 
     args = parser.parse_args()

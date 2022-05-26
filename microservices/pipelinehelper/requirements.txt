@@ -3,3 +3,4 @@ numpy
 uvicorn
 fastapi
 requests
+gatenlp

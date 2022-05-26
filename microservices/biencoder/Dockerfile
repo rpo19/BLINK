@@ -16,3 +16,5 @@ COPY . .
 RUN pip install --no-cache-dir --upgrade -r /home/app/requirements.txt
 
 # RUN pip install -e git+https://github.com/facebookresearch/BLINK.git#egg=BLINK
+
+CMD python main.py --host 0.0.0.0 --port 80 --biencoder_model $BIENCODER_MODEL --biencoder_config $BIENCODER_CONFIG
