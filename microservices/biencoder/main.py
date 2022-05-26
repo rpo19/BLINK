@@ -74,6 +74,10 @@ async def encode_mention_from_doc(doc: dict = Body(...)):
             'source': 'blink_biencoder'
         }
 
+    if not 'pipeline' in doc.features:
+        doc.features['pipeline'] = []
+    doc.features['pipeline'].append('indexer')
+
     return doc.to_dict()
 
 @app.post('/api/blink/biencoder/mention')

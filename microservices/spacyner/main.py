@@ -66,6 +66,10 @@ async def encode_mention(item: Item):
             #     }})
             pass
 
+    if not 'pipeline' in doc.features:
+        doc.features['pipeline'] = []
+    doc.features['pipeline'].append('spacyner')
+
     return doc.to_dict()
 
 def nlp_tint(text):
