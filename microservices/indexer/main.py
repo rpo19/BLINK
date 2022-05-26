@@ -99,7 +99,8 @@ def search_from_doc_topk(top_k, doc):
     all_candidates_4_sample_n = search(encodings, top_k)
 
     for mention, cands in zip(doc.annset('entities'), all_candidates_4_sample_n):
-        if len(cands) == 0 or cands[0]['dummy'] == 1:
+        # dummy is set when postgres is empty
+        if len(cands) == 0 or ('dummy' in cands[0] and cands[0]['dummy'] == 1):
             mention.features['is_nil'] = True
         else:
             top_cand = cands[0]
