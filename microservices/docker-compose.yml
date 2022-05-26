@@ -3,9 +3,10 @@ services:
 
   tint:
     restart: $RESTART_POLICY
-    build:
-      context: tint
-      dockerfile: Dockerfile
+    image: rpozzi/tint
+    # build:
+    #   context: tint
+    #   dockerfile: Dockerfile
     ports:
       - 127.0.0.1:8012:8012
 
