@@ -45,7 +45,6 @@ async def encode_mention_from_doc(doc: dict = Body(...)):
     doc = Document.from_dict(doc)
 
     samples = []
-    annotations = []
 
     for mention in doc.annset('entities'):
         blink_dict = {
@@ -59,7 +58,6 @@ async def encode_mention_from_doc(doc: dict = Body(...)):
             'label_id': -1,
         }
         samples.append(blink_dict)
-        annotations.append(mention)
 
     dataloader = _process_biencoder_dataloader(
         samples, biencoder.tokenizer, biencoder_params
@@ -68,7 +66,7 @@ async def encode_mention_from_doc(doc: dict = Body(...)):
     assert encodings[0].dtype == 'float32'
     encodings = [vector_encode(e) for e in encodings]
 
-    for mention, enc in zip(annotations, encodings):
+    for mention, enc in zip(doc.annset('entities'), encodings):
         mention.features['linking'] = {
             'encoding': enc,
             'source': 'blink_biencoder'
