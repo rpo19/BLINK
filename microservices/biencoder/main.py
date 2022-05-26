@@ -74,7 +74,7 @@ async def encode_mention_from_doc(doc: dict = Body(...)):
 
     if not 'pipeline' in doc.features:
         doc.features['pipeline'] = []
-    doc.features['pipeline'].append('indexer')
+    doc.features['pipeline'].append('biencoder')
 
     return doc.to_dict()
 
