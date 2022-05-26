@@ -75,12 +75,38 @@ app = FastAPI()
 async def cluster_mention_from_doc(doc: dict = Body(...)):
     doc = Document.from_dict(doc)
 
+    item = Item(ids=[], mentions=[], embeddings=[])
+
     # select nil mentions
     for mention in doc.annset('entities'):
-        if mention.features['linking']['is_nil']
+        if mention.features['linking']['is_nil']:
+            item.ids.append(mention.id)
+            item.mentions.append(doc.text[mention.start:mention.end])
+            item.embeddings.append(mention.features['linking']['encoding'])
+
+    res_cluster = cluster_mention(item)
+
+    doc.features['clusters'] = []
+    for cluster_id, cluster in enumerate(res_cluster):
+        doc.features['clusters'].append(dict(cluster))
+        # set cluster id in the mention annotation
+        all_mentions = doc.annset('entities')
+        for men_id in cluster.mentions_id:
+            mention = all_mentions.get(men_id)
+            mention.features['cluster'] = cluster_id
+
+    if not 'pipeline' in doc.features:
+        doc.features['pipeline'] = []
+    doc.features['pipeline'].append('nilclustering')
+
+    return doc.to_dict()
 
 @app.post('/api/nilcluster')
-async def cluster_mention(item: Item):
+async def cluster_mention_api(item: Item):
+    return cluster_mention(item)
+
+
+def cluster_mention(item: Item):
     total_clusters = []
     current_mentions = item.mentions
     if item.ids is not None:
