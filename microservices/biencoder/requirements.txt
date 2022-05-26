@@ -30,3 +30,4 @@ pandas
 uvicorn
 fastapi
 # supervisor
+gatenlp

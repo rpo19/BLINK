@@ -1,5 +1,5 @@
 import argparse
-from fastapi import FastAPI
+from fastapi import FastAPI, Body
 from pydantic import BaseModel
 import uvicorn
 from blink.main_dense import load_biencoder, _process_biencoder_dataloader
@@ -12,6 +12,7 @@ import numpy as np
 import base64
 import logging
 from torch.utils.data import DataLoader, SequentialSampler
+from gatenlp import Document
 
 def vector_encode(v):
     s = base64.b64encode(v).decode()
@@ -37,6 +38,43 @@ class Entity(BaseModel):
     descr: str
 
 app = FastAPI()
+
+@app.post('/api/blink/biencoder/mention/doc')
+# remember `content-type: application/json`
+async def encode_mention_from_doc(doc: dict = Body(...)):
+    doc = Document.from_dict(doc)
+
+    samples = []
+    annotations = []
+
+    for mention in doc.annset('entities'):
+        blink_dict = {
+            # TODO use sentence instead of document?
+            # TODO test with very big context
+            'context_left': doc.text[:mention.start],
+            'context_right': doc.text[mention.end:],
+            'mention': doc.text[mention.start:mention.end],
+            #
+            'label': 'unknown',
+            'label_id': -1,
+        }
+        samples.append(blink_dict)
+        annotations.append(mention)
+
+    dataloader = _process_biencoder_dataloader(
+        samples, biencoder.tokenizer, biencoder_params
+    )
+    encodings = _run_biencoder_mention(biencoder, dataloader)
+    assert encodings[0].dtype == 'float32'
+    encodings = [vector_encode(e) for e in encodings]
+
+    for mention, enc in zip(annotations, encodings):
+        mention.features['linking'] = {
+            'encoding': enc,
+            'source': 'blink_biencoder'
+        }
+
+    return doc.to_dict()
 
 @app.post('/api/blink/biencoder/mention')
 async def encode_mention(samples: List[Mention]):
