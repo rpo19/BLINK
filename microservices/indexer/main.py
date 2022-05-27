@@ -217,8 +217,35 @@ class Item(BaseModel):
     descr: Optional[str]
     type_: Optional[str]
 
+@app.post('/api/indexer/add/doc')
+async def add_doc(doc: dict = Body(...)):
+    doc = Document.from_dict(doc)
+
+    clusters = doc.features['clusters']
+
+    items = []
+
+    for c in clusters:
+        items.append(
+            Item(title=c['title'], encoding=c['center']))
+
+    res_add = add(items)
+
+    for c, id, indexer in zip(clusters, res_add['ids'], res_add['indexer']):
+        c['index_id'] = id
+        c['index_indexer'] = indexer 
+
+    if not 'pipeline' in doc.features:
+        doc.features['pipeline'] = []
+    doc.features['pipeline'].append('indexer_add')
+
+    return doc.to_dict()
+
 @app.post('/api/indexer/add')
-async def add(items: List[Item]):
+async def add_api(items: List[Item]):
+    return add(items)
+
+def add(items: List[Item]):
     if rw_index is None:
         raise HTTPException(status_code=404, detail="No rw index!")
 

@@ -17,7 +17,7 @@ biencoder_entity = f'{biencoder}/entity'
 crossencoder = '/api/blink/crossencoder'
 indexer = '/api/indexer' # search # add
 indexer_search = f'{indexer}/search/doc'
-indexer_add = f'{indexer}/add'
+indexer_add = f'{indexer}/add/doc'
 indexer_reset = f'{indexer}/reset/rw'
 nilpredictor = '/api/nilprediction/doc'
 nilcluster = '/api/nilcluster/doc'
@@ -65,6 +65,12 @@ async def run(input: Input):
     doc = Document.from_dict(res_clustering.json())
 
     # TODO add new entities to the KB
+    if input.populate:
+        # get clusters
+        res_populate = requests.post(args.baseurl + indexer_add, json=doc.to_dict())ù
+        if not res_populate.ok:
+            raise Exception('Population error')
+        doc = Document.from_dict(res_populate.json())
 
     # TODO save annotations in mongodb
 
