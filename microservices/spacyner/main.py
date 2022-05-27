@@ -40,13 +40,19 @@ async def encode_mention(item: Item):
     for ent in spacy_out.ents:
         # TODO keep track of sentences
         # sentence_set.overlapping(ent.start_char, ent.end_char)
-        entity_set.add(ent.start_char, ent.end_char, ent.label_, {
+        feat_to_add = {
             "ner": {
                 "type": ent.label_,
                 "score": 1.0,
                 "source": "spacy",
                 "spacy_model": args.model
-                }})
+                }}
+        if ent.label_ == 'DATE':
+            feat_to_add['linking'] = {
+                "skip": True
+            }
+
+        entity_set.add(ent.start_char, ent.end_char, ent.label_, feat_to_add)
 
     for ent in tint_out:
         if ent.type_ == 'DATE':
@@ -56,7 +62,10 @@ async def encode_mention(item: Item):
                     "score": 1.0,
                     "normalized_date": ent.attrs['normalized_date'],
                     "source": "tint",
-                    }})
+                    },
+                "linking": {
+                    "skip": True, # we already have normalized date
+                }})
         else:
             # entity_set.add(ent.begin, ent.end, ent.type_, {
             #     "ner": {
@@ -78,6 +87,9 @@ def nlp_tint(text):
     # TODO async
     # tint_async = pool.apply_async(tint, (x, args.tint))
     # res_tint = tint_async.get()
+
+    if not args.tint:
+        return []
 
     ents, res = tint(text, baseurl=args.tint)
 
@@ -117,7 +129,7 @@ if __name__ == '__main__':
         "--model", type=str, default="en_core_web_sm", help="spacy model to load",
     )
     parser.add_argument(
-        "--tint", type=str, default="http://127.0.0.1:8012/tint", help="tint URL",
+        "--tint", type=str, default=None, help="tint URL",
     )
 
     # pool to run tint in parallel # TODO

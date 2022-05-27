@@ -79,12 +79,15 @@ async def cluster_mention_from_doc(doc: dict = Body(...)):
 
     # select nil mentions
     for mention in doc.annset('entities'):
-        if mention.features['linking']['is_nil']:
+        if 'linking' in mention.features and mention.features['linking'].get('is_nil', False):
             item.ids.append(mention.id)
             item.mentions.append(doc.text[mention.start:mention.end])
             item.embeddings.append(mention.features['linking']['encoding'])
 
     res_cluster = cluster_mention(item)
+    if not res_cluster:
+        print('No NIL entities. No clustering required.')
+        return doc.to_dict()
 
     doc.features['clusters'] = []
     for cluster_id, cluster in enumerate(res_cluster):
@@ -108,6 +111,8 @@ async def cluster_mention_api(item: Item):
 
 def cluster_mention(item: Item):
     total_clusters = []
+    if not item.embeddings:
+        return total_clusters
     current_mentions = item.mentions
     if item.ids is not None:
         ids = item.ids

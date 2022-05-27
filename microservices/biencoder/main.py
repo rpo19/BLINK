@@ -45,8 +45,12 @@ async def encode_mention_from_doc(doc: dict = Body(...)):
     doc = Document.from_dict(doc)
 
     samples = []
+    mentions = []
 
     for mention in doc.annset('entities'):
+        if 'linking' in mention.features and mention.features['linking'].get('skip', False):
+            # DATES should skip = true bcs linking useless
+            continue
         blink_dict = {
             # TODO use sentence instead of document?
             # TODO test with very big context
@@ -58,6 +62,7 @@ async def encode_mention_from_doc(doc: dict = Body(...)):
             'label_id': -1,
         }
         samples.append(blink_dict)
+        mentions.append(mention)
 
     dataloader = _process_biencoder_dataloader(
         samples, biencoder.tokenizer, biencoder_params
@@ -66,7 +71,7 @@ async def encode_mention_from_doc(doc: dict = Body(...)):
     assert encodings[0].dtype == 'float32'
     encodings = [vector_encode(e) for e in encodings]
 
-    for mention, enc in zip(doc.annset('entities'), encodings):
+    for mention, enc in zip(mentions, encodings):
         mention.features['linking'] = {
             'encoding': enc,
             'source': 'blink_biencoder'

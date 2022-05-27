@@ -67,7 +67,7 @@ async def run(input: Input):
     # TODO add new entities to the KB
     if input.populate:
         # get clusters
-        res_populate = requests.post(args.baseurl + indexer_add, json=doc.to_dict())ù
+        res_populate = requests.post(args.baseurl + indexer_add, json=doc.to_dict())
         if not res_populate.ok:
             raise Exception('Population error')
         doc = Document.from_dict(res_populate.json())

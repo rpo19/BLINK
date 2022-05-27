@@ -10,6 +10,7 @@ import json
 import psycopg
 import os
 from gatenlp import Document
+from itertools import repeat
 # from annoy import AnnoyIndex
 
 class _Index:
@@ -92,13 +93,18 @@ def search_from_doc_topk(top_k, doc):
     doc = Document.from_dict(doc)
 
     encodings = []
+    mentions = []
     for mention in doc.annset('entities'):
+        if 'linking' in mention.features and mention.features['linking'].get('skip', False):
+            # DATES should skip = true bcs linking useless
+            continue
         enc = mention.features['linking']['encoding']
         encodings.append(enc)
+        mentions.append(mention)
 
     all_candidates_4_sample_n = search(encodings, top_k)
 
-    for mention, cands in zip(doc.annset('entities'), all_candidates_4_sample_n):
+    for mention, cands in zip(mentions, all_candidates_4_sample_n):
         # dummy is set when postgres is empty
         if len(cands) == 0 or ('dummy' in cands[0] and cands[0]['dummy'] == 1):
             mention.features['is_nil'] = True
@@ -221,6 +227,11 @@ class Item(BaseModel):
 async def add_doc(doc: dict = Body(...)):
     doc = Document.from_dict(doc)
 
+    if 'clusters' not in doc.features or not doc.features['clusters']:
+        # emtpy list
+        print('Nothing to add.')
+        return doc.to_dict()
+
     clusters = doc.features['clusters']
 
     items = []
@@ -231,7 +242,7 @@ async def add_doc(doc: dict = Body(...)):
 
     res_add = add(items)
 
-    for c, id, indexer in zip(clusters, res_add['ids'], res_add['indexer']):
+    for c, id, indexer in zip(clusters, res_add['ids'], repeat(res_add['indexer'])):
         c['index_id'] = id
         c['index_indexer'] = indexer 
 

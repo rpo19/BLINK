@@ -44,8 +44,12 @@ async def nilprediction_doc_api(doc: dict = Body(...)):
     doc = Document.from_dict(doc)
 
     input = []
+    mentions = []
 
     for mention in doc.annset('entities'):
+        if 'linking' in mention.features and mention.features['linking'].get('skip', False):
+            # DATES should skip = true bcs linking useless
+            continue
         gt_features = mention.features['linking']
         feat = Features()
         if 'score' in gt_features:
@@ -61,13 +65,14 @@ async def nilprediction_doc_api(doc: dict = Body(...)):
         feat.title = gt_features['title'] if 'title' in gt_features else None
 
         input.append(feat)
+        mentions.append(mention)
 
     nil_results = run(input)
 
     score_label = 'nil_score_cross' if 'nil_score_cross' in nil_results else 'nil_score_bi'
     add_score_bi = 'nil_score_cross' in nil_results
 
-    for i, mention in enumerate(doc.annset('entities')):
+    for i, mention in enumerate(mentions):
         mention.features['linking']['nil_score'] = nil_results[score_label][i]
         mention.features['linking']['is_nil'] = bool(nil_results[score_label][i] < args.threshold)
         if add_score_bi:
