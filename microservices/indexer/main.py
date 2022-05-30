@@ -43,6 +43,10 @@ class Input(BaseModel):
     encodings: List[str]
     top_k: int
 
+class Idinput(BaseModel):
+    id: int
+    indexer: int
+
 indexes = []
 rw_index = None
 
@@ -119,6 +123,26 @@ def search_from_doc_topk(top_k, doc):
 
     return doc.to_dict()
 
+@app.post('/api/indexer/info')
+async def id2info_api(idinput: Idinput):
+    """
+    input: (id, indexer)
+    ouput: (id, indexer) -> info
+    TODO continue
+    """
+    with dbconnection.cursor() as cur:
+        cur.execute("""
+            SELECT
+                id, title, wikipedia_id, type_
+            FROM
+                entities
+            WHERE
+                id = {} AND
+                indexer = {};
+            """, (idinput.id, idinput.indexer))
+        id2info = cur.fetchall()
+    id2info = dict(zip(map(lambda x:x[0], id2info), map(lambda x:x[1:], id2info)))
+    return id2info
 
 @app.post('/api/indexer/search')
 async def search_api(input_: Input):
