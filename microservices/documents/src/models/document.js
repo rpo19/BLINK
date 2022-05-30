@@ -4,18 +4,24 @@ import Inc from "mongoose-sequence";
 const AutoIncrement = Inc(mongoose);
 
 const schema = new mongoose.Schema({
-  title: String,
+  annotation_sets: [
+    { type: Schema.Types.ObjectId, ref: 'AnnotationSet' }
+  ],
+  name: String,
   preview: String,
   text: String,
-  annotation: { type: Schema.Types.ObjectId, ref: 'Annotation' }
+  features: Object,
+  offset_type: String, // "p" for python style
 });
 
 schema.plugin(AutoIncrement, { inc_field: 'id' });
 export const Document = mongoose.model('Document', schema);
 
-export const documentDTO = (annotationId, body) => {
+export const documentDTO = (annotationSetIds, body) => {
   const text = body.text;
   const preview = body.preview || body.text.slice(0, 400);
-  const title = body.title || body.text.split(' ').slice(0, 3).join(' ');
-  return new Document({ text, preview, title, annotation: annotationId });
+  const name = body.name || body.text.split(' ').slice(0, 3).join(' ');
+  const features = body.features;
+  const offset_type = body.offset_type || "p";
+  return new Document({ annotation_sets: annotationSetIds, name, preview, text, features, offset_type });
 }

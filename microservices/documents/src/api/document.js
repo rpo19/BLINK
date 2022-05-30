@@ -5,8 +5,8 @@ import { HTTPError, HTTP_ERROR_CODES } from '../utils/http-error';
 import { documentDTO } from '../models/document';
 import { validateRequest } from 'zod-express-middleware';
 import { z } from 'zod';
-import { annotationDTO } from '../models/annotation';
-import { AnnotationController } from '../controllers/annotation';
+import { annotationSetDTO } from '../models/annotationSet';
+import { AnnotationSetController } from '../controllers/annotationSet';
 
 
 const route = Router();
@@ -39,19 +39,27 @@ export default (app) => {
   route.post('/', validateRequest({
     body: z.object({
       text: z.string(),
-      annotation: z.any().array(),
+      annotation_sets: z.any().array(),
       preview: z.string().optional(),
-      title: z.string().optional()
+      name: z.string().optional(),
+      features: z.object().optional(),
+      offset_type: z.string().optional()
     }),
   }), asyncRoute(async (req, res, next) => {
-    const newAnnotation = annotationDTO(req.body);
-    const newDocument = documentDTO(newAnnotation._id, req.body);
-    const annotation = await AnnotationController.insertOne(newAnnotation);
+    const annotationSets = []
+    const annotationSetIds = []
+    for (const annset of req.body.annotation_sets) {
+      var newAnnotationSet = annotationSetDTO(annset);
+      annotationSetIds.push(newAnnotationSet._id);
+      var newAnnotationSetDB = await AnnotationSetController.insertOne(newAnnotationSet);
+      annotationSets.push(newAnnotationSetDB.toObject());
+    }
+    const newDocument = documentDTO(annotationSetIds, req.body);
     const doc = await DocumentController.insertOne(newDocument);
 
     return res.json({
       ...doc.toObject(),
-      annotation: annotation.toObject().annotation
+      annotation_sets: annotationSets
     }).status(200)
   }));
 };

@@ -1,6 +1,7 @@
 POSTGRES_PASSWORD=secret
 MONGO_ROOT_PASSWORD=secret
 MONGO_PASSWORD=secret
+MONGO=mongodb://usr:$MONGO_PASSWORD@mongo/main
 LOCAL_WORKSPACE_FOLDER=/path/to/
 SPACY_MODEL=it_core_new_sm
 PIPELINE_PASSWORD=secret

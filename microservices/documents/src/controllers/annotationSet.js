@@ -1,10 +1,10 @@
 import { HTTP_ERROR_CODES, HTTPError } from '../utils/http-error';
 
 
-export const AnnotationController = {
-  insertOne: async (annotation) => {
+export const AnnotationSetController = {
+  insertOne: async (annotationSet) => {
     try {
-      const doc = await annotation.save();
+      const doc = await annotationSet.save();
       return doc;
     } catch (err) {
       throw new HTTPError({
