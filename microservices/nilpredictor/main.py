@@ -50,7 +50,7 @@ async def nilprediction_doc_api(doc: dict = Body(...)):
         if 'linking' in mention.features and mention.features['linking'].get('skip', False):
             # DATES should skip = true bcs linking useless
             continue
-        gt_features = mention.features['linking']
+        gt_features = mention.features['linking']['top_candidate']
         feat = Features()
         if 'score' in gt_features:
             if 'score_bi' in gt_features:

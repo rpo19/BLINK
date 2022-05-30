@@ -110,10 +110,7 @@ def search_from_doc_topk(top_k, doc):
             mention.features['is_nil'] = True
         else:
             top_cand = cands[0]
-            mention.features['linking']['score'] = top_cand['score']
-            mention.features['linking']['id'] = top_cand['wikipedia_id']
-            mention.features['linking']['title'] = top_cand['title']
-            mention.features['linking']['url'] = top_cand['url']
+            mention.features['linking']['top_candidate'] = top_cand
             mention.features['linking']['candidates'] = cands
 
     if not 'pipeline' in doc.features:
