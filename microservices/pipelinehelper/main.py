@@ -64,7 +64,6 @@ async def run(input: Input):
         raise Exception('Clustering error')
     doc = Document.from_dict(res_clustering.json())
 
-    # TODO add new entities to the KB
     if input.populate:
         # get clusters
         res_populate = requests.post(args.baseurl + indexer_add, json=doc.to_dict())
@@ -72,7 +71,17 @@ async def run(input: Input):
             raise Exception('Population error')
         doc = Document.from_dict(res_populate.json())
 
-    # TODO save annotations in mongodb
+    if input.save:
+        dict_to_save = doc.to_dict()
+        # remove encodings before saving to db
+        for annset in dict_to_save['annotation_sets'].values():
+            for anno in annset['annotations']:
+                if 'features' in anno and 'linking' in anno['features'] \
+                        and 'encoding' in anno['features']['linking']:
+                    del anno['features']['linking']['encoding']
+        res_save = requests.post(args.baseurl + mongo, json=dict_to_save)
+        if not res_save.ok:
+            raise Exception('Save error')
 
     if not 'pipeline' in doc.features:
         doc.features['pipeline'] = []

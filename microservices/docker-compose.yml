@@ -118,8 +118,6 @@ services:
     ports:
       - 127.0.0.1:30315:80
     environment:
-      AUTH_USER: pipeline
-      AUTH_PASSWORD: $PIPELINE_PASSWORD
       LOCAL_IP: $LOCAL_IP
     # command: python main.py --host 0.0.0.0 --port 80 --api-baseurl http://$LOCAL_IP
 
