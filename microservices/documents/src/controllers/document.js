@@ -32,8 +32,7 @@ export const DocumentController = {
     const doc = await Document
       .findOne({ id: id })
       .populate({
-        path: 'annotation',
-        select: 'values -_id'
+        path: 'annotation_sets'
       })
       .lean()
       .exec()
@@ -43,6 +42,7 @@ export const DocumentController = {
         message: `Document with id '${id}' was not found.`
       })
     }
-    return { ...doc, annotation: [...doc.annotation.values] }
+    // return { ...doc, annotation_set: [...doc.annotation_sets.values] }
+    return doc
   }
 }

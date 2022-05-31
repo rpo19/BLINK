@@ -41,11 +41,9 @@ services:
     build: documents
     ports:
       - 127.0.0.1:30900:3001
-    # volumes:
-    #   # - ./documents/.env:/app/.env
-    #   # - ./documents/src:/app/src
     environment:
       PORT: 3001
+      ENABLE_AUTH: false
       MONGO: mongodb://usr:$MONGO_PASSWORD@mongo:27017/main
 
   biencoder:

@@ -30,36 +30,49 @@ export default (app) => {
     const { id } = req.params;
 
     const document = await DocumentController.findOne(id);
+    // convert annotation_sets from list to object
+    var new_sets = {}
+    for (const annset of document.annotation_sets) {
+      delete annset._id;
+      new_sets[annset.name] = annset;
+    }
+    document.annotation_sets = new_sets;
     return res.json(document).status(200);
   }));
 
   /**
    * Create a new document
    */
-  route.post('/', validateRequest({
-    body: z.object({
-      text: z.string(),
-      annotation_sets: z.any().array(),
-      preview: z.string().optional(),
-      name: z.string().optional(),
-      features: z.object().optional(),
-      offset_type: z.string().optional()
-    }),
-  }), asyncRoute(async (req, res, next) => {
-    const annotationSets = []
-    const annotationSetIds = []
-    for (const annset of req.body.annotation_sets) {
-      var newAnnotationSet = annotationSetDTO(annset);
-      annotationSetIds.push(newAnnotationSet._id);
-      var newAnnotationSetDB = await AnnotationSetController.insertOne(newAnnotationSet);
-      annotationSets.push(newAnnotationSetDB.toObject());
-    }
-    const newDocument = documentDTO(annotationSetIds, req.body);
-    const doc = await DocumentController.insertOne(newDocument);
+  route.post('/',
+    validateRequest(
+      {
+        req: {
+          body: z.object({
+            text: z.string(),
+            annotation_sets: z.object(),
+            preview: z.string().optional(),
+            name: z.string().optional(),
+            features: z.object().optional(),
+            offset_type: z.string().optional()
+          })
+        }
+      }
+    ),
+    asyncRoute(async (req, res, next) => {
+      const annotationSets = []
+      const annotationSetIds = []
+      for (const [key, annset] of Object.entries(req.body.annotation_sets)) {
+        var newAnnotationSet = annotationSetDTO(annset);
+        annotationSetIds.push(newAnnotationSet._id);
+        var newAnnotationSetDB = await AnnotationSetController.insertOne(newAnnotationSet);
+        annotationSets.push(newAnnotationSetDB.toObject());
+      }
+      const newDocument = documentDTO(annotationSetIds, req.body);
+      const doc = await DocumentController.insertOne(newDocument);
 
-    return res.json({
-      ...doc.toObject(),
-      annotation_sets: annotationSets
-    }).status(200)
-  }));
+      return res.json({
+        ...doc.toObject(),
+        annotation_sets: annotationSets
+      }).status(200)
+    }));
 };
