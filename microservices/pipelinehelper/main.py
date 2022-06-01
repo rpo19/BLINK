@@ -1,8 +1,8 @@
 import pandas as pd
-from fastapi import FastAPI
+from fastapi import FastAPI, Body
 from pydantic import BaseModel
 import uvicorn
-from typing import List, Optional
+from typing import List, Optional, Dict
 import argparse
 import requests
 import numpy as np
@@ -24,25 +24,24 @@ nilcluster = '/api/nilcluster/doc'
 mongo = '/api/mongo/document'
 ###
 
-class Input(BaseModel):
-    text: str
-    doc_id: Optional[int]
-    populate: bool = False # whether to add the new entities to the kb or not
-    save: bool = False # whether to save to db or not
-
 app = FastAPI()
 
 @app.post('/api/pipeline')
-async def run(input: Input):
+async def run(doc: dict = Body(...)):
+    doc = Document.from_dict(doc)
 
-    doc = Document(input.text)
-    if input.doc_id:
-        doc.features['id'] = input.doc_id
+    if not 'pipeline' in doc.features:
+        doc.features['pipeline'] = []
 
-    res_ner = requests.post(args.baseurl + ner, json=doc.to_dict())
-    if not res_ner.ok:
-        raise Exception('NER error')
-    doc = Document.from_dict(res_ner.json())
+    if 'spacyner' in doc.features['pipeline']:
+        print('Skipping spacyner: already done')
+    else:
+        res_ner = requests.post(args.baseurl + ner, json=doc.to_dict())
+        if not res_ner.ok:
+            raise Exception('NER error')
+        doc = Document.from_dict(res_ner.json())
+
+    # TODO skip the following steps
 
     res_biencoder = requests.post(args.baseurl + biencoder_mention, json=doc.to_dict())
     if not res_biencoder.ok:
@@ -64,14 +63,14 @@ async def run(input: Input):
         raise Exception('Clustering error')
     doc = Document.from_dict(res_clustering.json())
 
-    if input.populate:
+    if doc.features.get('populate', False):
         # get clusters
         res_populate = requests.post(args.baseurl + indexer_add, json=doc.to_dict())
         if not res_populate.ok:
             raise Exception('Population error')
         doc = Document.from_dict(res_populate.json())
 
-    if input.save:
+    if doc.features.get('save', False):
         dict_to_save = doc.to_dict()
         # remove encodings before saving to db
         for annset in dict_to_save['annotation_sets'].values():

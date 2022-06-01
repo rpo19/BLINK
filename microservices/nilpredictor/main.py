@@ -61,7 +61,8 @@ async def nilprediction_doc_api(doc: dict = Body(...)):
             else:
                 # bi only
                 feat.max_bi = gt_features['score']
-        feat.mention = doc.text[mention.start:mention.end]
+        feat.mention = mention.features['mention'] if 'mention' in mention.features \
+                                                    else doc.text[mention.start:mention.end]
         feat.title = gt_features['title'] if 'title' in gt_features else None
 
         input.append(feat)

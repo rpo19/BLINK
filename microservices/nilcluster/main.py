@@ -81,7 +81,9 @@ async def cluster_mention_from_doc(doc: dict = Body(...)):
     for mention in doc.annset('entities'):
         if 'linking' in mention.features and mention.features['linking'].get('is_nil', False):
             item.ids.append(mention.id)
-            item.mentions.append(doc.text[mention.start:mention.end])
+            mention_text = mention.features['mention'] if 'mention' in mention.features \
+                                                        else doc.text[mention.start:mention.end]
+            item.mentions.append(mention_text)
             item.embeddings.append(mention.features['linking']['encoding'])
 
     res_cluster = cluster_mention(item)

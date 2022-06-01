@@ -54,9 +54,12 @@ async def encode_mention_from_doc(doc: dict = Body(...)):
         blink_dict = {
             # TODO use sentence instead of document?
             # TODO test with very big context
-            'context_left': doc.text[:mention.start],
-            'context_right': doc.text[mention.end:],
-            'mention': doc.text[mention.start:mention.end],
+            'context_left': mention.features['context_left'] if 'context_left' in mention.features \
+                                                                else doc.text[:mention.start],
+            'context_right': mention.features['context_right'] if 'context_right' in mention.features \
+                                                                else doc.text[mention.end:],
+            'mention': mention.features['mention'] if 'mention' in mention.features \
+                                                                else doc.text[mention.start:mention.end],
             #
             'label': 'unknown',
             'label_id': -1,
