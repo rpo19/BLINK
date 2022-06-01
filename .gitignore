@@ -267,3 +267,5 @@ dmypy.json
 output*
 
 supervisord.conf
+
+.vscode
