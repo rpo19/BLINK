@@ -33,3 +33,4 @@ fastapi
 psycopg[binary]
 # annoy
 gatenlp
+requests

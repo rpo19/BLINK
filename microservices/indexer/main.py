@@ -11,6 +11,7 @@ import psycopg
 import os
 from gatenlp import Document
 from itertools import repeat
+import requests
 # from annoy import AnnoyIndex
 
 class _Index:
@@ -56,6 +57,18 @@ def id2url(wikipedia_id):
         return "https://{}.wikipedia.org/wiki?curid={}".format(language, wikipedia_id)
     else:
         return ""
+
+def id2props(wikipedia_id):
+    global language
+    url = 'https://{}.wikipedia.org/w/api.php?action=query&pageids={}&prop=extracts|pageimages&exchars=200&explaintext=true&pithumbsize=480&format=json'
+    res = requests.get(url.format(language, wikipedia_id))
+    if res.ok:
+        resj = res.json()
+        assert str(wikipedia_id) in resj['query']['pages']
+        props = resj['query']['pages'][str(wikipedia_id)]
+        return props
+    else:
+        return {}
 
 app = FastAPI()
 
@@ -130,18 +143,34 @@ async def id2info_api(idinput: Idinput):
     ouput: (id, indexer) -> info
     TODO continue
     """
+    if not idinput.indexer in [i['indexid'] for i in indexes]:
+        raise HTTPException(status_code=400, detail="Unknown indexer id.")
+
     with dbconnection.cursor() as cur:
         cur.execute("""
             SELECT
-                id, title, wikipedia_id, type_
+                id, indexer, title, wikipedia_id, type_, wikidata_qid, redirects_to, descr
             FROM
                 entities
             WHERE
-                id = {} AND
-                indexer = {};
+                id = %s AND
+                indexer = %s;
             """, (idinput.id, idinput.indexer))
         id2info = cur.fetchall()
-    id2info = dict(zip(map(lambda x:x[0], id2info), map(lambda x:x[1:], id2info)))
+    id2info = dict(zip(map(
+        lambda x:x[0], id2info), map(
+            lambda x: {
+                'id': x[0],
+                'indexer': x[1],
+                'title': x[2],
+                'wikipedia_id': x[3],
+                'type': x[4],
+                'wikidata_qid': x[5],
+                'redirects_to': x[6],
+                'descr': x[7],
+                'url': id2url(x[3]),
+                'props': id2props(x[3]) 
+                }, id2info)))
     return id2info
 
 @app.post('/api/indexer/search')
