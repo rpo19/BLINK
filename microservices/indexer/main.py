@@ -157,9 +157,9 @@ async def id2info_api(idinput: Idinput):
                 indexer = %s;
             """, (idinput.id, idinput.indexer))
         id2info = cur.fetchall()
-    id2info = dict(zip(map(
-        lambda x:x[0], id2info), map(
-            lambda x: {
+    assert len(id2info) == 1
+    x = id2info[0]
+    return {
                 'id': x[0],
                 'indexer': x[1],
                 'title': x[2],
@@ -170,8 +170,7 @@ async def id2info_api(idinput: Idinput):
                 'descr': x[7],
                 'url': id2url(x[3]),
                 'props': id2props(x[3]) 
-                }, id2info)))
-    return id2info
+            }
 
 @app.post('/api/indexer/search')
 async def search_api(input_: Input):
@@ -196,7 +195,7 @@ def search(encodings, top_k):
         with dbconnection.cursor() as cur:
             cur.execute("""
                 SELECT
-                    id, title, wikipedia_id, type_
+                    id, title, wikipedia_id, type_, wikidata_qid, redirects_to
                 FROM
                     entities
                 WHERE
@@ -231,7 +230,7 @@ def search(encodings, top_k):
                         'dummy': 1
                     })
                     continue
-                title, wikipedia_id, type_ = id2info[_cand]
+                title, wikipedia_id, type_, wikidata_qid, redirects_to = id2info[_cand]
 
                 if index['index_type'] == 'flat':
                     embedding = indexer.index.reconstruct(_cand)
@@ -253,6 +252,8 @@ def search(encodings, top_k):
                         'raw_score': raw_score,
                         'id': _cand,
                         'wikipedia_id': wikipedia_id,
+                        'wikidata_qid': wikidata_qid,
+                        'redirects_to': redirects_to,
                         'title': title,
                         'url': id2url(wikipedia_id),
                         'type_': type_,
