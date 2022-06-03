@@ -1,5 +1,5 @@
 import argparse
-from fastapi import FastAPI
+from fastapi import FastAPI, Body
 from pydantic import BaseModel
 import uvicorn
 from typing import Union, List
@@ -19,9 +19,9 @@ class Item(BaseModel):
 app = FastAPI()
 
 @app.post('/api/ner')
-async def encode_mention(item: Item):
+async def encode_mention(doc: dict = Body(...)):
 
-    doc = Document(item.text)
+    doc = Document.from_dict(doc)
     sentence_set = doc.annset('sentences')
     entity_set = doc.annset('entities')
 
