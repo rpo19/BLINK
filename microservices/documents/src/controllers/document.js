@@ -18,7 +18,7 @@ export const DocumentController = {
   },
   findAll: async () => {
     try {
-      const docs = await Document.find({});
+      const docs = await Document.find({}).lean();
       return docs;
     } catch (err) {
       throw new HTTPError({

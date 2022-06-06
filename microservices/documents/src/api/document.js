@@ -20,10 +20,11 @@ export default (app) => {
    */
   route.get('/', asyncRoute(async (req, res) => {
     const documents = await DocumentController.findAll();
-    for (const doc of documents) {
-      delete doc['text'];
-    }
-    return res.json(documents).status(200);
+    const newDocs = documents.map((doc) => {
+      const { text, ...rest } = doc;
+      return rest;
+    });
+    return res.json(newDocs).status(200);
   }));
 
   /**
@@ -37,6 +38,16 @@ export default (app) => {
     var new_sets = {}
     for (const annset of document.annotation_sets) {
       delete annset._id;
+
+      // add mention to annotations features
+      if (annset.name == 'entities') {
+        for (const annot of annset.annotations) {
+          if (!('mention' in annot.features)) {
+            annot.features.mention = document.text.substring(annot.start, annot.end);
+          }
+        }
+      }
+
       new_sets[annset.name] = annset;
     }
     document.annotation_sets = new_sets;
@@ -67,12 +78,6 @@ export default (app) => {
       for (const [key, annset] of Object.entries(req.body.annotation_sets)) {
         var newAnnotationSet = annotationSetDTO(annset);
         annotationSetIds.push(newAnnotationSet._id);
-        // add mention to annotations features
-        for (const annot of newAnnotationSet.annotations) {
-          if (! 'mention' in annot.features) {
-              annot.features.mention = req.body.text.substring(annot.start, annot.end);
-          }
-        }
         var newAnnotationSetDB = await AnnotationSetController.insertOne(newAnnotationSet);
         annotationSets.push(newAnnotationSetDB.toObject());
       }
