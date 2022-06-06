@@ -20,6 +20,9 @@ export default (app) => {
    */
   route.get('/', asyncRoute(async (req, res) => {
     const documents = await DocumentController.findAll();
+    for (const doc of documents) {
+      delete doc['text'];
+    }
     return res.json(documents).status(200);
   }));
 
@@ -64,6 +67,12 @@ export default (app) => {
       for (const [key, annset] of Object.entries(req.body.annotation_sets)) {
         var newAnnotationSet = annotationSetDTO(annset);
         annotationSetIds.push(newAnnotationSet._id);
+        // add mention to annotations features
+        for (const annot of newAnnotationSet.annotations) {
+          if (! 'mention' in annot.features) {
+              annot.features.mention = req.body.text.substring(annot.start, annot.end);
+          }
+        }
         var newAnnotationSetDB = await AnnotationSetController.insertOne(newAnnotationSet);
         annotationSets.push(newAnnotationSetDB.toObject());
       }
