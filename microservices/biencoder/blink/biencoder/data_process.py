@@ -53,6 +53,14 @@ def get_context_representation(
         if right_add <= right_quota:
             left_quota += right_quota - right_add
 
+    if left_quota < 0:
+        context_left = []
+
+    _diff = len(mention_tokens) - max_seq_length + 2 # CLS SEP
+
+    if _diff > 0:
+        mention_tokens = mention_tokens[:-_diff]
+
     context_tokens = (
         context_left[-left_quota:] + mention_tokens + context_right[:right_quota]
     )
@@ -61,6 +69,7 @@ def get_context_representation(
     input_ids = tokenizer.convert_tokens_to_ids(context_tokens)
     padding = [0] * (max_seq_length - len(input_ids))
     input_ids += padding
+
     assert len(input_ids) == max_seq_length
 
     return {
