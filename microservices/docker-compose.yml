@@ -92,8 +92,6 @@ services:
     build:
         context: ./nilcluster
         dockerfile: Dockerfile
-    volumes:
-      - ${LOCAL_WORKSPACE_FOLDER}/models:/home/app/models
     ports:
       - $LISTEN_NILCLUSTER:80
     # command: python main.py --host 0.0.0.0 --port 80
