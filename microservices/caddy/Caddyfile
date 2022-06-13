@@ -24,6 +24,8 @@ import /etc/caddy/Caddyfile.d/*
 		reverse_proxy documents:3001
 	}
 
+	import /etc/caddy/Caddyfile.main.d/*
+
 	respond "404 Not Found" 404
 
 }

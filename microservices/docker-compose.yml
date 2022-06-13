@@ -147,6 +147,7 @@ services:
     volumes:
       - ./caddy/Caddyfile:/etc/caddy/Caddyfile
       - ./caddy/Caddyfile.d:/etc/caddy/Caddyfile.d
+      - ./caddy/Caddyfile.main.d:/etc/caddy/Caddyfile.main.d
       - ./caddy/pwdfile:/etc/caddy/pwdfile
       - ./caddy/site:/srv
       - ./caddy/data:/data
