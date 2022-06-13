@@ -10,6 +10,7 @@ import json
 import requests
 # from multiprocessing import Pool
 from entity import EntityMention
+from spacy.cli import download as spacy_download
 
 from gatenlp import Document
 
@@ -142,11 +143,8 @@ if __name__ == '__main__':
     try:
         spacy_pipeline = spacy.load(args.model, exclude=['tok2vec', 'morphologizer', 'tagger', 'parser', 'attribute_ruler', 'lemmatizer'])
     except Exception as e:
-        print('ERROR.')
-        print(e)
-        if "Can't find model" in str(e):
-            print('Maybe you did not download the model. To download it run ```python -m spacy download $MODEL```.')
-        sys.exit(1)
+        spacy_download(args.model)
+        spacy_pipeline = spacy.load(args.model, exclude=['tok2vec', 'morphologizer', 'tagger', 'parser', 'attribute_ruler', 'lemmatizer'])
     spacy_pipeline.enable_pipe('senter')
 
     print('Loading complete.')

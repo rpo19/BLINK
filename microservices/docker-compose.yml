@@ -1,4 +1,4 @@
-version: "3.3"
+version: "3"
 services:
 
   tint:
@@ -133,11 +133,7 @@ services:
     #   command: python -m microservices.nilpredictor --host 0.0.0.0 --port 80 --nil-bi-model output/feature_ablation_study_ita/max_leve_model.pickle --nil-bi-features 'max_bi,levenshtein'
   spacyner:
     restart: $RESTART_POLICY
-    build:
-        context: ./spacyner
-        dockerfile: Dockerfile
-        args:
-          SPACY_MODEL: $SPACY_MODEL
+    build: ./spacyner
     environment:
       SPACY_MODEL: $SPACY_MODEL
     ports:
