@@ -37,7 +37,7 @@ export default (app) => {
     // convert annotation_sets from list to object
     var new_sets = {}
     for (const annset of document.annotation_sets) {
-      delete annset._id;
+      // delete annset._id;
 
       // add mention to annotations features
       if (annset.name == 'entities') {

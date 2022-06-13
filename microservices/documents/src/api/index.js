@@ -1,5 +1,6 @@
 import { Router } from 'express';
 import document from './document';
+import save from './save';
 
 /**
  * Export all defined routes
@@ -7,6 +8,7 @@ import document from './document';
 export default () => {
   const app = Router();
   document(app);
+  save(app);
 
   return app
 }
