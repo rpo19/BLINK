@@ -57,6 +57,7 @@ services:
     volumes:
       - ${LOCAL_WORKSPACE_FOLDER}/models:/home/app/models
       - ./biencoder/main.py:/home/app/main.py #DEV
+      - ./biencoder/blink:/home/app/blink #DEV
     ports:
       - 127.0.0.1:30300:80
     environment:

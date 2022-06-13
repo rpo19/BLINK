@@ -55,6 +55,8 @@ def get_context_representation(
 
     if left_quota < 0:
         context_left = []
+    if right_quota < 0:
+        context_right = []
 
     _diff = len(mention_tokens) - max_seq_length + 2 # CLS SEP
 
@@ -70,6 +72,9 @@ def get_context_representation(
     padding = [0] * (max_seq_length - len(input_ids))
     input_ids += padding
 
+    if not len(input_ids) == max_seq_length:
+        import pdb
+        pdb.set_trace()
     assert len(input_ids) == max_seq_length
 
     return {
