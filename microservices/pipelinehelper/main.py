@@ -41,27 +41,37 @@ async def run(doc: dict = Body(...)):
             raise Exception('NER error')
         doc = Document.from_dict(res_ner.json())
 
-    # TODO skip the following steps
+    if 'biencoder' in doc.features['pipeline']:
+        print('Skipping biencoder: already done')
+    else:
+        res_biencoder = requests.post(args.baseurl + biencoder_mention, json=doc.to_dict())
+        if not res_biencoder.ok:
+            raise Exception('Biencoder errror')
+        doc = Document.from_dict(res_biencoder.json())
 
-    res_biencoder = requests.post(args.baseurl + biencoder_mention, json=doc.to_dict())
-    if not res_biencoder.ok:
-        raise Exception('Biencoder errror')
-    doc = Document.from_dict(res_biencoder.json())
+    if 'indexer' in doc.features['pipeline']:
+        print('Skipping indexer: already done')
+    else:
+        res_indexer = requests.post(args.baseurl + indexer_search, json=doc.to_dict())
+        if not res_indexer.ok:
+            raise Exception('Indexer error')
+        doc = Document.from_dict(res_indexer.json())
 
-    res_indexer = requests.post(args.baseurl + indexer_search, json=doc.to_dict())
-    if not res_indexer.ok:
-        raise Exception('Indexer error')
-    doc = Document.from_dict(res_indexer.json())
+    if 'nilprediction' in doc.features['pipeline']:
+        print('Skipping nilprediction: already done')
+    else:
+        res_nilprediction = requests.post(args.baseurl + nilpredictor, json=doc.to_dict())
+        if not res_nilprediction.ok:
+            raise Exception('NIL prediction error')
+        doc = Document.from_dict(res_nilprediction.json())
 
-    res_nilprediction = requests.post(args.baseurl + nilpredictor, json=doc.to_dict())
-    if not res_nilprediction.ok:
-        raise Exception('NIL prediction error')
-    doc = Document.from_dict(res_nilprediction.json())
-
-    res_clustering = requests.post(args.baseurl + nilcluster, json=doc.to_dict())
-    if not res_clustering.ok:
-        raise Exception('Clustering error')
-    doc = Document.from_dict(res_clustering.json())
+    if 'nilclustering' in doc.features['pipeline']:
+        print('Skipping nilclustering: already done')
+    else:
+        res_clustering = requests.post(args.baseurl + nilcluster, json=doc.to_dict())
+        if not res_clustering.ok:
+            raise Exception('Clustering error')
+        doc = Document.from_dict(res_clustering.json())
 
     if doc.features.get('populate', False):
         # get clusters
