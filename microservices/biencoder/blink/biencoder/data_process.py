@@ -53,9 +53,9 @@ def get_context_representation(
         if right_add <= right_quota:
             left_quota += right_quota - right_add
 
-    if left_quota < 0:
+    if left_quota <= 0:
         context_left = []
-    if right_quota < 0:
+    if right_quota <= 0:
         context_right = []
 
     _diff = len(mention_tokens) - max_seq_length + 2 # CLS SEP
