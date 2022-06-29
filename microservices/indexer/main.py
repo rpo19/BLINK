@@ -100,7 +100,12 @@ async def reset():
 @app.post('/api/indexer/search/doc')
 # remember `content-type: application/json`
 async def search_from_doc_api(doc: dict = Body(...)):
-    return search_from_doc_topk(10, doc)
+    default_top_k = 10
+    if doc.get('features', {}).get('top_k'):
+        top_k = doc.get('features', {}).get('top_k')
+    else:
+        top_k = default_top_k
+    return search_from_doc_topk(top_k, doc)
 
 @app.post('/api/indexer/search/doc/{top_k}')
 async def search_from_doc_topk_api(top_k: int, doc: dict = Body(...)):
