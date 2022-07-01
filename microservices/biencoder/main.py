@@ -47,25 +47,29 @@ async def encode_mention_from_doc(doc: dict = Body(...)):
     samples = []
     mentions = []
 
-    for mention in doc.annset('entities'):
-        if 'linking' in mention.features and mention.features['linking'].get('skip', False):
-            # DATES should skip = true bcs linking useless
+    for annset_name in doc.annset_names():
+        if not annset_name.startswith('entities'):
+            # considering only annotation sets of entities
             continue
-        blink_dict = {
-            # TODO use sentence instead of document?
-            # TODO test with very big context
-            'context_left': mention.features['context_left'] if 'context_left' in mention.features \
-                                                                else doc.text[:mention.start],
-            'context_right': mention.features['context_right'] if 'context_right' in mention.features \
-                                                                else doc.text[mention.end:],
-            'mention': mention.features['mention'] if 'mention' in mention.features \
-                                                                else doc.text[mention.start:mention.end],
-            #
-            'label': 'unknown',
-            'label_id': -1,
-        }
-        samples.append(blink_dict)
-        mentions.append(mention)
+        for mention in doc.annset(annset_name):
+            if 'linking' in mention.features and mention.features['linking'].get('skip', False):
+                # DATES should skip = true bcs linking useless
+                continue
+            blink_dict = {
+                # TODO use sentence instead of document?
+                # TODO test with very big context
+                'context_left': mention.features['context_left'] if 'context_left' in mention.features \
+                                                                    else doc.text[:mention.start],
+                'context_right': mention.features['context_right'] if 'context_right' in mention.features \
+                                                                    else doc.text[mention.end:],
+                'mention': mention.features['mention'] if 'mention' in mention.features \
+                                                                    else doc.text[mention.start:mention.end],
+                #
+                'label': 'unknown',
+                'label_id': -1,
+            }
+            samples.append(blink_dict)
+            mentions.append(mention)
 
     dataloader = _process_biencoder_dataloader(
         samples, biencoder.tokenizer, biencoder_params

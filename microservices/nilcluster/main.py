@@ -75,30 +75,44 @@ app = FastAPI()
 async def cluster_mention_from_doc(doc: dict = Body(...)):
     doc = Document.from_dict(doc)
 
-    item = Item(ids=[], mentions=[], embeddings=[])
+    if not 'clusters' in doc.features:
+        doc.features['clusters'] = []
 
-    # select nil mentions
-    for mention in doc.annset('entities'):
-        if 'linking' in mention.features and mention.features['linking'].get('is_nil', False):
-            item.ids.append(mention.id)
-            mention_text = mention.features['mention'] if 'mention' in mention.features \
-                                                        else doc.text[mention.start:mention.end]
-            item.mentions.append(mention_text)
-            item.embeddings.append(mention.features['linking']['encoding'])
+    # mentions from different annotation_sets are not clustered together
+    for annset_name in doc.annset_names():
+        if not annset_name.startswith('entities'):
+            # considering only annotation sets of entities
+            continue
 
-    res_cluster = cluster_mention(item)
-    if not res_cluster:
-        print('No NIL entities. No clustering required.')
-        return doc.to_dict()
+        item = Item(ids=[], mentions=[], embeddings=[])
 
-    doc.features['clusters'] = []
-    for cluster_id, cluster in enumerate(res_cluster):
-        doc.features['clusters'].append(dict(cluster))
-        # set cluster id in the mention annotation
-        all_mentions = doc.annset('entities')
-        for men_id in cluster.mentions_id:
-            mention = all_mentions.get(men_id)
-            mention.features['cluster'] = cluster_id
+        # select nil mentions
+        for mention in doc.annset(annset_name):
+            if 'linking' in mention.features and mention.features['linking'].get('is_nil', False):
+                item.ids.append(mention.id)
+                mention_text = mention.features['mention'] if 'mention' in mention.features \
+                                                            else doc.text[mention.start:mention.end]
+                item.mentions.append(mention_text)
+                item.embeddings.append(mention.features['linking']['encoding'])
+
+        res_cluster = cluster_mention(item)
+        if not res_cluster:
+            print('No NIL entities. No clustering required.')
+            return doc.to_dict()
+
+        current_clusters = []
+
+        for cluster_id, cluster in enumerate(res_cluster):
+            current_clusters.append(dict(cluster))
+            # set cluster id in the mention annotation
+            all_mentions = doc.annset(annset_name)
+            for men_id in cluster.mentions_id:
+                mention = all_mentions.get(men_id)
+                mention.features['cluster'] = cluster_id
+
+        doc.features['clusters'].append({
+            annset_name: current_clusters
+        })
 
     if not 'pipeline' in doc.features:
         doc.features['pipeline'] = []

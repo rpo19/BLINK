@@ -40,7 +40,7 @@ export default (app) => {
       // delete annset._id;
 
       // add mention to annotations features
-      if (annset.name == 'entities') {
+      if (annset.name.startsWith('entities')) {
         for (const annot of annset.annotations) {
           if (!('mention' in annot.features)) {
             annot.features.mention = document.text.substring(annot.start, annot.end);

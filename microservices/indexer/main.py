@@ -116,13 +116,17 @@ def search_from_doc_topk(top_k, doc):
 
     encodings = []
     mentions = []
-    for mention in doc.annset('entities'):
-        if 'linking' in mention.features and mention.features['linking'].get('skip', False):
-            # DATES should skip = true bcs linking useless
+    for annset_name in doc.annset_names():
+        if not annset_name.startswith('entities'):
+            # considering only annotation sets of entities
             continue
-        enc = mention.features['linking']['encoding']
-        encodings.append(enc)
-        mentions.append(mention)
+        for mention in doc.annset(annset_name):
+            if 'linking' in mention.features and mention.features['linking'].get('skip', False):
+                # DATES should skip = true bcs linking useless
+                continue
+            enc = mention.features['linking']['encoding']
+            encodings.append(enc)
+            mentions.append(mention)
 
     all_candidates_4_sample_n = search(encodings, top_k)
 

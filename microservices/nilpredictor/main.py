@@ -46,27 +46,31 @@ async def nilprediction_doc_api(doc: dict = Body(...)):
     input = []
     mentions = []
 
-    for mention in doc.annset('entities'):
-        if 'linking' in mention.features and mention.features['linking'].get('skip', False):
-            # DATES should skip = true bcs linking useless
+    for annset_name in doc.annset_names():
+        if not annset_name.startswith('entities'):
+            # considering only annotation sets of entities
             continue
-        gt_features = mention.features['linking']['top_candidate']
-        feat = Features()
-        if 'score' in gt_features:
-            if 'score_bi' in gt_features:
-                # bi
-                feat.max_bi = gt_features['score_bi']
-                # cross
-                feat.max_cross = gt_features['score']
-            else:
-                # bi only
-                feat.max_bi = gt_features['score']
-        feat.mention = mention.features['mention'] if 'mention' in mention.features \
-                                                    else doc.text[mention.start:mention.end]
-        feat.title = gt_features['title'] if 'title' in gt_features else None
+        for mention in doc.annset(annset_name):
+            if 'linking' in mention.features and mention.features['linking'].get('skip', False):
+                # DATES should skip = true bcs linking useless
+                continue
+            gt_features = mention.features['linking']['top_candidate']
+            feat = Features()
+            if 'score' in gt_features:
+                if 'score_bi' in gt_features:
+                    # bi
+                    feat.max_bi = gt_features['score_bi']
+                    # cross
+                    feat.max_cross = gt_features['score']
+                else:
+                    # bi only
+                    feat.max_bi = gt_features['score']
+            feat.mention = mention.features['mention'] if 'mention' in mention.features \
+                                                        else doc.text[mention.start:mention.end]
+            feat.title = gt_features['title'] if 'title' in gt_features else None
 
-        input.append(feat)
-        mentions.append(mention)
+            input.append(feat)
+            mentions.append(mention)
 
     nil_results = run(input)
 

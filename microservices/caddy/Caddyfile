@@ -10,8 +10,11 @@ import /etc/caddy/Caddyfile.d/*
 	handle /api/nilprediction* {
 		reverse_proxy nilpredictor:80
 	}
-	handle /api/ner* {
+	handle /api/spacyner* {
 		reverse_proxy spacyner:80
+	}
+	handle /api/tintner* {
+		reverse_proxy tintner:80
 	}
 	handle /api/nilcluster* {
 		reverse_proxy nilcluster:80

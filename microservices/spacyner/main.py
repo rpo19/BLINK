@@ -2,33 +2,26 @@ import argparse
 from fastapi import FastAPI, Body
 from pydantic import BaseModel
 import uvicorn
-from typing import Union, List
 import spacy
-import sys
-import itertools
-import json
-import requests
-# from multiprocessing import Pool
-from entity import EntityMention
 from spacy.cli import download as spacy_download
 
 from gatenlp import Document
+
+DEFAULT_TAG='aplha_v0.1.0_spacy'
 
 class Item(BaseModel):
     text: str
 
 app = FastAPI()
 
-@app.post('/api/ner')
+@app.post('/api/spacyner')
 async def encode_mention(doc: dict = Body(...)):
 
     doc = Document.from_dict(doc)
-    sentence_set = doc.annset('sentences')
-    entity_set = doc.annset('entities')
+    sentence_set = doc.annset(f'sentences_{DEFAULT_TAG}')
+    entity_set = doc.annset(f'entities_{DEFAULT_TAG}')
 
     spacy_out = spacy_pipeline(doc.text)
-
-    tint_out = nlp_tint(doc.text)
 
     # sentences
     for sent in spacy_out.sents:
@@ -55,68 +48,11 @@ async def encode_mention(doc: dict = Body(...)):
 
         entity_set.add(ent.start_char, ent.end_char, ent.label_, feat_to_add)
 
-    for ent in tint_out:
-        if ent.type_ == 'DATE':
-            entity_set.add(ent.begin, ent.end, ent.type_, {
-                "ner": {
-                    "type": ent.type_,
-                    "score": 1.0,
-                    "normalized_date": ent.attrs['normalized_date'],
-                    "source": "tint",
-                    },
-                "linking": {
-                    "skip": True, # we already have normalized date
-                }})
-        else:
-            # entity_set.add(ent.begin, ent.end, ent.type_, {
-            #     "ner": {
-            #         "type": ent.type_,
-            #         "score": 1.0,
-            #         "source": "tint",
-            #     }})
-            pass
-
     if not 'pipeline' in doc.features:
         doc.features['pipeline'] = []
     doc.features['pipeline'].append('spacyner')
 
     return doc.to_dict()
-
-def nlp_tint(text):
-    global args
-
-    # TODO async
-    # tint_async = pool.apply_async(tint, (x, args.tint))
-    # res_tint = tint_async.get()
-
-    if not args.tint:
-        return []
-
-    ents, res = tint(text, baseurl=args.tint)
-
-    if res.ok:
-        ents = EntityMention.group_from_tint(ents, '', False, doc=text)
-    else:
-        # tint error # TODO
-        return []
-
-    return ents
-
-def tint(text, format_='json', baseurl='http://127.0.0.1:8012/tint'):
-    if len(text) > 0:
-        payload = {
-            'text': text,
-            'format': format_
-        }
-        res = requests.post(baseurl, data=payload)
-        if res.ok:
-            # success
-            return json.loads(res.text), res
-        else:
-            return None, res
-    else:
-        print('WARNING: Tint Server Wrapper got asked to call tint with empty text.', file=sys.stderr)
-        return None, None
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
@@ -130,11 +66,8 @@ if __name__ == '__main__':
         "--model", type=str, default="en_core_web_sm", help="spacy model to load",
     )
     parser.add_argument(
-        "--tint", type=str, default=None, help="tint URL",
+        "--tag", type=str, default=DEFAULT_TAG, help="AnnotationSet tag",
     )
-
-    # pool to run tint in parallel # TODO
-    #pool = Pool(1)
 
     args = parser.parse_args()
 
