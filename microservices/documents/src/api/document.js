@@ -48,6 +48,9 @@ export default (app) => {
         }
       }
 
+      // ensure annset is sorted
+      annset.annotations.sort((a,b) => a.start - b.start)
+
       new_sets[annset.name] = annset;
     }
     document.annotation_sets = new_sets;
