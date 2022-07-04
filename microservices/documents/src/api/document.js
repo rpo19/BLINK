@@ -23,19 +23,19 @@ export default (app) => {
       {
         req: {
           query: z.object({
+            // query to find by name
+            q: z.string().optional(),
+            // page
+            page: z.number().optional(),
+            // n. of documents to return for each page
             limit: z.number().optional(),
-            cursor: z.string().optional()
           })
         }
       }
     ), asyncRoute(async (req, res) => {
-      const { limit, cursor } = req.query;
-      const documents = await DocumentController.findAll(limit, cursor);
-      const newDocs = documents.map((doc) => {
-        const { text, ...rest } = doc;
-        return rest;
-      });
-      return res.json(newDocs).status(200);
+      const { q, limit, page } = req.query;
+      const documentsPage = await DocumentController.findAll(q, limit, page);
+      return res.json(documentsPage).status(200);
     }));
 
   /**

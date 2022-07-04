@@ -15,27 +15,21 @@ export const DocumentController = {
       })
     }
   },
-  findAll: async (limit = 20, cursor) => {
-    let docs;
-    if (!lastDocId) {
-      // get first 5 docs
-      docs = await Document.find().sort({ id: -1 }).limit(limit).lean();
+  findAll: async (q = '', limit = 20, page = 1) => {
+
+    const query = {
+      ...(q && {
+        name: { $regex: q, $options: 'i' }
+      })
     }
-    else {
-      // get next 5 docs according to that last document id
-      docs = await Document.find({ id: { $lt: cursor } })
-        .sort({ id: -1 }).limit(limit).lean()
-    }
-    return docs
-    // try {
-    //   const docs = await Document.find({}).lean();
-    //   return docs;
-    // } catch (err) {
-    //   throw new HTTPError({
-    //     code: HTTP_ERROR_CODES.INTERNAL_SERVER_ERROR,
-    //     message: 'Could not read from DB.'
-    //   })
-    // }
+
+    const options = {
+      select: ['_id', 'id', 'name', 'preview'],
+      page,
+      limit
+    };
+
+    return Document.paginate(query, options);
   },
   findOne: async (id) => {
     const doc = await Document

@@ -1,5 +1,6 @@
 import mongoose, { Schema } from 'mongoose';
 import Inc from "mongoose-sequence";
+import paginate from 'mongoose-paginate-v2';
 
 const AutoIncrement = Inc(mongoose);
 
@@ -15,6 +16,7 @@ const schema = new mongoose.Schema({
 });
 
 schema.plugin(AutoIncrement, { inc_field: 'id' });
+schema.plugin(paginate);
 export const Document = mongoose.model('Document', schema);
 
 export const documentDTO = (annotationSetIds, body) => {
