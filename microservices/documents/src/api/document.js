@@ -18,14 +18,25 @@ export default (app) => {
   /**
    * Get all documents
    */
-  route.get('/', asyncRoute(async (req, res) => {
-    const documents = await DocumentController.findAll();
-    const newDocs = documents.map((doc) => {
-      const { text, ...rest } = doc;
-      return rest;
-    });
-    return res.json(newDocs).status(200);
-  }));
+  route.get('/',
+    validateRequest(
+      {
+        req: {
+          query: z.object({
+            limit: z.number().optional(),
+            cursor: z.string().optional()
+          })
+        }
+      }
+    ), asyncRoute(async (req, res) => {
+      const { limit, cursor } = req.query;
+      const documents = await DocumentController.findAll(limit, cursor);
+      const newDocs = documents.map((doc) => {
+        const { text, ...rest } = doc;
+        return rest;
+      });
+      return res.json(newDocs).status(200);
+    }));
 
   /**
    * Get document by id
@@ -49,7 +60,7 @@ export default (app) => {
       }
 
       // ensure annset is sorted
-      annset.annotations.sort((a,b) => a.start - b.start)
+      annset.annotations.sort((a, b) => a.start - b.start)
 
       new_sets[annset.name] = annset;
     }
