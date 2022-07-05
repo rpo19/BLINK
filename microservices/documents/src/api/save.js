@@ -13,12 +13,12 @@ export default (app) => {
 
   /**
    * Save entity annotation set
-   * // TODO: save of the whole document parts, for now this works
    */
   route.post('/', asyncRoute(async (req, res) => {
-    const { entitiesAnnotations } = req.body;
-    const id = entitiesAnnotations._id;
-    const resUpdate = await DocumentController.updateEntitiesAnnotationSet(id, entitiesAnnotations);
+    const { docId, annotationSets } = req.body;
+    // console.log(annotationSets);
+    // const id = entitiesAnnotations._id;
+    const resUpdate = await DocumentController.updateEntitiesAnnotationSet(docId, annotationSets);
     return res.json(resUpdate)
   }));
 };

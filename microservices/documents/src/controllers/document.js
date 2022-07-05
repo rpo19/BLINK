@@ -2,6 +2,8 @@
 import { Document } from '../models/document';
 import { AnnotationSet } from '../models/annotationSet';
 import { HTTPError, HTTP_ERROR_CODES } from '../utils/http-error';
+import { annotationSetDTO } from '../models/annotationSet';
+import { AnnotationSetController } from './annotationSet';
 
 export const DocumentController = {
   insertOne: async (document) => {
@@ -47,17 +49,24 @@ export const DocumentController = {
     }
     return doc
   },
-  updateEntitiesAnnotationSet: async (id, annotationSet) => {
-    try {
-      const doc = await AnnotationSet.findByIdAndUpdate(id, {
-        ...annotationSet
-      })
-      return { ok: true };
-    } catch (err) {
-      throw new HTTPError({
-        code: HTTP_ERROR_CODES.INTERNAL_SERVER_ERROR,
-        message: `Something went wrong when updating the Annotation Set.`
-      })
+  updateEntitiesAnnotationSet: async (docId, annotationSets) => {
+    const update = async (annotationSet) => {
+      if (annotationSet._id) {
+        console.log('Updating existing annotation set');
+        return AnnotationSet.findByIdAndUpdate(annotationSet._id, {
+          ...annotationSet
+        })
+      }
+      console.log('Creating new annotation set');
+      const newAnnotationSet = annotationSetDTO(annotationSet);
+      // update document with a new annotation set
+      const updatedDoc = await Document.findByIdAndUpdate(docId,
+        { $push: { annotation_sets: newAnnotationSet._id } }
+      )
+      // add new annotation set
+      return AnnotationSetController.insertOne(newAnnotationSet);
     }
+    const updaters = Object.values(annotationSets).map((set) => update(set));
+    return Promise.all(updaters);
   }
 }

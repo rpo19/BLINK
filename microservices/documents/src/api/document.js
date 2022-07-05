@@ -104,4 +104,11 @@ export default (app) => {
         annotation_sets: annotationSets
       }).status(200)
     }));
+
+  route.delete('/:docId/annotation-set/:annotationSetId',
+    asyncRoute(async (req, res, next) => {
+      const { docId, annotationSetId } = req.params;
+      const result = AnnotationSetController.deleteOne(docId, annotationSetId);
+      return res.json(result);
+    }));
 };
