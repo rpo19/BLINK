@@ -138,6 +138,16 @@ services:
       - $LISTEN_SPACYNER:80
     # command: python __main__.py --host 0.0.0.0 --port 80 --model $SPACY_MODEL --tint http://tint:8012/tint
 
+  electraner:
+    restart: $RESTART_POLICY
+    build: ./electraner
+    environment:
+      ELECTRA_MODEL: $ELECTRA_MODEL
+    ports:
+      - $LISTEN_ELECTRANER:80
+    # command: python __main__.py --host 0.0.0.0 --port 80 --model $ELECTRA_MODEL
+
+
   tintner:
     restart: $RESTART_POLICY
     build: ./tintner

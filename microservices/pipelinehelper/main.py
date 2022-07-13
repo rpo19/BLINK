@@ -12,6 +12,7 @@ from gatenlp import Document
 ###
 spacyner = '/api/spacyner'
 tintner = '/api/tintner'
+electraner = '/api/electraner'
 biencoder = '/api/blink/biencoder' # mention # entity
 biencoder_mention = f'{biencoder}/mention/doc'
 biencoder_entity = f'{biencoder}/entity'
@@ -48,6 +49,14 @@ async def run(doc: dict = Body(...)):
         res_ner = requests.post(args.baseurl + tintner, json=doc.to_dict())
         if not res_ner.ok:
             raise Exception('tintNER error')
+        doc = Document.from_dict(res_ner.json())
+
+    if 'electraner' in doc.features['pipeline']:
+        print('Skipping electraner: already done')
+    else:
+        res_ner = requests.post(args.baseurl + electraner, json=doc.to_dict())
+        if not res_ner.ok:
+            raise Exception('electraNER error')
         doc = Document.from_dict(res_ner.json())
 
     if 'biencoder' in doc.features['pipeline']:

@@ -16,6 +16,9 @@ import /etc/caddy/Caddyfile.d/*
 	handle /api/tintner* {
 		reverse_proxy tintner:80
 	}
+	handle /api/electraner* {
+		reverse_proxy tintner:80
+	}
 	handle /api/nilcluster* {
 		reverse_proxy nilcluster:80
 	}
