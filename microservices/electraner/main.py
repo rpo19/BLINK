@@ -69,8 +69,8 @@ if __name__ == '__main__':
 
     args = parser.parse_args()
 
-    print('Loading spacy model...')
-    # Load spacy model
+    print('Loading model...')
+    # Load model
     model = AutoModelForTokenClassification.from_pretrained(args.model)
     tokenizer = AutoTokenizer.from_pretrained(args.tokenizer)
     sw = SlidingWindowsPipeline(model, tokenizer)
