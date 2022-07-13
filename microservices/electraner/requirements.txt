@@ -4,3 +4,4 @@ uvicorn
 gatenlp
 transformers
 torch
+tqdm

@@ -3,57 +3,73 @@ import torch
 from transformers import AutoModelForTokenClassification, AutoTokenizer
 from typing import List
 import numpy as np
+from tqdm import trange
 
 class SlidingWindowsPipeline:
 
-    def __init__(self, model, tokenizer, grouped_entities=True, ignore_subwords=True, cache_dir="D:\\Sgmon\\.cache"):
+    def __init__(self, model, tokenizer, grouped_entities=True, ignore_subwords=True, cache_dir=".cache", device=None, batchsize=5):
 
+        self.device = device
         self.model = model
+        if self.device:
+            model = model.to(device)
         self.tokenizer = tokenizer
         self.grouped_entities = grouped_entities
         self.ignore_subwords = ignore_subwords
 
+        # to avoid OOM errors run the model for each batch in a loop
+        self.batchsize = batchsize
+
     def __call__(self, text: str, ignore_subword=False):
         strided = self.tokenizer(text, max_length=512, stride=128, truncation=True, padding=True,
-                                 # return_token_type_ids=True,
-                                 return_overflowing_tokens=True,
-                                 return_offsets_mapping=True,
-                                 # return_special_tokens_mask=True,
-                                 return_tensors="pt")
-        trfout = self.model(input_ids=strided['input_ids'],
-                            # token_type_ids=strided['token_type_ids'],
-                            attention_mask=strided['attention_mask'])
-        output_tensors = trfout.logits.detach()
-        predictions = [torch.argmax(x, dim=1) for x in output_tensors]
+                                # return_token_type_ids=True,
+                                return_overflowing_tokens=True,
+                                return_offsets_mapping=True,
+                                # return_special_tokens_mask=True,
+                                return_tensors="pt")
+        if self.device:
+            print('strided to', self.device)
+            strided = strided.to(self.device)
+        all_preds = []
+        print('shape', strided['input_ids'].shape)
         entities_list = []
-        for i, labels in enumerate(predictions):
-            entities = []
-            for y, label in enumerate(labels):
-                start_ind, end_ind = strided[i].offsets[y]
-                word_ref = text[start_ind: end_ind]
-                word = self.tokenizer.convert_ids_to_tokens(strided[i].ids[y])
-                if start_ind == 0 and end_ind == 0 and (word == '[CLS]' or word == '[SEP]'):
-                    # skip CLS and SEP
-                    print('skip', word)
-                    continue
-                is_subword = len(word_ref) != len(word)
-                if (strided[i].ids[y]) == self.tokenizer.unk_token_id:
-                    word = word_ref
-                    is_subword = False
-                entity = {
-                    "word": word,
-                    "score": torch.softmax(output_tensors[i][y], dim=0)[predictions[i][y].item()].item(),
-                    "entity": self.model.config.id2label[predictions[i][y].item()],
-                    "index": i * len(labels.tolist()) + (y + 1),
-                    "start": start_ind,
-                    "end": end_ind,
-                    'is_subword': is_subword
-                }
-                entities += [entity]
-            if self.grouped_entities:
-                entities_list += [self.group_entities(entities)]
-            else:
-                entities_list += [entities]
+        for i in trange(0, strided['input_ids'].shape[0], self.batchsize):
+            print('batch', i, i+self.batchsize)
+
+            trfout = self.model(input_ids=strided['input_ids'][i:i+self.batchsize],
+                                # token_type_ids=strided['token_type_ids'],
+                                attention_mask=strided['attention_mask'][i:i+self.batchsize])
+            output_tensors = trfout.logits.detach()
+            predictions = [torch.argmax(x, dim=1) for x in output_tensors]
+
+            for i, labels in enumerate(predictions):
+                entities = []
+                for y, label in enumerate(labels):
+                    start_ind, end_ind = strided[i].offsets[y]
+                    word_ref = text[start_ind: end_ind]
+                    word = self.tokenizer.convert_ids_to_tokens(strided[i].ids[y])
+                    if start_ind == 0 and end_ind == 0 and (word == '[CLS]' or word == '[SEP]'):
+                        # # skip CLS and SEP
+                        # print('skip', word)
+                        continue
+                    is_subword = len(word_ref) != len(word)
+                    if (strided[i].ids[y]) == self.tokenizer.unk_token_id:
+                        word = word_ref
+                        is_subword = False
+                    entity = {
+                        "word": word,
+                        "score": torch.softmax(output_tensors[i][y], dim=0)[predictions[i][y].item()].item(),
+                        "entity": self.model.config.id2label[predictions[i][y].item()],
+                        "index": i * len(labels.tolist()) + (y + 1),
+                        "start": start_ind,
+                        "end": end_ind,
+                        'is_subword': is_subword
+                    }
+                    entities += [entity]
+                if self.grouped_entities:
+                    entities_list += [self.group_entities(entities)]
+                else:
+                    entities_list += [entities]
 
         return self.remove_outside(entities_list)
 

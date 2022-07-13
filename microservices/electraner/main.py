@@ -4,6 +4,7 @@ from pydantic import BaseModel
 import uvicorn
 from SlidingWindows import SlidingWindowsPipeline
 from transformers import AutoModelForTokenClassification, AutoTokenizer
+import torch
 
 from gatenlp import Document
 
@@ -45,9 +46,9 @@ def electra_pipeline(text):
 
     res = sw(text)
 
-    assert len(res) == 1
+    output = (ent for row in res for ent in row)
 
-    return res[0]
+    return output
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
@@ -66,6 +67,10 @@ if __name__ == '__main__':
     parser.add_argument(
         "--tag", type=str, default=DEFAULT_TAG, help="AnnotationSet tag",
     )
+    parser.add_argument(
+        "--device", type=str, default="cuda:0" if torch.cuda.is_available() else "cpu", help='model device (e.g. "cuda:0" or "cpu")',
+    )
+
 
     args = parser.parse_args()
 
@@ -73,7 +78,12 @@ if __name__ == '__main__':
     # Load model
     model = AutoModelForTokenClassification.from_pretrained(args.model)
     tokenizer = AutoTokenizer.from_pretrained(args.tokenizer)
-    sw = SlidingWindowsPipeline(model, tokenizer)
+
+    device = args.device
+
+    sw = SlidingWindowsPipeline(model, tokenizer, device=device)
+
+    print('device', sw.device)
 
     print('Loading complete.')
 
