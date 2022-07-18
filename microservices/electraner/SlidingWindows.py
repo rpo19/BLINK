@@ -7,7 +7,7 @@ from tqdm import trange
 
 class SlidingWindowsPipeline:
 
-    def __init__(self, model, tokenizer, grouped_entities=True, ignore_subwords=True, cache_dir=".cache", device=None, batchsize=5):
+    def __init__(self, model, tokenizer, grouped_entities=True, ignore_subwords=True, cache_dir=".cache", device=None, batchsize=3):
 
         self.device = device
         self.model = model
@@ -33,6 +33,7 @@ class SlidingWindowsPipeline:
         all_preds = []
         print('shape', strided['input_ids'].shape)
         entities_list = []
+        batch_start = 0
         for i in trange(0, strided['input_ids'].shape[0], self.batchsize):
             print('batch', i, i+self.batchsize)
 
@@ -46,12 +47,14 @@ class SlidingWindowsPipeline:
                 entities = []
                 for y, label in enumerate(labels):
                     start_ind, end_ind = strided[i].offsets[y]
-                    word_ref = text[start_ind: end_ind]
                     word = self.tokenizer.convert_ids_to_tokens(strided[i].ids[y])
                     if start_ind == 0 and end_ind == 0 and (word == '[CLS]' or word == '[SEP]'):
                         # # skip CLS and SEP
                         # print('skip', word)
                         continue
+                    start_ind += batch_start
+                    end_ind += batch_start
+                    word_ref = text[start_ind: end_ind]
                     is_subword = len(word_ref) != len(word)
                     if (strided[i].ids[y]) == self.tokenizer.unk_token_id:
                         word = word_ref
@@ -70,6 +73,8 @@ class SlidingWindowsPipeline:
                     entities_list += [self.group_entities(entities)]
                 else:
                     entities_list += [entities]
+
+            batch_start = strided[i].offsets[-2][1]
 
         return self.remove_outside(entities_list)
 
