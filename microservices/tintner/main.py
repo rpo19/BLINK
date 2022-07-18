@@ -26,6 +26,8 @@ def restructure_newline(doc):
   '''
   doc2 = ''
   for line in doc.splitlines():
+    if len(line) == 0:
+        continue
     if line.strip()[-1] in ['.', ':']:
       doc2 += (line + '\n')
     else:
