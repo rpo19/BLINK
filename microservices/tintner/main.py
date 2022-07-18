@@ -19,8 +19,24 @@ class Item(BaseModel):
 
 app = FastAPI()
 
+# replaces newlines in the middle of a sentence with whitespaces 
+def restructure_newline(doc):
+  '''
+  remove '\n' except when '\n' is preceded by '.' or ':'
+  '''
+  doc2 = ''
+  for line in doc.splitlines():
+    if line.strip()[-1] in ['.', ':']:
+      doc2 += (line + '\n')
+    else:
+      doc2 += (line + ' ')
+  return doc2
+
 @app.post('/api/tintner')
 async def encode_mention(doc: dict = Body(...)):
+
+    # replace wrong newlines
+    doc['text'] = restructure_newline(doc['text'])
 
     doc = Document.from_dict(doc)
     # TODO tint sentences
