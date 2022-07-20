@@ -14,20 +14,8 @@ class Item(BaseModel):
 
 app = FastAPI()
 
-# replaces newlines in the middle of a sentence with whitespaces 
-def restructure_newline(doc):
-  '''
-  remove '\n' except when '\n' is preceded by '.' or ':'
-  '''
-  doc2 = ''
-  for line in doc.splitlines():
-    if len(line) == 0:
-        continue
-    if line.strip()[-1] in ['.', ':']:
-      doc2 += (line + '\n')
-    else:
-      doc2 += (line + ' ')
-  return doc2
+def restructure_newline(text):
+  return text.replace('\n', ' ')
 
 @app.post('/api/spacyner')
 async def encode_mention(doc: dict = Body(...)):
