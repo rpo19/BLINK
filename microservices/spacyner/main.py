@@ -33,13 +33,13 @@ def restructure_newline(doc):
 async def encode_mention(doc: dict = Body(...)):
 
     # replace wrong newlines
-    doc['text'] = restructure_newline(doc['text'])
+    text = restructure_newline(doc['text'])
 
     doc = Document.from_dict(doc)
     sentence_set = doc.annset(f'sentences_{DEFAULT_TAG}')
     entity_set = doc.annset(f'entities_{DEFAULT_TAG}')
 
-    spacy_out = spacy_pipeline(doc.text)
+    spacy_out = spacy_pipeline(text)
 
     # sentences
     for sent in spacy_out.sents:

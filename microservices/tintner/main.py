@@ -38,13 +38,13 @@ def restructure_newline(doc):
 async def encode_mention(doc: dict = Body(...)):
 
     # replace wrong newlines
-    doc['text'] = restructure_newline(doc['text'])
+    text = restructure_newline(doc['text'])
 
     doc = Document.from_dict(doc)
     # TODO tint sentences
     entity_set = doc.annset(f'entities_{DEFAULT_TAG}')
 
-    tint_out = nlp_tint(doc.text)
+    tint_out = nlp_tint(text)
 
     for ent in tint_out:
         if ent.type_ == 'O':
