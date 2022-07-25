@@ -8,6 +8,7 @@ from typing import List, Optional
 from blink.indexer.faiss_indexer import DenseFlatIndexer, DenseHNSWFlatIndexer
 import json
 import psycopg
+from psycopg import sql
 import os
 from gatenlp import Document
 from itertools import repeat
@@ -86,13 +87,13 @@ async def reset():
     # reset db
     with dbconnection.cursor() as cur:
         print('deleting from db...')
-        cur.execute("""
+        cur.execute(sql.SQL("""
             DELETE
             FROM
                 entities
             WHERE
-                indexer = %s;
-            """, (indexes[rw_index]['indexid'],))
+                indexer = {};
+            """).format(indexes[rw_index]['indexid']))
     dbconnection.commit()
 
     return {'res': 'OK'}
@@ -156,15 +157,15 @@ async def id2info_api(idinput: Idinput):
         raise HTTPException(status_code=400, detail="Unknown indexer id.")
 
     with dbconnection.cursor() as cur:
-        cur.execute("""
+        cur.execute(sql.SQL("""
             SELECT
                 id, indexer, title, wikipedia_id, type_, wikidata_qid, redirects_to, descr
             FROM
                 entities
             WHERE
-                id = %s AND
-                indexer = %s;
-            """, (idinput.id, idinput.indexer))
+                id = {} AND
+                indexer = {};
+            """).format(idinput.id, idinput.indexer))
         id2info = cur.fetchall()
     assert len(id2info) == 1
     x = id2info[0]
@@ -178,7 +179,7 @@ async def id2info_api(idinput: Idinput):
                 'redirects_to': x[6],
                 'descr': x[7],
                 'url': id2url(x[3]),
-                'props': id2props(x[3]) 
+                'props': id2props(x[3])
             }
 
 @app.post('/api/indexer/search')
@@ -201,17 +202,23 @@ def search(encodings, top_k):
             scores, candidates = indexer.search_knn(encodings, top_k)
         n = 0
         candidate_ids = set([id for cs in candidates for id in cs])
+
+        # try:
         with dbconnection.cursor() as cur:
-            cur.execute("""
+            cur.execute(sql.SQL("""
                 SELECT
                     id, title, wikipedia_id, type_, wikidata_qid, redirects_to
                 FROM
                     entities
                 WHERE
-                    id in ({}) AND
-                    indexer = %s;
-                """.format(','.join([str(int(id)) for id in candidate_ids])), (index['indexid'],))
+                    id in ({}) AND""".format(','.join([str(int(id)) for id in candidate_ids])) + """
+                    indexer = {};
+                """).format(index['indexid']))
             id2info = cur.fetchall()
+        # except:
+        #     import pdb
+        #     pdb.set_trace()
+
         id2info = dict(zip(map(lambda x:x[0], id2info), map(lambda x:x[1:], id2info)))
         for _scores, _cands, _enc in zip(scores, candidates, encodings):
 
@@ -292,23 +299,29 @@ async def add_doc(doc: dict = Body(...)):
         print('Nothing to add.')
         return doc.to_dict()
 
-    clusters = doc.features['clusters']
+    # TODO refactor
+    for name_clusters in doc.features['clusters']:
+        for key, clusters in name_clusters.items():
+            items = []
 
-    items = []
+            for c in clusters:
+                items.append(
+                    Item(title=c['title'], encoding=c['center']))
 
-    for c in clusters:
-        items.append(
-            Item(title=c['title'], encoding=c['center']))
+            res_add = add(items)
 
-    res_add = add(items)
+            for c, id, indexer in zip(clusters, res_add['ids'], repeat(res_add['indexer'])):
+                c['index_id'] = id
+                c['index_indexer'] = indexer
 
-    for c, id, indexer in zip(clusters, res_add['ids'], repeat(res_add['indexer'])):
-        c['index_id'] = id
-        c['index_indexer'] = indexer 
+            if not 'pipeline' in doc.features:
+                doc.features['pipeline'] = []
+            doc.features['pipeline'].append('indexer_add')
 
-    if not 'pipeline' in doc.features:
-        doc.features['pipeline'] = []
-    doc.features['pipeline'].append('indexer_add')
+            # TODO now works with the first annotation set
+            break
+        # TODO
+        break
 
     return doc.to_dict()
 

@@ -90,6 +90,7 @@ services:
       - 127.0.0.1:30301:80
     depends_on:
       - postgres
+    command: sleep 3600
     # command: python main.py --host 0.0.0.0 --port 80 --index $INDEXER_INDEX --postgres postgres://postgres:$POSTGRES_PASSWORD@postgres:5432/postgres --vector-size $INDEXER_VECTOR_SIZE --language $INDEXER_LANGUAGE
 
   nilcluster:
