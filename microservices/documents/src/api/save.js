@@ -16,7 +16,6 @@ export default (app) => {
    */
   route.post('/', asyncRoute(async (req, res) => {
     const { docId, annotationSets } = req.body;
-    // console.log(annotationSets);
     // const id = entitiesAnnotations._id;
     const resUpdate = await DocumentController.updateEntitiesAnnotationSet(docId, annotationSets);
     return res.json(resUpdate)

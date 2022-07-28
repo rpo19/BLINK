@@ -1,12 +1,12 @@
 import { Router } from 'express';
 import { DocumentController } from '../controllers/document';
 import { asyncRoute } from '../utils/async-route';
-import { HTTPError, HTTP_ERROR_CODES } from '../utils/http-error';
-import { documentDTO } from '../models/document';
+import { Document, documentDTO } from '../models/document';
 import { validateRequest } from 'zod-express-middleware';
 import { z } from 'zod';
-import { annotationSetDTO } from '../models/annotationSet';
+import { AnnotationSet, annotationSetDTO } from '../models/annotationSet';
 import { AnnotationSetController } from '../controllers/annotationSet';
+import { Annotation, annotationDTO } from '../models/annotation';
 
 
 const route = Router();
@@ -88,27 +88,47 @@ export default (app) => {
       }
     ),
     asyncRoute(async (req, res, next) => {
-      const annotationSets = []
-      const annotationSetIds = []
-      for (const [key, annset] of Object.entries(req.body.annotation_sets)) {
-        var newAnnotationSet = annotationSetDTO(annset);
-        annotationSetIds.push(newAnnotationSet._id);
-        var newAnnotationSetDB = await AnnotationSetController.insertOne(newAnnotationSet);
-        annotationSets.push(newAnnotationSetDB.toObject());
-      }
-      const newDocument = documentDTO(annotationSetIds, req.body);
-      const doc = await DocumentController.insertOne(newDocument);
+      // new document object
+      const newDoc = documentDTO(req.body);
+      const doc = await DocumentController.insertOne(newDoc);
+      // insert each annnotation set
+      await Promise.all(Object.values(req.body.annotation_sets).map(async (set) => {
+        const { annotations: newAnnotations, ...rest } = set;
+        const newAnnSet = annotationSetDTO({ docId: doc.id, ...rest });
+        const annSet = await AnnotationSetController.insertOne(newAnnSet);
+        // insert all annotations for a set
+        const newAnnotationsDTOs = newAnnotations.map((ann) => annotationDTO({ annotationSetId: annSet._id, ...ann }));
+        await Annotation.insertMany(newAnnotationsDTOs);
 
-      return res.json({
-        ...doc.toObject(),
-        annotation_sets: annotationSets
-      }).status(200)
+        return annSet;
+      }));
+
+      return res.json(doc).status(200);
+    }));
+
+  route.delete('/:docId',
+    asyncRoute(async (req, res, next) => {
+      const { docId } = req.params;
+      // delete document and return deleted document
+      const deletedDoc = await Document.findOneAndDelete({ id: docId });
+      // get all annotation sets to delete
+      const annotationSets = await AnnotationSet.find({ docId });
+      await Promise.all(annotationSets.map(async (annSet) => {
+        // delete annotations for each annotation set
+        await Annotation.deleteMany({ annotationSetId: annSet._id });
+      }))
+      // delete annotation sets for the document
+      await AnnotationSet.deleteMany({ docId });
+
+      return res.json(deletedDoc);
     }));
 
   route.delete('/:docId/annotation-set/:annotationSetId',
     asyncRoute(async (req, res, next) => {
       const { docId, annotationSetId } = req.params;
-      const result = AnnotationSetController.deleteOne(docId, annotationSetId);
+
+      const result = await AnnotationSet.deleteOne({ annotationSetId })
+      await Annotation.deleteMany({ annotationSetId });
       return res.json(result);
     }));
 };

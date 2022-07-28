@@ -4,6 +4,7 @@ import { AnnotationSet } from '../models/annotationSet';
 import { HTTPError, HTTP_ERROR_CODES } from '../utils/http-error';
 import { annotationSetDTO } from '../models/annotationSet';
 import { AnnotationSetController } from './annotationSet';
+import { Annotation, annotationDTO } from '../models/annotation';
 
 export const DocumentController = {
   insertOne: async (document) => {
@@ -35,37 +36,53 @@ export const DocumentController = {
   },
   findOne: async (id) => {
     const doc = await Document
-      .findOne({ id: id })
-      .populate({
-        path: 'annotation_sets'
-      })
+      .findOne({ id })
       .lean()
-      .exec()
     if (!doc) {
       throw new HTTPError({
         code: HTTP_ERROR_CODES.NOT_FOUND,
         message: `Document with id '${id}' was not found.`
       })
     }
-    return doc
+
+    const annotationSets = await AnnotationSet.find({ docId: id }).lean();
+
+    const annotationSetsWithAnnotations = await Promise.all(annotationSets.map(async (annSet) => {
+      const annotations = await Annotation.find({ annotationSetId: annSet._id }).lean();
+      return {
+        ...annSet,
+        annotations
+      }
+    }));
+
+    return {
+      ...doc,
+      annotation_sets: annotationSetsWithAnnotations
+    }
   },
   updateEntitiesAnnotationSet: async (docId, annotationSets) => {
     const update = async (annotationSet) => {
-      if (annotationSet._id) {
-        console.log('Updating existing annotation set');
-        return AnnotationSet.findByIdAndUpdate(annotationSet._id, {
-          ...annotationSet
-        })
-      }
-      console.log('Creating new annotation set');
-      const newAnnotationSet = annotationSetDTO(annotationSet);
-      // update document with a new annotation set
-      const updatedDoc = await Document.findByIdAndUpdate(docId,
-        { $push: { annotation_sets: newAnnotationSet._id } }
-      )
+      const { annotations: newAnnotations, _id: annotationSetId, ...set } = annotationSet;
       // add new annotation set
-      return AnnotationSetController.insertOne(newAnnotationSet);
+      const newAnnotationSet = annotationSetDTO({ ...set, docId });
+      const annSet = await newAnnotationSet.save();
+      // add annoations for this set
+      const annotationsDTOs = newAnnotations.map(({ _id, ...ann }) => annotationDTO({ ...ann, annotationSetId: annSet._id }));
+      const annotations = await Annotation.insertMany(annotationsDTOs);
+
+      return {
+        ...annSet.toObject(),
+        annotations
+      };
     }
+
+    const oldAnnotationSets = await AnnotationSet.find({ docId });
+    await AnnotationSet.deleteMany({ docId });
+    // delete annotations for each annotation set
+    for (const annSet of oldAnnotationSets) {
+      await Annotation.deleteMany({ annotationSetId: annSet._id });
+    }
+    // update with new annotation sets
     const updaters = Object.values(annotationSets).map((set) => update(set));
     return Promise.all(updaters);
   }

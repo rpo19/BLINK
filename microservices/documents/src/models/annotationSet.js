@@ -9,15 +9,15 @@ import mongoose, { Schema } from 'mongoose';
 // })
 
 const annotationSetSchema = new Schema({
+  docId: Number,
   name: String, // always the same as the identifier ?
   // annotations: [annotationSchema],
-  annotations: [Object],
+  // annotations: [Object],
+
   next_annid: Number
 });
-export const AnnotationSet = mongoose.model('AnnotationSet', annotationSetSchema);
+export const AnnotationSet = mongoose.model('AnnotationSet', annotationSetSchema, 'annotationSets');
 
 export const annotationSetDTO = (annset) => {
-  const _id = new mongoose.Types.ObjectId();
-  annset._id = _id
   return new AnnotationSet(annset);
 }

@@ -5,6 +5,6 @@ export const mongoLoader = async () => {
     await mongoose.connect(process.env.MONGO);
     console.log('Setup mongodb... done');
   } catch (err) {
-    console.log(err)
+    throw new Error('Couldn\'t not connecto to DB.')
   }
 }
