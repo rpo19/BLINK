@@ -8,7 +8,6 @@ from typing import List, Optional
 from blink.indexer.faiss_indexer import DenseFlatIndexer, DenseHNSWFlatIndexer
 import json
 import psycopg
-from psycopg import sql
 import os
 from gatenlp import Document
 from itertools import repeat
@@ -85,18 +84,26 @@ async def reset():
         raise Exception('Not implemented for index {}'.format(index_type))
 
     # reset db
-    with dbconnection.cursor() as cur:
-        print('deleting from db...')
-        cur.execute(sql.SQL("""
-            DELETE
-            FROM
-                entities
-            WHERE
-                indexer = {};
-            """).format(indexes[rw_index]['indexid']))
-    dbconnection.commit()
+    try:
+        with dbconnection.cursor() as cur:
+            print('deleting from db...')
+            cur.execute("""
+                DELETE
+                FROM
+                    entities
+                WHERE
+                    indexer = %s;
+                """, (indexes[rw_index]['indexid'],))
+        dbconnection.commit()
 
-    return {'res': 'OK'}
+        return {'res': 'OK'}
+
+    except BaseException as e:
+        print('RESET query ERROR. Rolling back.')
+        dbconnection.rollback()
+
+        return {'res': 'ERROR'}
+
 
 @app.post('/api/indexer/search/doc')
 # remember `content-type: application/json`
@@ -157,15 +164,15 @@ async def id2info_api(idinput: Idinput):
         raise HTTPException(status_code=400, detail="Unknown indexer id.")
 
     with dbconnection.cursor() as cur:
-        cur.execute(sql.SQL("""
+        cur.execute("""
             SELECT
                 id, indexer, title, wikipedia_id, type_, wikidata_qid, redirects_to, descr
             FROM
                 entities
             WHERE
-                id = {} AND
-                indexer = {};
-            """).format(idinput.id, idinput.indexer))
+                id = %s AND
+                indexer = %s;
+            """, (idinput.id, idinput.indexer))
         id2info = cur.fetchall()
     assert len(id2info) == 1
     x = id2info[0]
@@ -203,21 +210,21 @@ def search(encodings, top_k):
         n = 0
         candidate_ids = set([id for cs in candidates for id in cs])
 
-        # try:
-        with dbconnection.cursor() as cur:
-            cur.execute(sql.SQL("""
-                SELECT
-                    id, title, wikipedia_id, type_, wikidata_qid, redirects_to
-                FROM
-                    entities
-                WHERE
-                    id in ({}) AND""".format(','.join([str(int(id)) for id in candidate_ids])) + """
-                    indexer = {};
-                """).format(index['indexid']))
-            id2info = cur.fetchall()
-        # except:
-        #     import pdb
-        #     pdb.set_trace()
+        try:
+            with dbconnection.cursor() as cur:
+                cur.execute("""
+                    SELECT
+                        id, title, wikipedia_id, type_, wikidata_qid, redirects_to
+                    FROM
+                        entities
+                    WHERE
+                        id in ({}) AND
+                        indexer = %s;
+                    """.format(','.join([str(int(id)) for id in candidate_ids])), (index['indexid'],))
+                id2info = cur.fetchall()
+        except BaseException as e:
+            print('SELECT query ERROR. Rolling back.')
+            dbconnection.rollback()
 
         id2info = dict(zip(map(lambda x:x[0], id2info), map(lambda x:x[1:], id2info)))
         for _scores, _cands, _enc in zip(scores, candidates, encodings):
@@ -353,18 +360,28 @@ def add(items: List[Item]):
     print(f'Saving index {indexid} to disk...')
     indexer.serialize(indexpath)
 
-    # add to postgres
-    with dbconnection.cursor() as cursor:
-        with cursor.copy("COPY entities (id, indexer, wikipedia_id, title, descr, type_) FROM STDIN") as copy:
-            for id, item in zip(ids, items):
-                wikipedia_id = -1 if item.wikipedia_id is None else item.wikipedia_id
-                copy.write_row((id, indexid, wikipedia_id, item.title, item.descr, item.type_))
-    dbconnection.commit()
+    global args
 
-    return {
-        'ids': ids,
-        'indexer': indexid
-    }
+
+    # add to postgres
+    try:
+        with dbconnection.cursor() as cursor:
+            with cursor.copy("COPY entities (id, indexer, wikipedia_id, title, descr, type_) FROM STDIN") as copy:
+                for id, item in zip(ids, items):
+                    wikipedia_id = -1 if item.wikipedia_id is None else item.wikipedia_id
+                    copy.write_row((id, indexid, wikipedia_id, item.title[:args.title_max_len], item.descr, item.type_))
+        dbconnection.commit()
+
+        return {
+            'res': 'OK',
+            'ids': ids,
+            'indexer': indexid
+        }
+    except BaseException as e:
+        print('ADD query ERROR. Rolling back.')
+        dbconnection.rollback()
+
+        raise HTTPException(status_code=500, detail="ADD query ERROR. Rolling back.")
 
 def load_models(args):
     assert args.index is not None, 'Error! Index is required.'
@@ -420,6 +437,9 @@ if __name__ == '__main__':
     )
     parser.add_argument(
         "--vector-size", type=int, default="1024", help="The size of the vectors", dest="vector_size",
+    )
+    parser.add_argument(
+        "--title-max-len", type=int, default=100, help="Max title len", dest="title_max_len",
     )
     parser.add_argument(
         "--language", type=str, default="en", help="Wikipedia language (en,it,...).",
