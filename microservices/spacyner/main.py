@@ -76,7 +76,7 @@ if __name__ == '__main__':
         "--tag", type=str, default=DEFAULT_TAG, help="AnnotationSet tag",
     )
     parser.add_argument(
-        "--sents", is_flag=True, default=False, help="Do sentence tokenization",
+        "--sents", action='store_true', default=False, help="Do sentence tokenization",
     )
 
     args = parser.parse_args()
