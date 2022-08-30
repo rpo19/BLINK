@@ -86,9 +86,12 @@ if __name__ == '__main__':
     try:
         spacy_pipeline = spacy.load(args.model, exclude=['tok2vec', 'morphologizer', 'tagger', 'parser', 'attribute_ruler', 'lemmatizer'])
     except Exception as e:
+        print('Caught exception:', e, '... Trying to download spacy model ...')
         spacy_download(args.model)
         spacy_pipeline = spacy.load(args.model, exclude=['tok2vec', 'morphologizer', 'tagger', 'parser', 'attribute_ruler', 'lemmatizer'])
-    spacy_pipeline.enable_pipe('senter')
+    # sentences
+    if args.sents:
+        spacy_pipeline.enable_pipe('senter')
 
     print('Loading complete.')
 
