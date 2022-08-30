@@ -50,17 +50,6 @@ async def run(doc: dict = Body(...)):
             raise Exception('tintNER error')
         doc = Document.from_dict(res_ner.json())
 
-    # TODO
-    # get only dates from tint
-    doc = doc.to_dict()
-    spacy_annset = 'entities_aplha_v0.1.0_spacy'
-    tint_annset = 'entities_aplha_v0.1.0_tint'
-    tint_dates = [ann for ann in doc['annotation_sets'][tint_annset]['annotations'] if ann['type'] == 'DATE']
-    doc['annotation_sets'][spacy_annset]['annotations'].extend(tint_dates)
-    doc['annotation_sets'][spacy_annset]['annotations'].sort(key=lambda x: x['start'])
-    del doc['annotation_sets'][tint_annset]
-    doc = Document.from_dict(doc)
-
     if 'biencoder' in doc.features['pipeline']:
         print('Skipping biencoder: already done')
     else:
