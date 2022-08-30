@@ -24,18 +24,19 @@ async def encode_mention(doc: dict = Body(...)):
     text = restructure_newline(doc['text'])
 
     doc = Document.from_dict(doc)
-    sentence_set = doc.annset(f'sentences_{DEFAULT_TAG}')
     entity_set = doc.annset(f'entities_{DEFAULT_TAG}')
 
     spacy_out = spacy_pipeline(text)
 
     # sentences
-    for sent in spacy_out.sents:
-        # TODO keep track of entities in this sentence?
-        sentence_set.add(sent.start_char, sent.end_char, "sentence", {
-            "source": "spacy",
-            "spacy_model":args.model
-        })
+    if args.sents:
+        sentence_set = doc.annset(f'sentences_{DEFAULT_TAG}')
+        for sent in spacy_out.sents:
+            # TODO keep track of entities in this sentence?
+            sentence_set.add(sent.start_char, sent.end_char, "sentence", {
+                "source": "spacy",
+                "spacy_model":args.model
+            })
 
     for ent in spacy_out.ents:
         # TODO keep track of sentences
@@ -73,6 +74,9 @@ if __name__ == '__main__':
     )
     parser.add_argument(
         "--tag", type=str, default=DEFAULT_TAG, help="AnnotationSet tag",
+    )
+    parser.add_argument(
+        "--sents", is_flag=True, default=False, help="Do sentence tokenization",
     )
 
     args = parser.parse_args()
