@@ -137,6 +137,8 @@ services:
       SPACY_TAG: $SPACY_TAG
     ports:
       - $LISTEN_SPACYNER:80
+    volumes:
+      - ${LOCAL_WORKSPACE_FOLDER}/models:/home/app/models
     # command: python __main__.py --host 0.0.0.0 --port 80 --model $SPACY_MODEL --tint http://tint:8012/tint
 
   tintner:
