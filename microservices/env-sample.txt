@@ -18,6 +18,7 @@ MONGO_PASSWORD=secret
 MONGO=mongodb://usr:$MONGO_PASSWORD@mongo/main
 LOCAL_WORKSPACE_FOLDER=/path/to/
 SPACY_MODEL=it_core_new_sm
+SPACY_TAG=spacy_v0.1.0
 PIPELINE_PASSWORD=secret
 INDEXER_LANGUAGE=en
 INDEXER_INDEX=hnsw:models/faiss_hnsw.pkl:0:r,flat:models/flat_kbp.pkl:1:rw
