@@ -1,3 +1,6 @@
 [submodule "EntityClustering"]
 	path = EntityClustering
 	url = git@github.com:rpo19/EntityClustering.git
+[submodule "microservices/giustizia-ui"]
+	path = microservices/giustizia-ui
+	url = https://github.com/marcoripa96/giustizia-ui.git

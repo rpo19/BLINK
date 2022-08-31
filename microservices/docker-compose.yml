@@ -171,3 +171,18 @@ services:
       # fully qualified domain name
       FQDN: "$FQDN"
       LOCAL_IP: "$LOCAL_IP"
+
+  ui:
+    build: giustizia-ui
+    ports:
+      - 127.0.0.1:8080:3000
+    environment:
+      ACCESS_USERNAME: $UI_ACCESS_USERNAME
+      ACCESS_PASSWORD: $ACCESS_PASSWORD
+      API_BASE_URI: ${PIPELINE_ADDRESS}/api
+      API_USERNAME: ""
+      API_PASSWORD: ""
+      NEXTAUTH_SECRET: $UI_NEXTAUTH_SECRET
+      NEXTAUTH_URL: $UI_NEXTAUTH_URL
+      NEXT_PUBLIC_BASE_PATH: $UI_NEXT_PUBLIC_BASE_PATH
+      NEXT_PUBLIC_FULL_PATH: $UI_NEXT_PUBLIC_FULL_PATH
