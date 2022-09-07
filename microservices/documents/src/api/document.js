@@ -65,7 +65,9 @@ export default (app) => {
       new_sets[annset.name] = annset;
     }
     document.annotation_sets = new_sets;
-    delete document.features.clusters;
+    if (document.features) {
+      delete document.features.clusters;
+    }
     return res.json(document).status(200);
   }));
 
