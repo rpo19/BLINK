@@ -129,7 +129,7 @@ export default (app) => {
     asyncRoute(async (req, res, next) => {
       const { docId, annotationSetId } = req.params;
 
-      const result = await AnnotationSet.deleteOne({ annotationSetId })
+      const result = await AnnotationSet.deleteOne({ _id: annotationSetId })
       await Annotation.deleteMany({ annotationSetId });
       return res.json(result);
     }));
