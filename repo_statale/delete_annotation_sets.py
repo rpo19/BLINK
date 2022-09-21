@@ -13,7 +13,7 @@ for doc in tqdm(documents):
   full_doc = full_doc.json()
 
   for ann_set_key in full_doc['annotation_sets']:
-    if 'trie' in ann_set_key:
+    if 'trie_ner_v1.0.0' in ann_set_key:
       ann_set_id = full_doc['annotation_sets'][ann_set_key]['_id']
       res = requests.delete(BASE_URL + '/api/document/' + str(doc_id) + '/annotation-set/' + str(ann_set_id))
 
