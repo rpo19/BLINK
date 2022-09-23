@@ -11,13 +11,8 @@ import torch.nn as nn
 import torch.nn.functional as F
 from tqdm import tqdm
 
-from pytorch_transformers.modeling_bert import (
-    BertPreTrainedModel,
-    BertConfig,
-    BertModel,
-)
-
-from pytorch_transformers.tokenization_bert import BertTokenizer
+from transformers.adapters import BertAdapterModel
+from transformers import BertTokenizer
 
 from blink.common.ranker_base import BertEncoder, get_model_obj
 from blink.common.optimizer import get_bert_optimizer
@@ -32,7 +27,7 @@ def load_biencoder(params):
 class BiEncoderModule(torch.nn.Module):
     def __init__(self, params):
         super(BiEncoderModule, self).__init__()
-        main_bert = BertModel.from_pretrained(params["bert_model"])
+        main_bert = BertAdapterModel.from_pretrained(params["bert_model"])
         # add adapters
         main_bert.add_adapter("ctxt_adapter")
         main_bert.add_adapter("cand_adapter")
