@@ -16,7 +16,7 @@ class BertEncoder(nn.Module):
         self, bert_model, output_dim, layer_pulled=-1, add_linear=None):
         super(BertEncoder, self).__init__()
         self.layer_pulled = layer_pulled
-        bert_output_dim = bert_model.embeddings.word_embeddings.weight.size(1)
+        bert_output_dim = bert_model.config.hidden_size
 
         self.bert_model = bert_model
         if add_linear:
