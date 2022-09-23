@@ -33,19 +33,20 @@ class BiEncoderModule(torch.nn.Module):
     def __init__(self, params):
         super(BiEncoderModule, self).__init__()
         ctxt_bert = BertModel.from_pretrained(params["bert_model"])
-        cand_bert = BertModel.from_pretrained(params['bert_model'])
+        # add adapters
+        # cand_bert = BertModel.from_pretrained(params['bert_model'])
         self.context_encoder = BertEncoder(
             ctxt_bert,
             params["out_dim"],
             layer_pulled=params["pull_from_layer"],
             add_linear=params["add_linear"],
         )
-        self.cand_encoder = BertEncoder(
-            cand_bert,
-            params["out_dim"],
-            layer_pulled=params["pull_from_layer"],
-            add_linear=params["add_linear"],
-        )
+        # self.cand_encoder = BertEncoder(
+        #     cand_bert,
+        #     params["out_dim"],
+        #     layer_pulled=params["pull_from_layer"],
+        #     add_linear=params["add_linear"],
+        # )
         self.config = ctxt_bert.config
 
     def forward(
@@ -57,11 +58,13 @@ class BiEncoderModule(torch.nn.Module):
         segment_idx_cands,
         mask_cands,
     ):
+        # activate adapter ctx
         embedding_ctxt = None
         if token_idx_ctxt is not None:
             embedding_ctxt = self.context_encoder(
                 token_idx_ctxt, segment_idx_ctxt, mask_ctxt
             )
+        # activate adapter cands
         embedding_cands = None
         if token_idx_cands is not None:
             embedding_cands = self.cand_encoder(
