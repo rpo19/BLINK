@@ -32,14 +32,16 @@ def load_biencoder(params):
 class BiEncoderModule(torch.nn.Module):
     def __init__(self, params):
         super(BiEncoderModule, self).__init__()
-        ctxt_bert = BertModel.from_pretrained(params["bert_model"])
+        main_bert = BertModel.from_pretrained(params["bert_model"])
         # add adapters
+        main_bert.add_adapter("ctxt_adapter")
+        main_bert.add_adapter("cand_adapter")
         # cand_bert = BertModel.from_pretrained(params['bert_model'])
-        self.context_encoder = BertEncoder(
-            ctxt_bert,
-            params["out_dim"],
-            layer_pulled=params["pull_from_layer"],
-            add_linear=params["add_linear"],
+        self.main_encoder = BertEncoder(
+            main_bert,
+            -1,
+            layer_pulled=-1,
+            add_linear=False,
         )
         # self.cand_encoder = BertEncoder(
         #     cand_bert,
@@ -47,7 +49,7 @@ class BiEncoderModule(torch.nn.Module):
         #     layer_pulled=params["pull_from_layer"],
         #     add_linear=params["add_linear"],
         # )
-        self.config = ctxt_bert.config
+        self.config = main_bert.config
 
     def forward(
         self,
@@ -59,15 +61,17 @@ class BiEncoderModule(torch.nn.Module):
         mask_cands,
     ):
         # activate adapter ctx
+        self.main_encoder.bert_model.active_adapters = "ctxt_adapter"
         embedding_ctxt = None
         if token_idx_ctxt is not None:
-            embedding_ctxt = self.context_encoder(
+            embedding_ctxt = self.main_encoder(
                 token_idx_ctxt, segment_idx_ctxt, mask_ctxt
             )
         # activate adapter cands
+        self.main_encoder.bert_model.active_adapters = "cand_adapter"
         embedding_cands = None
         if token_idx_cands is not None:
-            embedding_cands = self.cand_encoder(
+            embedding_cands = self.main_encoder(
                 token_idx_cands, segment_idx_cands, mask_cands
             )
         return embedding_ctxt, embedding_cands
