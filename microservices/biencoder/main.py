@@ -165,7 +165,7 @@ if __name__ == '__main__':
         "--biencoder_model",
         dest="biencoder_model",
         type=str,
-        default="models/biencoder_wiki_large.bin",
+        default=None,
         help="Path to the biencoder model.",
     )
     parser.add_argument(

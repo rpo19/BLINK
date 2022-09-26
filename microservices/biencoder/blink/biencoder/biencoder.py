@@ -12,7 +12,8 @@ import torch.nn.functional as F
 from tqdm import tqdm
 
 from transformers.adapters import BertAdapterModel
-from transformers import BertTokenizer
+from pytorch_transformers.tokenization_bert import BertTokenizer
+# from transformers import BertTokenizer
 
 from blink.common.ranker_base import BertEncoder, get_model_obj
 from blink.common.optimizer import get_bert_optimizer
@@ -55,17 +56,18 @@ class BiEncoderModule(torch.nn.Module):
         segment_idx_cands,
         mask_cands,
     ):
-        # activate adapter ctx
-        self.main_encoder.bert_model.active_adapters = "ctxt_adapter"
         embedding_ctxt = None
         if token_idx_ctxt is not None:
+            # activate adapter ctx
+            self.main_encoder.bert_model.active_adapters = "ctxt_adapter"
             embedding_ctxt = self.main_encoder(
                 token_idx_ctxt, segment_idx_ctxt, mask_ctxt
             )
-        # activate adapter cands
-        self.main_encoder.bert_model.active_adapters = "cand_adapter"
+
         embedding_cands = None
         if token_idx_cands is not None:
+            # activate adapter cands
+            self.main_encoder.bert_model.active_adapters = "cand_adapter"
             embedding_cands = self.main_encoder(
                 token_idx_cands, segment_idx_cands, mask_cands
             )
